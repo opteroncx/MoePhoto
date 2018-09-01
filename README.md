@@ -1,8 +1,8 @@
 # MoePhoto
 MoePhoto Image Toolbox萌图工具箱  
-一个基于深度学习的AI图像修复软件（更新中...）
-感兴趣的加群320785467讨论
-![image](https://github.com/opteroncx/MoePhoto/blob/master/images/example1.png)
+一个基于深度学习的AI图像修复软件（更新中...）  
+感兴趣的加QQ群320785467讨论
+![image](https://github.com/opteroncx/MoePhoto/blob/master/images/example1s.png)
 ### 基本功能
 * 图像降噪
 * 超分辨率
