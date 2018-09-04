@@ -10,12 +10,14 @@ from functools import partial
 import pickle
 import readgpu
 import psutil
+from models import Net2x, Net3x, Net4x
+from collections import OrderedDict
 
-parser = argparse.ArgumentParser(description="DFRN Test")
+parser = argparse.ArgumentParser(description="MoePhoto")
 parser.add_argument("--cuda", action="store_true", help="use cuda?")
 parser.add_argument("--model", default="model/sr24/model.pth", type=str, help="model path")
 parser.add_argument("--scale", default=4, type=int, help="scale factor, Default: 4")
-
+parser.add_argument("--net", default='null', type=str, help="network file")
 
 opt = parser.parse_args()
 cuda = torch.cuda.is_available()
@@ -68,9 +70,20 @@ def predict(img_read, save, convert, eva, name):
         im_gt_y = im_gt_y.astype("float32")
     im_input = img_y / 255.
     im_input = Variable(torch.from_numpy(im_input).float()).view(1, -1, im_input.shape[0], im_input.shape[1])
-    pickle.load = partial(pickle.load, encoding="utf-8")
-    pickle.Unpickler = partial(pickle.Unpickler, encoding="utf-8")
-    model = torch.load(opt.model, map_location=lambda storage, loc: storage, pickle_module=pickle)["model"]
+    if opt.scale == 2:
+        print('loading net 2x')
+        model = Net2x()
+    elif opt.scale == 3:
+        print('loading net 3x')
+        model = Net3x()
+    elif opt.scale == 4:
+        print('loading net 4x')
+        model = Net4x()
+
+    weights = torch.load(opt.model)
+    print('reloading weights')
+    model.load_state_dict(weights)
+
     if cuda:
         model = model.cuda()
         im_input = im_input.cuda()
@@ -203,12 +216,12 @@ def main():
 
 def dosr(im,scale,mode):
     mode_switch = {
-        'a2':'./model/a2/model.pth',
-        'a3':'./model/a3/model.pth',
-        'a4':'./model/a4/model.pth',
-        'p2':'./model/p2/model.pth',
-        'p3':'./model/p3/model.pth',
-        'p4':'./model/p4/model.pth',
+        'a2': './model/a2/model_new.pth',
+        'a3': './model/a3/model_new.pth',
+        'a4': './model/a4/model_new.pth',
+        'p2': './model/p2/model_new.pth',
+        'p3': './model/p3/model_new.pth',
+        'p4': './model/p4/model_new.pth',
     }
     nmode = mode+str(scale)
     opt.model = mode_switch[nmode]
@@ -238,11 +251,12 @@ def dosr(im,scale,mode):
             cropsize = int(np.sqrt((free_ram)/0.48))
     try:
         print('当前SR切块大小：',cropsize)
-        sim=sr(im, cropsize)
+        sim = sr(im, cropsize)
         torch.cuda.empty_cache()
-    except:
+    except Exception as msg:
         print('当前切块大小：',cropsize)
-        print('显存不足，请更换更好的显卡，你的当前显存剩余',free_ram)
+        print('出现错误，请重启程序，你的当前显存剩余',free_ram)
+        print('错误内容=='+str(msg))
         torch.cuda.empty_cache()
     return sim
 

@@ -5,3 +5,6 @@
 /pythonfiles/oldfiles/
 /package/
 /build/
+/model/__pycache__/
+/model/*.py
+/model/*.pyc
