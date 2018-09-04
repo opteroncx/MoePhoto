@@ -16,3 +16,6 @@
 /model/p2/model.pth
 /model/p3/model.pth
 /model/p4/model.pth
+
+# ignore build package
+install.exe

@@ -2,7 +2,7 @@ import py_compile
 import os
 import shutil
 
-path = './pythonfile/'
+path = './python/'
 
 if os.path.exists(path+'__pycache__'):
     shutil.rmtree(path+'__pycache__')
