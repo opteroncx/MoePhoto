@@ -8,3 +8,11 @@
 /model/__pycache__/
 /model/*.py
 /model/*.pyc
+
+# ignore old checkpoints
+/model/a2/model.pth
+/model/a3/model.pth
+/model/a4/model.pth
+/model/p2/model.pth
+/model/p3/model.pth
+/model/p4/model.pth
