@@ -1,0 +1,7 @@
+# ignore files
+/__pycache__/
+/download/
+/pythonfiles/__pycache__/
+/pythonfiles/oldfiles/
+/package/
+/build/
