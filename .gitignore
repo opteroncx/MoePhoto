@@ -1,8 +1,8 @@
 # ignore files
 /__pycache__/
 /download/
-/pythonfiles/__pycache__/
-/pythonfiles/old_files/
+/python/__pycache__/
+/python/old_files/
 /package/
 /build/
 /model/__pycache__/
