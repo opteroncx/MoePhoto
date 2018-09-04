@@ -8,6 +8,9 @@
 /model/__pycache__/
 /model/*.py
 /model/*.pyc
+/temp/
+/batch_SR/
+
 
 # ignore old checkpoints
 /model/a2/model.pth

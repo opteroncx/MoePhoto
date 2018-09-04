@@ -5,10 +5,7 @@ os.environ['TCL_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tcl8.6'
 os.environ['TK_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tk8.6'
 # Dependencies are automatically detected, but it might need fine tuning.
 
-ifiles = [
-        './model6.pyc',
-        './model63.pyc',
-        './model64.pyc',
+ifiles = ['./models.pyc',
         './model6dn.pyc',
         './dn.pyc',
         './dehaze.pyc',
@@ -24,7 +21,7 @@ ifiles = [
         './libiomp5md.dll',
         './libiomp5md.pdb',
         './libiompstubs5md.dll',
-        './更新日志.txt',
+        './update_log.txt',
         './nvidia-smi.exe'
         ]
 
