@@ -11,6 +11,7 @@ import pickle
 from torchvision import transforms
 import readgpu
 import psutil
+from models import NetDN,SEDN
 
 parser = argparse.ArgumentParser(description="SEDN")
 parser.add_argument("--cuda", action="store_true", help="use cuda?")
@@ -91,6 +92,15 @@ def predict(img_read, save, convert, eva, name):
     pickle.load = partial(pickle.load, encoding="utf-8")
     pickle.Unpickler = partial(pickle.Unpickler, encoding="utf-8")
     model = torch.load(opt.model, map_location=lambda storage, loc: storage, pickle_module=pickle)["model"]
+    if opt.model[:4] == 'lite':
+        model = NetDN()
+    else:
+        model = SEDN()
+    
+    weights = torch.load(opt.model)
+    print('reloading weights')
+    model.load_state_dict(weights)
+
     if cuda:
         model = model.cuda()
         im_input = im_input.cuda()
