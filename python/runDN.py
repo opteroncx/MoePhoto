@@ -201,9 +201,9 @@ def main():
 
 def dodn(im,model):
     model_dict = {
-        '15' : './model/l15/model.pth',
-        '25' : './model/l25/model.pth',
-        '50' : './model/l50/model.pth',
+        '15' : './model/l15/model_new.pth',
+        '25' : './model/l25/model_new.pth',
+        '50' : './model/l50/model_new.pth',
         'lite5' : './model/dn_lite5/model_new.pth',
         'lite10' : './model/dn_lite10/model_new.pth',
         'lite15' : './model/dn_lite15/model_new.pth'
