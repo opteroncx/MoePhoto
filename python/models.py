@@ -55,7 +55,7 @@ class NetDN(nn.Module):
         self.convt_F14 = ARSB(filters)
         self.convt_F15 = ARSB(filters)
         self.convt_F16 = ARSB(filters)
-        self.convt_F17 = ARSB(filters)
+        # self.convt_F17 = ARSB(filters)
         self.convt_shape1 = nn.Conv2d(in_channels=filters, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False)
 
 
