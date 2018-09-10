@@ -38,59 +38,6 @@ class ARSB(nn.Module):
     out = self.scale(out) + x
     return out
 
-class NetDN(nn.Module):
-    def __init__(self):
-        super(NetDN, self).__init__()
-
-        filters = 48
-        self.conv_input = nn.Conv2d(in_channels=1, out_channels=filters, kernel_size=3, stride=1, padding=1, bias=False)
-        self.conv_input2 = nn.Conv2d(in_channels=filters, out_channels=filters, kernel_size=3, stride=1, padding=1, bias=False)
-        self.relu = nn.PReLU()
-
-        self.convt_R1 = nn.Conv2d(in_channels=filters, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False)
-        # add multi supervise
-        self.convt_F11 = ARSB(filters)
-        self.convt_F12 = ARSB(filters)
-        self.convt_F13 = ARSB(filters)
-        self.convt_F14 = ARSB(filters)
-        self.convt_F15 = ARSB(filters)
-        self.convt_F16 = ARSB(filters)
-        # self.convt_F17 = ARSB(filters)
-        self.convt_shape1 = nn.Conv2d(in_channels=filters, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False)
-
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-                if m.bias is not None:
-                    m.bias.data.zero_()
-
-    def forward(self, x):
-        out = self.relu(self.conv_input(x))
-        conv1 = self.conv_input2(out)
-
-        convt_F11 = self.convt_F11(conv1)
-        convt_F12 = self.convt_F12(convt_F11)
-        convt_F13 = self.convt_F13(convt_F12)
-        convt_F14 = self.convt_F14(convt_F13)
-        convt_F15 = self.convt_F15(convt_F14)
-        convt_F16 = self.convt_F16(convt_F15)
-
-        # multi supervise
-        convt_F = [convt_F11,convt_F12,convt_F13,convt_F14,convt_F15,convt_F16]
-
-        u2 = self.convt_shape1(out)
-
-        HR = []
-
-        for i in range(len(convt_F)):
-            convt_R1 = self.convt_R1(convt_F[i])
-            tmp = u2 + convt_R1
-            HR.append(tmp)
-
-        return HR
-
 class ScaleLayer(nn.Module):
 
    def __init__(self, init_value=0.25):
@@ -291,3 +238,138 @@ class Net4x(nn.Module):
             HR.append(tmp)
 
         return HR
+
+# denoise models
+
+class NetDN(nn.Module):
+    def __init__(self):
+        super(NetDN, self).__init__()
+
+        filters = 48
+        self.conv_input = nn.Conv2d(in_channels=1, out_channels=filters, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv_input2 = nn.Conv2d(in_channels=filters, out_channels=filters, kernel_size=3, stride=1, padding=1, bias=False)
+        self.relu = nn.PReLU()
+
+        self.convt_R1 = nn.Conv2d(in_channels=filters, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False)
+        # add multi supervise
+        self.convt_F11 = ARSB(filters)
+        self.convt_F12 = ARSB(filters)
+        self.convt_F13 = ARSB(filters)
+        self.convt_F14 = ARSB(filters)
+        self.convt_F15 = ARSB(filters)
+        self.convt_F16 = ARSB(filters)
+        # self.convt_F17 = ARSB(filters)
+        self.convt_shape1 = nn.Conv2d(in_channels=filters, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False)
+
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+
+    def forward(self, x):
+        out = self.relu(self.conv_input(x))
+        conv1 = self.conv_input2(out)
+
+        convt_F11 = self.convt_F11(conv1)
+        convt_F12 = self.convt_F12(convt_F11)
+        convt_F13 = self.convt_F13(convt_F12)
+        convt_F14 = self.convt_F14(convt_F13)
+        convt_F15 = self.convt_F15(convt_F14)
+        convt_F16 = self.convt_F16(convt_F15)
+
+        # multi supervise
+        convt_F = [convt_F11,convt_F12,convt_F13,convt_F14,convt_F15,convt_F16]
+
+        u2 = self.convt_shape1(out)
+
+        HR = []
+
+        for i in range(len(convt_F)):
+            convt_R1 = self.convt_R1(convt_F[i])
+            tmp = u2 + convt_R1
+            HR.append(tmp)
+
+        return HR
+
+class _Conv_Block(nn.Module):
+    def __init__(self):
+        super(_Conv_Block, self).__init__()
+
+        self.upsample = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=64, out_channels=64, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+        self.rblock = nn.Sequential(
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(in_channels=64, out_channels=64 * 4, kernel_size=3, stride=1, padding=1, bias=False),
+        )
+        self.trans = nn.Sequential(
+            nn.Conv2d(in_channels=64 * 4, out_channels=64, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+        self.relu = nn.LeakyReLU(0.2, inplace=True)
+
+        self.global_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv_down = nn.Conv2d(
+            64 * 4, 64 // 4, kernel_size=1, bias=False)
+        self.conv_up = nn.Conv2d(
+            64 // 4, 64 * 4, kernel_size=1, bias=False)
+        self.sig = nn.Sigmoid()
+
+    def resBlock1(self, x):
+        out=self.rblock(x)
+        out1 = self.global_pool(out)
+        out1 = self.conv_down(out1)
+        out1 = self.relu(out1)
+        out1 = self.conv_up(out1)
+        out1 = self.sig(out1)
+        out=out*out1
+        out=self.trans(out)
+        out=x+out
+        return out
+
+    def forward(self, x):
+        out=self.resBlock1(x)
+        return out
+
+class SEDN(nn.Module):
+    def __init__(self):
+        super(SEDN, self).__init__()
+
+        self.conv_input = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.relu = nn.LeakyReLU(0.2, inplace=True)
+
+        # self.convt_I1 = nn.ConvTranspose2d(in_channels=1, out_channels=1, kernel_size=4, stride=2, padding=1, bias=False)
+        self.convt_R1 = nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False)
+        self.convt_F1 = self.make_layer(_Conv_Block,16)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+
+    def make_layer(self, block, num_of_layer):
+        layers = []
+        for _ in range(num_of_layer):
+            layers.append(block())
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        out = self.relu(self.conv_input(x))
+
+        convt_F1 = self.convt_F1(out)
+
+        DN = []
+        convt_R1 = self.convt_R1(convt_F1)
+        tmp = convt_R1 + x
+        DN.append(tmp)
+
+        return DN

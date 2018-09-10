@@ -89,10 +89,11 @@ def predict(img_read, save, convert, eva, name):
         im_gt_y = im_gt_y.astype("float32")
     im_input = img_y / 255.
     im_input = Variable(torch.from_numpy(im_input).float()).view(1, -1, im_input.shape[0], im_input.shape[1])
-    pickle.load = partial(pickle.load, encoding="utf-8")
-    pickle.Unpickler = partial(pickle.Unpickler, encoding="utf-8")
-    model = torch.load(opt.model, map_location=lambda storage, loc: storage, pickle_module=pickle)["model"]
-    if opt.model[:4] == 'lite':
+    # pickle.load = partial(pickle.load, encoding="utf-8")
+    # pickle.Unpickler = partial(pickle.Unpickler, encoding="utf-8")
+    # model = torch.load(opt.model, map_location=lambda storage, loc: storage, pickle_module=pickle)["model"]
+    print(opt.model[:15])
+    if opt.model[:15] == './model/dn_lite':
         model = NetDN()
     else:
         model = SEDN()
@@ -203,9 +204,9 @@ def dodn(im,model):
         '15' : './model/l15/model.pth',
         '25' : './model/l25/model.pth',
         '50' : './model/l50/model.pth',
-        'lite5' : './model/dn_lite5/model.pth',
-        'lite10' : './model/dn_lite10/model.pth',
-        'lite15' : './model/dn_lite15/model.pth'
+        'lite5' : './model/dn_lite5/model_new.pth',
+        'lite10' : './model/dn_lite10/model_new.pth',
+        'lite15' : './model/dn_lite15/model_new.pth'
     }
     opt.model = model_dict[model]
     im = check_rgba(im)
@@ -228,13 +229,14 @@ def dodn(im,model):
             cropsize = int(np.sqrt((free_ram)/0.22))
 
     print('cropsize==',cropsize)
-    try:
-        dim=dn(im,cropsize)
-        torch.cuda.empty_cache()
-    except:
-        print('当前切块大小：',cropsize)
-        print('显存不足，请更换更好的显卡，你的当前显存剩余',free_ram)
-        torch.cuda.empty_cache()
+    # try:
+    dim=dn(im,cropsize)
+    torch.cuda.empty_cache()
+    # except Exception as msg:
+    #     print('当前切块大小：',cropsize)
+    #     print('出现错误，请重启程序，你的当前显存剩余',free_ram)
+    #     print('错误内容=='+str(msg))
+    #     torch.cuda.empty_cache()
     return dim
 
 if __name__=="__main__":

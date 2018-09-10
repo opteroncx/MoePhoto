@@ -21,5 +21,9 @@
 /model/p4/model.pth
 /model/old/
 
+# bat and vbs
+start.bat
+start.vbs
+
 # ignore build package
 install.exe
