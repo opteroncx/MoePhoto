@@ -231,7 +231,7 @@ def dosr(im,scale,mode):
     if cuda:
         free_ram = readgpu.getGPU()
         if scale == 2:
-            cropsize = int(np.sqrt((free_ram)/0.008))
+            cropsize = int(np.sqrt((free_ram)/0.0042))
         elif scale ==3:
             cropsize = int(np.sqrt((free_ram)/0.015))
         elif scale ==4:
@@ -244,20 +244,20 @@ def dosr(im,scale,mode):
         free_ram -= 300
         # torch.set_num_threads(1)
         if scale == 2:
-            cropsize = int(np.sqrt((free_ram)/0.06))
+            cropsize = int(np.sqrt((free_ram)/0.05))
         elif scale ==3:
             cropsize = int(np.sqrt((free_ram)/0.12))
         elif scale ==4:
             cropsize = int(np.sqrt((free_ram)/0.24))
-    try:
-        print('当前SR切块大小：',cropsize)
-        sim = sr(im, cropsize)
-        torch.cuda.empty_cache()
-    except Exception as msg:
-        print('当前切块大小：',cropsize)
-        print('出现错误，请重启程序，你的当前显存剩余',free_ram)
-        print('错误内容=='+str(msg))
-        torch.cuda.empty_cache()
+    # try:
+    print('当前SR切块大小：',cropsize)
+    sim = sr(im, cropsize)
+    torch.cuda.empty_cache()
+    # except Exception as msg:
+    #     print('当前切块大小：',cropsize)
+    #     print('出现错误，请重启程序，你的当前显存剩余',free_ram)
+    #     print('错误内容=='+str(msg))
+    #     torch.cuda.empty_cache()
     return sim
 
 if __name__=="__main__":

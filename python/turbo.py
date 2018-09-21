@@ -82,9 +82,7 @@ class Net2x(nn.Module):
         self.conv_input2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False)
         self.relu = nn.PReLU()
         self.u1 = upsample_block(64,256)
-        # self.u2 = upsample_block(64,256)
         self.ures1 = upsample_block(64,256)
-        # self.ures2 = upsample_block(64,256)
         self.convt_R1 = nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False)
         # add multi supervise
         self.convt_F11 = ARSB(64)
@@ -112,26 +110,31 @@ class Net2x(nn.Module):
             convt_F11 = self.convt_F11(conv1)
             convt_F12 = self.convt_F12(convt_F11)
             convt_F13 = self.convt_F13(convt_F12)
-            convt_F14 = self.convt_F14(convt_F13)
-            return convt_F14,out
+
+            return convt_F13,out
          
         def pass2(*args):
             x = args[0]
-            convt_F15 = self.convt_F15(x)
-            convt_F16 = self.convt_F16(convt_F15)
-            res1 = self.ures1(convt_F16)
-            return res1     
+            convt_F14 = self.convt_F14(x)
+            convt_F15 = self.convt_F15(convt_F14)
+            convt_F16 = self.convt_F16(convt_F15)            
+            return convt_F16
+
+        def pass3(*args):
+            x = args[0]  
+            res1 = self.ures1(x)
+            convt_R1 = self.convt_R1(res1)
+            return convt_R1
 
         x,out = checkpoint(pass1, x)
-        res1 = checkpoint(pass2, x)
+        convt_F16 = checkpoint(pass2, x)
+        convt_R1 = checkpoint(pass3, convt_F16) 
 
         u1 = self.u1(out)        
         u2 = self.convt_shape1(u1)
+        HR = u2 + convt_R1       
 
-        convt_R1 = self.convt_R1(res1)
-        tmp = u2 + convt_R1
-
-        return tmp
+        return HR
 
 class Net3x(nn.Module):
     def __init__(self):
