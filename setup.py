@@ -7,6 +7,7 @@ os.environ['TK_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tk8.6'
 
 # include files
 ifiles = ['./models.pyc',
+        './turbo.pyc',
         './dehaze.pyc',
         './model.pyc',
         './runDN.pyc',

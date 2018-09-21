@@ -10,7 +10,8 @@
 /model/*.pyc
 /temp/
 /batch_SR/
-
+/upload/
+/MoePhoto*.exe
 
 # ignore old checkpoints
 /model/a2/model.pth
