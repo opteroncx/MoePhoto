@@ -11,7 +11,8 @@ import pickle
 import readgpu
 import psutil
 from turbo import Net2x, Net3x, Net4x
-from collections import OrderedDict
+# from collections import OrderedDict
+from config import Config
 
 parser = argparse.ArgumentParser(description="MoePhoto")
 parser.add_argument("--cuda", action="store_true", help="use cuda?")
@@ -80,7 +81,10 @@ def predict(img_read, save, convert, eva, name):
         print('loading net 4x')
         model = Net4x()
 
-    weights = torch.load(opt.model)
+    pickle.load = partial(pickle.load, encoding="utf-8")
+    pickle.Unpickler = partial(pickle.Unpickler, encoding="utf-8")
+    weights = torch.load(opt.model, map_location=lambda storage, loc: storage, pickle_module=pickle)
+    # weights = torch.load(opt.model)
     print('reloading weights')
     model.load_state_dict(weights)
 
@@ -228,36 +232,40 @@ def dosr(im,scale,mode):
     opt.scale = scale
 
     im = check_rgba(im)
-    if cuda:
-        free_ram = readgpu.getGPU()
-        if scale == 2:
-            cropsize = int(np.sqrt((free_ram)/0.0042))
-        elif scale ==3:
-            cropsize = int(np.sqrt((free_ram)/0.015))
-        elif scale ==4:
-            cropsize = int(np.sqrt((free_ram)/0.040))        
+    conf = Config().getConfig()
+    if conf[0] == 0:
+        if cuda:
+            free_ram = readgpu.getGPU()
+            if scale == 2:
+                cropsize = int(np.sqrt((free_ram)/0.0042))
+            elif scale ==3:
+                cropsize = int(np.sqrt((free_ram)/0.015))
+            elif scale ==4:
+                cropsize = int(np.sqrt((free_ram)/0.040))        
+        else:
+            mem = psutil.virtual_memory()
+            free_ram = mem.free 
+            free_ram = int(free_ram/1024**2)
+            # 预留内存防止系统卡死
+            free_ram -= 300
+            # torch.set_num_threads(1)
+            if scale == 2:
+                cropsize = int(np.sqrt((free_ram)/0.05))
+            elif scale ==3:
+                cropsize = int(np.sqrt((free_ram)/0.12))
+            elif scale ==4:
+                cropsize = int(np.sqrt((free_ram)/0.24))
     else:
-        mem = psutil.virtual_memory()
-        free_ram = mem.free 
-        free_ram = int(free_ram/1024**2)
-        # 预留内存防止系统卡死
-        free_ram -= 300
-        # torch.set_num_threads(1)
-        if scale == 2:
-            cropsize = int(np.sqrt((free_ram)/0.05))
-        elif scale ==3:
-            cropsize = int(np.sqrt((free_ram)/0.12))
-        elif scale ==4:
-            cropsize = int(np.sqrt((free_ram)/0.24))
-    # try:
-    print('当前SR切块大小：',cropsize)
-    sim = sr(im, cropsize)
-    torch.cuda.empty_cache()
-    # except Exception as msg:
-    #     print('当前切块大小：',cropsize)
-    #     print('出现错误，请重启程序，你的当前显存剩余',free_ram)
-    #     print('错误内容=='+str(msg))
-    #     torch.cuda.empty_cache()
+        cropsize = conf[0]
+    try:
+        print('当前SR切块大小：',cropsize)
+        sim = sr(im, cropsize)
+        torch.cuda.empty_cache()
+    except Exception as msg:
+        print('当前切块大小：',cropsize)
+        print('出现错误，请重启程序，你的当前显存剩余',free_ram)
+        print('错误内容=='+str(msg))
+        torch.cuda.empty_cache()
     return sim
 
 if __name__=="__main__":
