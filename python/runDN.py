@@ -12,6 +12,7 @@ from torchvision import transforms
 import readgpu
 import psutil
 from models import NetDN,SEDN
+from config import Config
 
 parser = argparse.ArgumentParser(description="SEDN")
 parser.add_argument("--cuda", action="store_true", help="use cuda?")
@@ -210,33 +211,52 @@ def dodn(im,model):
     }
     opt.model = model_dict[model]
     im = check_rgba(im)
-    if cuda:
-        free_ram = readgpu.getGPU()
-        if model[:4] == 'lite':
-            cropsize = int(np.sqrt((free_ram)/0.0115))
+    conf = Config().getConfig()
+    if conf[1] == 0 or conf[2] == 0:    
+        if cuda:
+            free_ram = readgpu.getGPU()
+            if model[:4] == 'lite':
+                if conf[1] == 0:
+                    cropsize = int(np.sqrt((free_ram)/0.0115))
+                else:
+                    cropsize = cropsize
+            else:
+                if conf[2] == 0:
+                    cropsize = int(np.sqrt((free_ram)/0.075))
+                else:
+                    cropsize = conf[2]        
         else:
-            cropsize = int(np.sqrt((free_ram)/0.075))        
+            mem = psutil.virtual_memory()
+            free_ram = mem.free 
+            free_ram = int(free_ram/1024**2)
+            # 预留内存防止系统卡死
+            free_ram -= 300
+            # torch.set_num_threads(1)
+            if model[:4] == 'lite':
+                if conf[1] == 0:
+                    cropsize = int(np.sqrt((free_ram)/0.042))
+                else:
+                    cropsize = conf[1]
+            else:
+                if conf[2]==0:
+                    cropsize = int(np.sqrt((free_ram)/0.22))
+                else:
+                    cropsize = conf[2]
     else:
-        mem = psutil.virtual_memory()
-        free_ram = mem.free 
-        free_ram = int(free_ram/1024**2)
-        # 预留内存防止系统卡死
-        free_ram -= 300
-        # torch.set_num_threads(1)
-        if model[:4] == 'lite':
-            cropsize = int(np.sqrt((free_ram)/0.042))
-        else:
-            cropsize = int(np.sqrt((free_ram)/0.22))
+            if model[:4] == 'lite':
+                cropsize = conf[1]
+            else:
+                cropsize = conf[2]
 
     print('cropsize==',cropsize)
-    # try:
-    dim=dn(im,cropsize)
-    torch.cuda.empty_cache()
-    # except Exception as msg:
-    #     print('当前切块大小：',cropsize)
-    #     print('出现错误，请重启程序，你的当前显存剩余',free_ram)
-    #     print('错误内容=='+str(msg))
-    #     torch.cuda.empty_cache()
+    try:
+        dim=dn(im,cropsize)
+        torch.cuda.empty_cache()
+    except Exception as msg:
+        print('当前切块大小：',cropsize)
+        print('出现错误，请重启程序，你的当前显存剩余',free_ram)
+        print('错误内容=='+str(msg))
+        torch.cuda.empty_cache()
     return dim
 
 if __name__=="__main__":
