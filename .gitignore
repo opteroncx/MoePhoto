@@ -1,0 +1,37 @@
+# ignore files
+/__pycache__/
+/download/
+/python/__pycache__/
+/python/old_files/
+/package/
+/build/
+/model/__pycache__/
+/model/*.py
+/model/*.pyc
+/temp/
+/batch_SR/
+/upload/
+/MoePhoto*.exe
+config.py
+
+# ignore old checkpoints
+/model/a2/model.pth
+/model/a3/model.pth
+/model/a4/model.pth
+/model/p2/model.pth
+/model/p3/model.pth
+/model/p4/model.pth
+/model/old/
+
+# bat and vbs
+start.bat
+start.vbs
+
+# ignore build package
+install.exe
+*.pyc
+
+# ignore third party files
+/ffmpeg
+nvidia-smi.exe
+*.dll

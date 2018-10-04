@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>Home</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="keywords" content="" />
+	<script type="application/x-javascript">
+		addEventListener("load", function () {
+			setTimeout(hideURLbar, 0);
+		}, false);
+
+		function hideURLbar() {
+			window.scrollTo(0, 1);
+		}
+	</script>
+	<!-- Custom Theme files -->
+	<link href="{{url_for('static', filename='css/bootstrap.css')}}" type="text/css" rel="stylesheet" media="all">
+	<link href="{{url_for('static', filename='css/style.css')}}" type="text/css" rel="stylesheet" media="all">
+	<link href="{{url_for('static', filename='css/font-awesome.css')}}" rel="stylesheet">
+	<link href="{{url_for('static', filename='css/loader.css')}}" rel="stylesheet">
+	<link href="{{url_for('static', filename='css/component.css')}}" rel="stylesheet">
+	<!-- font-awesome icons -->
+	<!-- //Custom Theme files -->
+	<!-- web-fonts -->
+	<link href="http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:200,300,400,700" rel="stylesheet">
+	<link href='http://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900,900italic'
+	    rel='stylesheet' type='text/css'>
+	<!-- //web-fonts -->
+</head>
+
+<body>
+	<!-- banner -->
+	{% autoescape true %} {{header| safe}} {% endautoescape %}
+	<!-- //banner -->
+	<!-- gallery -->
+	<div class="gallery">
+		<div class="container">
+			<h3 class="agileits-title">Gallery相册</h3>
+			<div class="gallery-agileinfo">
+				{% autoescape true %} {{var| safe}} {% endautoescape %}
+				<div class="clearfix"> </div>
+				<script type="text/javascript" src={{url_for( 'static', filename="js/simple-lightbox.min.js" )}}></script>
+				<script>
+					$(function () {
+						var gallery = $('.w3gallery-grids a').simpleLightbox({
+							navText: ['&lsaquo;', '&rsaquo;']
+						});
+					});
+				</script>
+			</div>
+		</div>
+	</div>
+	<!-- //gallery -->
+	<!-- footer start here -->
+	{% autoescape true %} {{footer| safe}} {% endautoescape %}
+	<!-- //footer end here -->
+	<!-- js -->
+	<script src={{url_for( 'static', filename="js/jquery.js " )}}></script>
+	<script src={{url_for( 'static', filename="js/jarallax.js " )}}></script>
+	<script src={{url_for( 'static', filename="js/SmoothScroll.min.js " )}}></script>
+	<script type="text/javascript ">
+		/* init Jarallax */
+		$('.jarallax').jarallax({
+			speed: 0.5,
+			imgWidth: 1366,
+			imgHeight: 768
+		})
+	</script>
+	<!-- //js -->
+	<!-- text Ticker -->
+	<script type="text/javascript " src={{url_for( 'static', filename="js/jquery.totemticker.js " )}}></script>
+	<script type="text/javascript ">
+		$(function () {
+			$('#vertical-ticker').totemticker({
+				row_height: '100px',
+				next: '#ticker-next',
+				previous: '#ticker-previous',
+				stop: '#stop',
+				start: '#start',
+				mousestop: true
+			});
+		});
+	</script>
+	<!-- //text Ticker -->
+	<!-- start-smooth-scrolling -->
+	<script type="text/javascript " src={{url_for( 'static', filename="js/move-top.js " )}}></script>
+	<script type="text/javascript " src={{url_for( 'static', filename="js/easing.js " )}}></script>
+	<script type="text/javascript ">
+		jQuery(document).ready(function ($) {
+			$(".scroll ").click(function (event) {
+				event.preventDefault();
+				$('html,body').animate({
+					scrollTop: $(this.hash).offset().top
+				}, 1000);
+			});
+		});
+	</script>
+	<!-- //end-smooth-scrolling -->
+	<!-- smooth-scrolling-of-move-up -->
+	<script type="text/javascript ">
+		$(document).ready(function () {
+			$().UItoTop({
+				easingType: 'easeOutQuart'
+			});
+
+		});
+	</script>
+	<!-- //smooth-scrolling-of-move-up -->
+	<!-- Progressive-Effects-Animation-JavaScript -->
+	<script type="text/javascript " src={{url_for( 'static', filename="js/numscroller-1.0.js " )}}></script>
+	<!-- //Progressive-Effects-Animation-JavaScript -->
+	<!-- Bootstrap core JavaScript
+    ================================================== -->
+	<!-- Placed at the end of the document so the pages load faster -->
+	<script src={{url_for( 'static', filename="js/bootstrap.js " )}}></script>
+	<script src={{url_for( 'static', filename="js/custom-file-input.js" )}}></script>
+	<script>
+		$(document).ready(function () {
+			function readURL(input) {
+				if (input.files && input.files[0]) {
+					var reader = new FileReader();
+
+					reader.onload = function (e) {
+						$('#inputImg').attr('src', e.target.result);
+					}
+
+					reader.readAsDataURL(input.files[0]);
+				}
+			}
+
+			$("#imgInp ").change(function () {
+				readURL(this);
+			});
+
+			var loading = $('#FG');
+			loading.hide();
+
+			var downloader = $('#downloader');
+			downloader.hide();
+
+			$('#RunButton').bind('click', function () {
+				var fdata = new FormData(document.querySelector("#imgUpload"));
+				$.ajax({
+					url: "/image_deblur",
+					type: "POST",
+					data: fdata,
+					cache: false,
+					contentType: false,
+					processData: false,
+					async: true,
+					dataType: 'json',
+					beforeSend: function () {
+						loading.show();
+					},
+					success: function (result) {
+						console.log(result);
+						loading.hide();
+						downloader.show();
+						d = new Date();
+						$('#outputImg').attr('src', '/download/output.png?' + d.getTime())
+					},
+
+				});
+			});
+		});
+	</script>
+</body>
+
+</html>
