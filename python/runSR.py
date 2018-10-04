@@ -234,10 +234,10 @@ def getOpt(scale, mode):
             elif scale ==3:
                 cropsize = int(np.sqrt((free_ram)/0.06))
             elif scale ==4:
-                cropsize = int(np.sqrt((free_ram)/0.12))        
+                cropsize = int(np.sqrt((free_ram)/0.12))
         else:
             mem = psutil.virtual_memory()
-            free_ram = mem.free 
+            free_ram = mem.free
             free_ram = int(free_ram/1024**2)
             # 预留内存防止系统卡死
             free_ram -= 300

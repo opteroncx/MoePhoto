@@ -60,7 +60,7 @@ def dn(im, opt):
                 tmp = s
                 for channel in range(s.shape[2]):
                     t = s[:,:,channel]
-                    output_clean_image = predict(t, convert, opt)                        
+                    output_clean_image = predict(t, convert, opt)
                     sub_tmp = np.clip(output_clean_image, 0, 255).astype('uint8')
                     tmp[:,:,channel] = sub_tmp[:,:]
                 tmp_image[j * tmp.shape[0]:(j + 1) * tmp.shape[0], -1 * tmp.shape[1]:] = tmp
@@ -68,7 +68,7 @@ def dn(im, opt):
         tmp = s
         for channel in range(s.shape[2]):
             t = s[:,:,channel]
-            output_clean_image = predict(t, convert, opt)                
+            output_clean_image = predict(t, convert, opt)
             sub_tmp = np.clip(output_clean_image, 0, 255).astype('uint8')
             tmp[:,:,channel] = sub_tmp[:,:]
         tmp_image[-1 * tmp.shape[0]:, -1 * tmp.shape[1]:,] = tmp
@@ -206,7 +206,7 @@ def getOpt(model):
         return {}
     opt.model = model_dict[model]
     conf = Config().getConfig()
-    if conf[1] == 0 or conf[2] == 0:    
+    if conf[1] == 0 or conf[2] == 0:
         if cuda:
             free_ram = readgpu.getGPU()
             if model[:4] == 'lite':
@@ -218,10 +218,10 @@ def getOpt(model):
                 if conf[2] == 0:
                     cropsize = int(np.sqrt((free_ram)/0.016))
                 else:
-                    cropsize = conf[2]        
+                    cropsize = conf[2]
         else:
             mem = psutil.virtual_memory()
-            free_ram = mem.free 
+            free_ram = mem.free
             free_ram = int(free_ram/1024**2)
             # 预留内存防止系统卡死
             free_ram -= 300
