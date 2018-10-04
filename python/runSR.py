@@ -225,9 +225,12 @@ def getOpt(scale, mode):
     opt.model = mode_switch[nmode]
     opt.scale = scale
 
+<<<<<<< HEAD
     if cuda:
         torch.cuda.empty_cache()
 
+=======
+>>>>>>> 81071bccc1c0cc4561338d45f70007ace6c57476
     conf = Config().getConfig()
     if conf[0] == 0:
         if cuda:

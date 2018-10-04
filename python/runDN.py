@@ -205,10 +205,13 @@ def getOpt(model):
     if not(model in model_dict):
         return {}
     opt.model = model_dict[model]
+<<<<<<< HEAD
 
     if cuda:
         torch.cuda.empty_cache()
 
+=======
+>>>>>>> 81071bccc1c0cc4561338d45f70007ace6c57476
     conf = Config().getConfig()
     if conf[1] == 0 or conf[2] == 0:
         if cuda:
