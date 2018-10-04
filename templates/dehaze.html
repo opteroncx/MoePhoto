@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>Home</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="keywords" content="" />
+	<script type="application/x-javascript">
+		addEventListener("load", function () {
+			setTimeout(hideURLbar, 0);
+		}, false);
+
+		function hideURLbar() {
+			window.scrollTo(0, 1);
+		}
+	</script>
+	<!-- Custom Theme files -->
+	<link href="{{url_for('static', filename='css/bootstrap.css')}}" type="text/css" rel="stylesheet" media="all">
+	<link href="{{url_for('static', filename='css/style.css')}}" type="text/css" rel="stylesheet" media="all">
+	<link href="{{url_for('static', filename='css/font-awesome.css')}}" rel="stylesheet">
+	<link href="{{url_for('static', filename='css/loader.css')}}" rel="stylesheet">
+	<link href="{{url_for('static', filename='css/component.css')}}" rel="stylesheet">
+	<!-- font-awesome icons -->
+	<!-- //Custom Theme files -->
+	<!-- web-fonts -->
+	<link href="http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:200,300,400,700" rel="stylesheet">
+	<link href='http://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900,900italic'
+	    rel='stylesheet' type='text/css'>
+	<!-- //web-fonts -->
+</head>
+
+<body>
+	<!-- banner -->
+	{% autoescape true %} {{header| safe}} {% endautoescape %}
+	<!-- //banner -->
+	<!-- features -->
+	<div class="features">
+		<div class="container">
+			<br>
+			<br>
+			<h2 class="agileits-title">去雾</h2>
+			<p class="pagile-text">去雾AODnet</p>
+			<div class="features-row">
+				<div class="col-md-6 features-right">
+					<img id="inputImg" class="img-responsive" src="http://placehold.it/500x120?text=Input+Image" alt="">
+				</div>
+				<div class="col-md-6 features-left">
+					<div id="FG">
+						<div id="fountainG_1" class="fountainG"></div>
+						<div id="fountainG_2" class="fountainG"></div>
+						<div id="fountainG_3" class="fountainG"></div>
+						<div id="fountainG_4" class="fountainG"></div>
+						<div id="fountainG_5" class="fountainG"></div>
+						<div id="fountainG_6" class="fountainG"></div>
+						<div id="fountainG_7" class="fountainG"></div>
+						<div id="fountainG_8" class="fountainG"></div>
+					</div>
+					<img id='outputImg' class="img-responsive" src="http://placehold.it/500x120?text=Output+Image" alt="">
+					<div id=downloader>
+						<br>
+						<div class="icon-box col-md-12">
+							<a id='downImg' class="agile-icon" href="download/output.png">
+								<i class="fa fa-floppy-o"></i>
+							</a>&nbsp;保存
+						</div>
+					</div>
+				</div>
+				<div class="clearfix"> </div>
+			</div>
+		</div>
+	</div>
+	<!-- //features -->
+	<!-- Stats -->
+	<div class="news-w3layouts">
+		<div class="container">
+			<hr>
+			<div class="features-grid">
+				<i class="fa fa-cogs" aria-hidden="true"></i> 属性设置
+			</div>
+			<div class="stats-agileinfo agileits-w3layouts">
+				<form id="imgUpload" enctype="multipart/form-data">
+					<br>
+					<div class="col-md-12 settings">
+						<input name="file" type="file" class="inputfile inputfile-6" style='width: 0.1px;height: 0.1px;opacity: 0 !important;overflow: hidden;position: absolute;
+						z-index: -1;' id="imgInp">
+						<label for="imgInp">
+							<span></span>
+							<strong>
+								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="17" viewBox="0 0 20 17">
+									<path d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z"
+									/>
+								</svg> 选择图片&hellip;</strong>
+						</label>
+					</div>
+					<!-- <div class="col-md-6 settings">
+						<hr> 级别&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						<input name="denoise" type="radio" id='denoise' value="15" checked>弱 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						<input name="denoise" type="radio" id='denoise' value="25">中 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						<input name="denoise" type="radio" id='denoise' value="50">强 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					</div> -->
+				</form>
+				<div class="clearfix"></div>
+				<div class="col-md-12">
+					<hr>
+					<button id="RunButton" type="button" class="btn btn-primary btn-lg">开始</button>
+				</div>
+				<div class="col-md-12">
+					<br>
+					<br>
+				</div>
+
+			</div>
+		</div>
+	</div>
+	<!-- //Stats -->
+	<!-- footer start here -->
+	{% autoescape true %} {{footer| safe}} {% endautoescape %}
+	<!-- //footer end here -->
+	<!-- js -->
+	<script src={{url_for( 'static', filename="js/jquery.js " )}}></script>
+	<script src={{url_for( 'static', filename="js/jarallax.js " )}}></script>
+	<script src={{url_for( 'static', filename="js/SmoothScroll.min.js " )}}></script>
+	<script type="text/javascript ">
+		/* init Jarallax */
+		$('.jarallax').jarallax({
+			speed: 0.5,
+			imgWidth: 1366,
+			imgHeight: 768
+		})
+	</script>
+	<!-- //js -->
+	<!-- text Ticker -->
+	<script type="text/javascript " src={{url_for( 'static', filename="js/jquery.totemticker.js " )}}></script>
+	<script type="text/javascript ">
+		$(function () {
+			$('#vertical-ticker').totemticker({
+				row_height: '100px',
+				next: '#ticker-next',
+				previous: '#ticker-previous',
+				stop: '#stop',
+				start: '#start',
+				mousestop: true
+			});
+		});
+	</script>
+	<!-- //text Ticker -->
+	<!-- start-smooth-scrolling -->
+	<script type="text/javascript " src={{url_for( 'static', filename="js/move-top.js " )}}></script>
+	<script type="text/javascript " src={{url_for( 'static', filename="js/easing.js " )}}></script>
+	<script type="text/javascript ">
+		jQuery(document).ready(function ($) {
+			$(".scroll ").click(function (event) {
+				event.preventDefault();
+				$('html,body').animate({
+					scrollTop: $(this.hash).offset().top
+				}, 1000);
+			});
+		});
+	</script>
+	<!-- //end-smooth-scrolling -->
+	<!-- smooth-scrolling-of-move-up -->
+	<script type="text/javascript ">
+		$(document).ready(function () {
+			$().UItoTop({
+				easingType: 'easeOutQuart'
+			});
+
+		});
+	</script>
+	<!-- //smooth-scrolling-of-move-up -->
+	<!-- Progressive-Effects-Animation-JavaScript -->
+	<script type="text/javascript " src={{url_for( 'static', filename="js/numscroller-1.0.js " )}}></script>
+	<!-- //Progressive-Effects-Animation-JavaScript -->
+	<!-- Bootstrap core JavaScript
+    ================================================== -->
+	<!-- Placed at the end of the document so the pages load faster -->
+	<script src={{url_for( 'static', filename="js/bootstrap.js " )}}></script>
+	<script src={{url_for( 'static', filename="js/custom-file-input.js" )}}></script>
+	<script>
+		$(document).ready(function () {
+			function readURL(input) {
+				if (input.files && input.files[0]) {
+					var reader = new FileReader();
+
+					reader.onload = function (e) {
+						$('#inputImg').attr('src', e.target.result);
+					}
+
+					reader.readAsDataURL(input.files[0]);
+				}
+			}
+
+			$("#imgInp ").change(function () {
+				readURL(this);
+			});
+
+			var loading = $('#FG');
+			loading.hide();
+
+			var downloader = $('#downloader');
+			downloader.hide();
+
+			$('#RunButton').bind('click', function () {
+				var fdata = new FormData(document.querySelector("#imgUpload"));
+				$.ajax({
+					url: "/image_dehaze",
+					type: "POST",
+					data: fdata,
+					cache: false,
+					contentType: false,
+					processData: false,
+					async: true,
+					dataType: 'json',
+					beforeSend: function () {
+						loading.show();
+					},
+					success: function (result) {
+						console.log(result);
+						loading.hide();
+						downloader.show();
+						d = new Date();
+						var json = JSON.stringify(result['result']);
+						console.log(json)
+						var im = json.split('\"')[1]
+						$('#outputImg').attr('src', im + d.getTime())
+						$('#downImg').attr('href', im)
+					},
+
+				});
+			});
+		});
+	</script>
+</body>
+
+</html>
