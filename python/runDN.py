@@ -73,7 +73,6 @@ def dn(im, opt):
             tmp[:,:,channel] = sub_tmp[:,:]
         tmp_image[-1 * tmp.shape[0]:, -1 * tmp.shape[1]:,] = tmp
     else:
-        nim = np.zeros([x.shape[0], x.shape[1], 3])
         for i in range(x.shape[2]):
             tmp = predict(x, convert, opt)
             tmp_image[:,:,i] = tmp
@@ -205,13 +204,10 @@ def getOpt(model):
     if not(model in model_dict):
         return {}
     opt.model = model_dict[model]
-<<<<<<< HEAD
 
     if cuda:
         torch.cuda.empty_cache()
 
-=======
->>>>>>> 81071bccc1c0cc4561338d45f70007ace6c57476
     conf = Config().getConfig()
     if conf[1] == 0 or conf[2] == 0:
         if cuda:
@@ -249,6 +245,8 @@ def getOpt(model):
             else:
                 cropsize = conf[2]
 
+    if cropsize > 1024:
+        cropsize = 1024
     opt.cropsize = cropsize
     print('当前denoise切块大小：', cropsize)
     opt.modelCached = None
@@ -257,11 +255,12 @@ def getOpt(model):
 
 def dodn(im, model):
     opt = getOpt(model)
+    dim = None
     try:
         dim=dn(im, opt)
     except Exception as msg:
         print('错误内容=='+str(msg))
-        trackback.print_exec()
+        traceback.print_exc()
     finally:
         torch.cuda.empty_cache()
     return dim

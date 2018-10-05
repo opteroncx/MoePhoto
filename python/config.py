@@ -11,7 +11,8 @@ config = {
     'crop_dns': 'auto',
     'frame_folder': './temp/video_frame',
     'srframe_folder': './temp/video_frame_sr',
-    'video_out': './temp'
+    'video_out': './temp',
+    'videoName': 'out.mkv'
 }
 
 class Config():
@@ -33,4 +34,4 @@ class Config():
         return sr, dn, dns
 
     def getPath(self):
-        return config['frame_folder'], config['srframe_folder'], config['video_out']
+        return config['frame_folder'], config['srframe_folder'], config['video_out'], config['videoName']

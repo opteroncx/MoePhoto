@@ -28,36 +28,46 @@ if cuda and not torch.cuda.is_available():
 
 def sr(im, opt):
     print("doing super resolution")
-    convert = True
     img_size = opt.cropsize
     x = check_rgba(im)
-    if (len(x.shape) == 3) and not (x.shape[0] == img_size and x.shape[1] == img_size):
-        num_across = x.shape[0] // img_size
-        num_down = x.shape[1] // img_size
-        tmp_image = np.zeros([x.shape[0] * opt.scale, x.shape[1] * opt.scale, 3])
-        for i in range(num_across):
-            for j in range(num_down):
-                s = x[i * img_size:(i + 1) * img_size, j * img_size:(j + 1) * img_size]
-                tmp = predict(s, convert, opt)
-                tmp_image[i * tmp.shape[0]:(i + 1) * tmp.shape[0], j * tmp.shape[1]:(j + 1) * tmp.shape[1]] = tmp
-        if x.shape[0] % img_size != 0:
-            for j in range(num_down):
-                s = x[-1 * img_size:, j * img_size:(j + 1) * img_size]
-                tmp = predict(s, convert, opt)
-                tmp_image[-1 * tmp.shape[0]:, j * tmp.shape[1]:(j + 1) * tmp.shape[1]] = tmp
-        if x.shape[1] % img_size != 0:
-            for j in range(num_across):
-                s = x[j * img_size:(j + 1) * img_size, -1 * img_size:]
-                tmp = predict(s, convert, opt)
-                tmp_image[j * tmp.shape[0]:(j + 1) * tmp.shape[0], -1 * tmp.shape[1]:] = tmp
-        s = x[-1 * img_size:, -1 * img_size:]
-        tmp = predict(s, convert, opt)
-        tmp_image[-1 * tmp.shape[0]:, -1 * tmp.shape[1]:] = tmp
-    else:
-        tmp_image = predict(x, convert, opt)
+    sc = opt.scale
+    # tmp = resize_image_by_pil(x, sc)
+    # gt_yuv = convert_rgb_to_ycbcr(tmp)
+    # x = convert_rgb_to_y(x)
+    x = torch.tensor(x, dtype=torch.float32)
 
-    torch.cuda.empty_cache()
-    return tmp_image
+    # erroneous if image size < cropsize, but no idea about what to pad
+    if not (x.shape[0] == img_size and x.shape[1] == img_size):
+        num_across = x.shape[0] // img_size
+        if x.shape[0] % img_size != 0:
+            num_across += 1
+        num_up = x.shape[1] // img_size
+        if x.shape[1] % img_size != 0:
+            num_up += 1
+        tmp_image = torch.zeros([x.shape[0] * sc, x.shape[1] * sc, 3])
+        leftS = x.shape[0]
+        leftT = leftS * sc
+        for i in range(num_across):
+            leftS -= img_size
+            if leftS < 0:
+                leftS = 0
+            leftT = leftS * sc
+            topS = x.shape[1]
+            for j in range(num_up):
+                topS -= img_size
+                if topS < 0:
+                    topS = 0
+                topT = topS * sc
+                s = x[leftS:leftS + img_size, topS:topS + img_size]
+                # tmp = predict(s, opt)
+                tmp = torch.stack([predict(s[:,:,0], opt), predict(s[:,:,1], opt), predict(s[:,:,2], opt)], dim=2)
+                tmp_image[leftT:leftT + tmp.shape[0], topT:topT + tmp.shape[1]] = tmp
+    else:
+        tmp_image = predict(x, opt)
+
+    recon = tmp_image.numpy() # convert_y_and_cbcr_to_rgb(tmp_image.numpy(), gt_yuv[:, :, 1:3])
+
+    return recon
 
 def getModel(opt):
 
@@ -86,34 +96,25 @@ def getModel(opt):
         model = model.cpu()
     return model
 
-def predict(img_read, convert, opt):
-    if convert:
-        sc = opt.scale
-        tmp = resize_image_by_pil(img_read, sc)
-        gt_yuv = convert_rgb_to_ycbcr(tmp)
-        img_y = convert_rgb_to_y(img_read)
-        img_y = img_y.astype("float32")
-    else:
-        im_gt_y, img_y = img_read
-        im_gt_y = im_gt_y.astype("float32")
-    im_input = img_y / 255.
-    im_input = Variable(torch.from_numpy(im_input).float()).view(1, -1, im_input.shape[0], im_input.shape[1])
+def predict(img_read, opt):
+    im_input = img_read / 255.
+    im_input = Variable(im_input).view(1, -1, im_input.shape[0], im_input.shape[1])
     if cuda:
         im_input = im_input.cuda()
 
     model = getModel(opt)
 
     HR = model(im_input)
-    HR = HR[-1].cpu()
-    im_h_y = HR.data[0].numpy().astype(np.float32)
+    HR = HR[-1]
+    im_h_y = HR.data[0].to(dtype=torch.float32)
 
-    im_h_y = im_h_y * 255.
+    im_h_y = im_h_y * 256.
     im_h_y[im_h_y < 0] = 0
     im_h_y[im_h_y > 255.] = 255.
     if len(im_h_y.shape) == 3:
         im_h_y = im_h_y[0, :, :]
-    recon = convert_y_and_cbcr_to_rgb(im_h_y, gt_yuv[:, :, 1:3])
-    return recon
+
+    return im_h_y.cpu()
 
 def convert_rgb_to_y(image, jpeg_mode=False, max_value=255.0):
     if len(image.shape) <= 2 or image.shape[2] == 1:
@@ -222,15 +223,13 @@ def getOpt(scale, mode):
         'p4': './model/p4/model_new.pth',
     }
     nmode = mode+str(scale)
+    if not (nmode in mode_switch):
+        return {}
     opt.model = mode_switch[nmode]
     opt.scale = scale
-
-<<<<<<< HEAD
     if cuda:
         torch.cuda.empty_cache()
 
-=======
->>>>>>> 81071bccc1c0cc4561338d45f70007ace6c57476
     conf = Config().getConfig()
     if conf[0] == 0:
         if cuda:
@@ -257,6 +256,8 @@ def getOpt(scale, mode):
     else:
         cropsize = conf[0]
 
+    if cropsize > 1024:
+        cropsize = 1024
     opt.cropsize = cropsize
     print('当前SR切块大小：',cropsize)
     opt.modelCached = None
@@ -265,12 +266,13 @@ def getOpt(scale, mode):
 
 def dosr(im, scale, mode):
     opt = getOpt(scale, mode)
+    sim = None
 
     try:
         sim = sr(im, opt)
     except Exception as msg:
         print('错误内容=='+str(msg))
-        trackback.print_exec()
+        traceback.print_exc()
     finally:
         torch.cuda.empty_cache()
     return sim
