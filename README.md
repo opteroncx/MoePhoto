@@ -24,7 +24,7 @@ MoePhoto Image Toolbox萌图工具箱
 ### 协助开发
 > 需要安装以下软件  
 Python3 / Anaconda3  
-CUDA8  
+CUDA 9.2  
 以及python依赖包（包括，但不限于）：  
 Flask  
 Pytorch  
