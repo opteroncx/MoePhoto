@@ -375,7 +375,7 @@
 			downloader.hide();
 
 			$('#RunButton').bind('click', function () {
-				var fdata = new FormData(document.querySelector("#imgUpload"));
+				var fdata = new FormData(document.querySelector("#imgUpload"))
 				$.ajax({
 					url: "/image_enhance",
 					type: "POST",
@@ -389,20 +389,18 @@
 						loading.show();
 					},
 					success: function (result) {
-						console.log(result);
-						loading.hide();
-						downloader.show();
-						d = new Date();
-						var json = JSON.stringify(result['result']);
-						console.log(json)
-						var im = json.split('\"')[1]
-						$('#outputImg').attr('src', im + d.getTime())
+						console.log(result)
+						loading.hide()
+						downloader.show()
+						let d = new Date()
+						let im = [result.result, '?', d.getTime()].join('')
+						$('#outputImg').attr('src', im)
 						$('#downImg').attr('href', im)
 					},
 
-				});
-			});
-		});
+				})
+			})
+		})
 	</script>
 </body>
 

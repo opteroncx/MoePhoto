@@ -41,14 +41,6 @@
 			<div class="gallery-agileinfo">
 				{% autoescape true %} {{var| safe}} {% endautoescape %}
 				<div class="clearfix"> </div>
-				<script type="text/javascript" src={{url_for( 'static', filename="js/simple-lightbox.min.js" )}}></script>
-				<script>
-					$(function () {
-						var gallery = $('.w3gallery-grids a').simpleLightbox({
-							navText: ['&lsaquo;', '&rsaquo;']
-						});
-					});
-				</script>
 			</div>
 		</div>
 	</div>
@@ -116,53 +108,11 @@
 	<!-- Placed at the end of the document so the pages load faster -->
 	<script src={{url_for( 'static', filename="js/bootstrap.js " )}}></script>
 	<script src={{url_for( 'static', filename="js/custom-file-input.js" )}}></script>
+	<script type="text/javascript" src={{url_for( 'static', filename="js/simple-lightbox.min.js" )}}></script>
 	<script>
-		$(document).ready(function () {
-			function readURL(input) {
-				if (input.files && input.files[0]) {
-					var reader = new FileReader();
-
-					reader.onload = function (e) {
-						$('#inputImg').attr('src', e.target.result);
-					}
-
-					reader.readAsDataURL(input.files[0]);
-				}
-			}
-
-			$("#imgInp ").change(function () {
-				readURL(this);
-			});
-
-			var loading = $('#FG');
-			loading.hide();
-
-			var downloader = $('#downloader');
-			downloader.hide();
-
-			$('#RunButton').bind('click', function () {
-				var fdata = new FormData(document.querySelector("#imgUpload"));
-				$.ajax({
-					url: "/image_deblur",
-					type: "POST",
-					data: fdata,
-					cache: false,
-					contentType: false,
-					processData: false,
-					async: true,
-					dataType: 'json',
-					beforeSend: function () {
-						loading.show();
-					},
-					success: function (result) {
-						console.log(result);
-						loading.hide();
-						downloader.show();
-						d = new Date();
-						$('#outputImg').attr('src', '/download/output.png?' + d.getTime())
-					},
-
-				});
+		$(function () {
+			var gallery = $('.w3gallery-grids a').simpleLightbox({
+				navText: ['&lsaquo;', '&rsaquo;']
 			});
 		});
 	</script>

@@ -1,17 +1,20 @@
 # ignore files
-/__pycache__/
+__pycache__
+/.vscode/
 /download/
-/python/__pycache__/
 /python/old_files/
 /package/
 /build/
-/model/__pycache__/
 /model/*.py
 /model/*.pyc
 /temp/
+/test/
 /batch_SR/
 /upload/
 /MoePhoto*.exe
+
+# ignore configuration overriding
+/config.py
 
 # ignore old checkpoints
 /model/a2/model.pth
@@ -28,3 +31,9 @@ start.vbs
 
 # ignore build package
 install.exe
+*.pyc
+
+# ignore third party files
+/ffmpeg
+nvidia-smi.exe
+*.dll

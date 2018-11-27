@@ -219,11 +219,9 @@
 						console.log(result);
 						loading.hide();
 						downloader.show();
-						d = new Date();
-						var json = JSON.stringify(result['result']);
-						console.log(json)
-						var im = json.split('\"')[1]
-						$('#outputImg').attr('src', im + d.getTime())
+						let d = new Date()
+						let im = [result.result, '?', d.getTime()].join('')
+						$('#outputImg').attr('src', im)
 						$('#downImg').attr('href', im)
 					},
 
