@@ -2,19 +2,16 @@ import PIL.Image as Image
 import scipy.misc
 import torch
 import torchvision.transforms as transforms
-from torch.autograd import Variable
-import numpy as np
 from models import AODnet
 
 cuda = torch.cuda.is_available()
 net = False
+model = './model/dehaze/AOD_net_epoch_relu_10.pth'
 
 def load_model():
   global net
   if net:
     return net
-  model = './model/dehaze/AOD_net_epoch_relu_10.pth'
-  #===== load model =====
   print('===> Loading dehaze model')
   net = AODnet()
   net.load_state_dict(torch.load(model))
@@ -39,20 +36,17 @@ def run_test():
   imgIn = transform(img).unsqueeze_(0)
 
   #===== Test procedures =====
-  varIn = Variable(imgIn)
   if cuda:
-    varIn = varIn.cuda()
+    imgIn = imgIn.cuda()
 
-  prediction = net(varIn)
+  prediction = net(imgIn)
   prediction = prediction.data.cpu().numpy().squeeze().transpose((1, 2, 0))
   scipy.misc.toimage(prediction).save(output_filename)
 
 def Dehaze(img):
   net = load_model()
   print(img.shape)
-  #imgi = Image.fromarray(img)
   imgIn = transform(img).unsqueeze(0)
-  #===== Test procedures =====
   if cuda:
     imgIn = imgIn.cuda()
 
