@@ -5,8 +5,6 @@ import sys
 import threading
 from queue import Queue, Empty
 from config import Config
-import runSR
-import runDN
 import imageProcess
 
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
@@ -109,7 +107,7 @@ def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=defaultCodec
   print(video, scale, mode, dn_model, dnseq, commandOut)
   process = imageProcess.genProcess(scale, mode, dn_model, dnseq, 'buffer')
   pipeIn = sp.Popen(commandIn, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=10**8)
-  pipeOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=10**4, shell=True)
+  pipeOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=10**8, shell=True)
   try:
     createEnqueueThread(pipeOut.stdout, 0)
     createEnqueueThread(pipeIn.stderr, 1)
