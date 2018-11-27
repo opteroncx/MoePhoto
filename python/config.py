@@ -1,5 +1,5 @@
 # MoePhoto运行配置文件
-
+import time
 config = {
     # 放大模式
     # 示例-分块大小320像素：
@@ -9,10 +9,8 @@ config = {
     'crop_dn': 'auto',
     # 风格化、强力降噪
     'crop_dns': 'auto',
-    'frame_folder': './temp/video_frame',
-    'srframe_folder': './temp/video_frame_sr',
-    'video_out': './temp',
-    'videoName': 'out.mkv'
+    'video_out': 'download',
+    'videoName': 'out_{timestamp}.mkv'
 }
 
 class Config():
@@ -34,4 +32,4 @@ class Config():
         return sr, dn, dns
 
     def getPath(self):
-        return config['frame_folder'], config['srframe_folder'], config['video_out'], config['videoName']
+        return config['video_out'], config['videoName'].format(timestamp=int(time.time()))

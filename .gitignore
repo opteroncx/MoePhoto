@@ -1,17 +1,19 @@
 # ignore files
-/__pycache__/
+__pycache__
+/.vscode/
 /download/
-/python/__pycache__/
 /python/old_files/
 /package/
 /build/
-/model/__pycache__/
 /model/*.py
 /model/*.pyc
 /temp/
+/test/
 /batch_SR/
 /upload/
 /MoePhoto*.exe
+
+# ignore configuration overriding
 /config.py
 
 # ignore old checkpoints
