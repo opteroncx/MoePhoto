@@ -126,6 +126,8 @@ def doCrop(opt, model, x, padding=1, sc=1):
         topS = 0
       topT = topS * sc
       s = x[:, :, leftS:leftS + opt.cropsize, topS:topS + opt.cropsize]
+      if torch.cuda.is_available():
+        s = s.cuda()
       r = model(s)[-1]
       tmp = r.squeeze(
         1)[:, sc * padding:-sc * padding, sc * padding:-sc * padding]

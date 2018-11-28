@@ -37,3 +37,4 @@ install.exe
 /ffmpeg
 nvidia-smi.exe
 *.dll
+*.pdb
