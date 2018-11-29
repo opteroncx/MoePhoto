@@ -86,13 +86,13 @@ def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=defaultCodec
     '-sn',
     '-f', 'rawvideo',
     '-s', '{}x{}'.format(width, height),
-    '-pix_fmt', 'bgr24',
+    '-pix_fmt', 'bgr48le',
     '-']
   commandOut = [
     ffmpegPath,
     '-y',
     '-f', 'rawvideo',
-    '-pix_fmt', 'bgr24',
+    '-pix_fmt', 'bgr48le',
     '-s', '{}x{}'.format(width * scale, height * scale),
     '-r', str(frameRate),
     '-i', '-',
@@ -105,7 +105,7 @@ def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=defaultCodec
   commandOut.extend(codec.split(' '))
   commandOut.append(outputPath)
   print(video, scale, mode, dn_model, dnseq, commandOut)
-  process = imageProcess.genProcess(scale, mode, dn_model, dnseq, 'buffer')
+  process = imageProcess.genProcess(scale, mode, dn_model, dnseq, 'buffer', 16)
   pipeIn = sp.Popen(commandIn, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=10**8)
   pipeOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=10**8, shell=True)
   try:
@@ -115,14 +115,13 @@ def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=defaultCodec
 
     i = 0
     while True:
-      raw_image = pipeIn.stdout.read(width * height * 3) # read width*height*3 bytes (= 1 frame)
+      raw_image = pipeIn.stdout.read(width * height * 6) # read width*height*6 bytes (= 1 frame)
       if len(raw_image) == 0:
         break
       i += 1
       readSubprocess(qOut)
       print('processing frame #{}'.format(i))
-      image = process((raw_image, height, width))
-      buffer = image.tostring()
+      buffer = process((raw_image, height, width))
       pipeOut.stdin.write(buffer)
 
     flag = threading.Event()

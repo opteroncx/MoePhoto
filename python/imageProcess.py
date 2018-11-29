@@ -1,3 +1,4 @@
+# pylint: disable=E1101
 import functools
 import os
 import torch
@@ -8,8 +9,8 @@ from PIL import Image
 from dehaze import Dehaze
 
 cuda = torch.cuda.is_available()
-dtype = torch.float32  # pylint: disable=E1101
-deviceCPU = torch.device('cpu')  # pylint: disable=E1101
+dtype = torch.float32
+deviceCPU = torch.device('cpu')
 
 """unused
 def check_rbga(im):
@@ -112,7 +113,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
 
   num_across = cropNum(h, padding, size)
   num_up = cropNum(w, padding, size)
-  tmp_image = torch.zeros([c, hOut, wOut])  # pylint: disable=E1101
+  tmp_image = torch.zeros([c, hOut, wOut])
   leftS = h - padding * 2
   for _i in range(num_across):
     leftS -= size
@@ -134,30 +135,59 @@ def doCrop(opt, model, x, padding=1, sc=1):
 
   return tmp_image
 
-def toNumPy(args):
-  buffer, height, width = args
-  image = np.frombuffer(buffer, dtype='uint8')
-  return image.reshape((height, width, 3))
-
-def toOutput(image):
-  image = image * 256.
-  image[image < 0] = 0
-  image[image > 255.] = 255.
-  if len(image.shape) == 3:  # to shape (H, W, C)
-    image = image.transpose(0, 1).transpose(1, 2)
+def toNumPy(bitDepth):
+  dtypeT = False
+  if bitDepth <= 8:
+    dtype = np.uint8
+  elif bitDepth <= 16:
+    dtype = np.uint16
+    dtypeT = np.int32
   else:
-    image = image.squeeze(0)
-  return image.to(dtype=torch.uint8, device=deviceCPU).numpy()  # pylint: disable=E1101
+    dtype = np.int32
+  def f(args):
+    buffer, height, width = args
+    image = np.frombuffer(buffer, dtype=dtype)
+    if dtypeT:
+      image = image.astype(dtypeT)
+    return image.reshape((height, width, 3))
+  return f
 
-def toTorch(image):
-  image = torch.tensor(image, dtype=dtype)  # pylint: disable=E1102
-  if len(image.shape) == 3:  # to shape (C, H, W)
-    image = image.transpose(2, 1).transpose(1, 0)
+def toBuffer(bitDepth):
+  if bitDepth == 8:
+    dtype = np.uint8
+  elif bitDepth == 16:
+    dtype = np.uint16
+  return lambda image: image.astype(dtype).tostring()
+
+def toOutput(bitDepth):
+  quant = 1 << bitDepth
+  if bitDepth <= 8:
+    dtype = torch.uint8
+  elif bitDepth <= 15:
+    dtype = torch.int16
   else:
-    image = image.unsqueeze(0)
-  if cuda:
-    image = image.cuda()
-  return image / 256
+    dtype = torch.int32
+  def f(image):
+    image = image * quant
+    image.clamp_(0, quant - 1)
+    if len(image.shape) == 3:  # to shape (H, W, C)
+      image = image.transpose(0, 1).transpose(1, 2)
+    else:
+      image = image.squeeze(0)
+    return image.to(dtype=dtype, device=deviceCPU).numpy()
+  return f
+
+def toTorch(quant):
+  def f(image):
+    image = torch.tensor(image, dtype=dtype)  # pylint: disable=E1102
+    if len(image.shape) == 3:  # to shape (C, H, W)
+      image = image.transpose(2, 1).transpose(1, 0)
+    else:
+      image = image.unsqueeze(0)
+    if cuda:
+      image = image.cuda()
+    return image / quant
+  return f
 
 def writeFile(image, name):
   if not os.path.exists('download'):
@@ -204,25 +234,30 @@ import runDN
 import runSR
 apply = lambda v, f: f(v)
 
-def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image'):
+def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', bitDepthIn=8, bitDepthOut=0):
   SRopt = runSR.getOpt(scale, mode)
   DNopt = runDN.getOpt(dnmodel)
+  if not bitDepthOut:
+    bitDepthOut = bitDepthIn
+  quant = 1 << bitDepthIn
   funcs = []
   last = lambda im, _: im
   if source == 'file':
     funcs.append(readFile)
   elif source == 'buffer':
-    funcs.append(toNumPy)
-  funcs.append(toTorch)
+    funcs.append(toNumPy(bitDepthIn))
+  funcs.append(toTorch(quant))
   if (dnseq == 'before') and (dnmodel != 'no'):
     funcs.append(lambda im: runDN.dn(im, DNopt))
   if (scale > 1):
     funcs.append(lambda im: runSR.sr(im, SRopt))
   if (dnseq == 'after') and (dnmodel != 'no'):
     funcs.append(lambda im: runDN.dn(im, DNopt))
-  funcs.append(toOutput)
+  funcs.append(toOutput(bitDepthOut))
   if source == 'file':
     last = writeFile
+  elif source == 'buffer':
+    funcs.append(toBuffer(bitDepthOut))
   def process(im, name=None):
     im = functools.reduce(apply, funcs, im)
     return last(im, name)
@@ -232,5 +267,5 @@ def clean():
   torch.cuda.empty_cache()
 
 def dehaze(fileName, outputName):
-  im = functools.reduce(apply, [readFile, Dehaze, toOutput], fileName)
+  im = functools.reduce(apply, [readFile, Dehaze, toOutput(256)], fileName)
   return writeFile(im, outputName)

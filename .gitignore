@@ -1,5 +1,6 @@
 # ignore files
 __pycache__
+.ipynb_checkpoints
 /.vscode/
 /download/
 /python/old_files/
@@ -8,7 +9,6 @@ __pycache__
 /model/*.py
 /model/*.pyc
 /temp/
-/test/
 /batch_SR/
 /upload/
 /MoePhoto*.exe
