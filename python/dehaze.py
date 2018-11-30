@@ -1,5 +1,3 @@
-import PIL.Image as Image
-import scipy.misc
 import torch
 import torchvision.transforms as transforms
 from models import AODnet
@@ -27,22 +25,6 @@ transform = transforms.Compose([
   transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 ])
 
-def run_test():
-  net = load_model()
-  input_image = './download/canyon1.jpg'
-  output_filename = './download/canyon1_dh.jpg'
-  #===== Load input image =====
-  img = Image.open(input_image).convert('RGB')
-  imgIn = transform(img).unsqueeze_(0)
-
-  #===== Test procedures =====
-  if cuda:
-    imgIn = imgIn.cuda()
-
-  prediction = net(imgIn)
-  prediction = prediction.data.cpu().numpy().squeeze().transpose((1, 2, 0))
-  scipy.misc.toimage(prediction).save(output_filename)
-
 def Dehaze(img):
   net = load_model()
   print(img.shape)
@@ -53,7 +35,3 @@ def Dehaze(img):
   prediction = net(imgIn)
   dhim = prediction.squeeze().cpu()
   return dhim
-
-if __name__ == '__main__':
-  print('dehaze')
-  run_test()

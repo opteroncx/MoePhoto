@@ -7,10 +7,12 @@ import cv2
 import numpy as np
 from PIL import Image
 from dehaze import Dehaze
+from config import config
 
-cuda = torch.cuda.is_available()
+cuda = config.cudaAvailable()
 dtype = torch.float32
 deviceCPU = torch.device('cpu')
+device = torch.device('cuda' if cuda else 'cpu')
 
 """unused
 def check_rbga(im):
@@ -113,7 +115,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
 
   num_across = cropNum(h, padding, size)
   num_up = cropNum(w, padding, size)
-  tmp_image = torch.zeros([c, hOut, wOut])
+  tmp_image = torch.zeros([c, hOut, wOut], dtype=dtype, device=device)
   leftS = h - padding * 2
   for _i in range(num_across):
     leftS -= size
@@ -179,13 +181,11 @@ def toOutput(bitDepth):
 
 def toTorch(quant):
   def f(image):
-    image = torch.tensor(image, dtype=dtype)  # pylint: disable=E1102
+    image = torch.tensor(image, dtype=dtype, device=device)  # pylint: disable=E1102
     if len(image.shape) == 3:  # to shape (C, H, W)
       image = image.transpose(2, 1).transpose(1, 0)
     else:
       image = image.unsqueeze(0)
-    if cuda:
-      image = image.cuda()
     return image / quant
   return f
 
@@ -212,20 +212,16 @@ def readFile(file):
 
 def genGetModel(f):
   def getModel(opt):
-    if opt.modelCached != None:
+    if hasattr(opt, 'modelCached'):
       return opt.modelCached
 
     model = f(opt)
     print('reloading weights')
     weights = torch.load(opt.model)
     model.load_state_dict(weights)
-    model.eval()
+    model.eval().to(dtype=dtype, device=device)
     for param in model.parameters():
       param.requires_grad_(False)
-    if cuda:
-      model = model.cuda()
-    else:
-      model = model.cpu()
     return model
 
   return getModel
