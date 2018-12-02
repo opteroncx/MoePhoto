@@ -31,6 +31,8 @@ def getModel(opt):
 def getOpt(scale, mode):
   def opt():pass
   nmode = mode+str(scale)
+  if not nmode in mode_switch:
+    return
   opt.model = mode_switch[nmode]
   opt.scale = scale
 

@@ -30,6 +30,8 @@ def getModel(opt):
 
 def getOpt(model):
   def opt():pass
+  if not model in model_dict:
+    return
   opt.model = model_dict[model]
 
   conf = config.getConfig()

@@ -22,10 +22,14 @@ def getVideoInfo(videoPath):
     for line in iter(pipeIn.stderr.readline, ''):
       line = line.lstrip()
       if re.match('Stream #.*: Video:', line):
-        videoInfo = re.search(', ([\\d]+)x([\\d]+) *.+, ([.\\d]+) fps', line).groups()
-        width = int(videoInfo[0])
-        height = int(videoInfo[1])
-        frameRate = float(videoInfo[2])
+        try:
+          videoInfo = re.search(', ([\\d]+)x([\\d]+) *.+, ([.\\d]+) fps', line).groups()
+          width = int(videoInfo[0])
+          height = int(videoInfo[1])
+          frameRate = float(videoInfo[2])
+        except:
+          print(line)
+          raise RuntimeError('Video info not found')
         break
 
     pipeIn.stderr.flush()
