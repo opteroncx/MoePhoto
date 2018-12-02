@@ -10,7 +10,7 @@ from dehaze import Dehaze
 from config import config
 
 cuda = config.cudaAvailable()
-dtype = torch.float32
+dtype = torch.half if cuda else torch.float
 deviceCPU = torch.device('cpu')
 device = torch.device('cuda' if cuda else 'cpu')
 
@@ -115,7 +115,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
 
   num_across = cropNum(h, padding, size)
   num_up = cropNum(w, padding, size)
-  tmp_image = torch.zeros([c, hOut, wOut], dtype=dtype, device=device)
+  tmp_image = torch.zeros([c, hOut, wOut]).to(x)
   leftS = h - padding * 2
   for _i in range(num_across):
     leftS -= size
@@ -170,23 +170,23 @@ def toOutput(bitDepth):
   else:
     dtype = torch.int32
   def f(image):
-    image = image * quant
-    image.clamp_(0, quant - 1)
     if len(image.shape) == 3:  # to shape (H, W, C)
       image = image.transpose(0, 1).transpose(1, 2)
     else:
       image = image.squeeze(0)
+    image = image.to(dtype=torch.float) * quant
+    image.clamp_(0, quant - 1)
     return image.to(dtype=dtype, device=deviceCPU).numpy()
   return f
 
 def toTorch(quant):
   def f(image):
-    image = torch.tensor(image, dtype=dtype, device=device)  # pylint: disable=E1102
-    if len(image.shape) == 3:  # to shape (C, H, W)
-      image = image.transpose(2, 1).transpose(1, 0)
+    image = torch.tensor(image, dtype=torch.float, device=device) / quant  # pylint: disable=E1102
+    image = image.to(dtype=dtype)
+    if len(image.shape) == 3:
+      return image.transpose(2, 1).transpose(1, 0)
     else:
-      image = image.unsqueeze(0)
-    return image / quant
+      return image.unsqueeze(0)
   return f
 
 def writeFile(image, name):
@@ -209,6 +209,23 @@ def readFile(file):
     return cv2.cvtColor(image, cv2.COLOR_RGBA2BGRA)
   else:
     raise RuntimeError('Unknown image format')
+
+def extractAlpha(t):
+  def f(im):
+    if im.shape[2] == 4:
+      t.append(im[:,:,3])
+      return im[:,:,:3]
+    else:
+      return im
+  return f
+
+def mergeAlpha(t):
+  def f(im):
+    if len(t):
+      im = cv2.cvtColor(im, cv2.COLOR_BGR2BGRA)
+      im[:,:,3] = t[0]
+    return im
+  return f
 
 def genGetModel(f):
   def getModel(opt):
@@ -263,5 +280,6 @@ def clean():
   torch.cuda.empty_cache()
 
 def dehaze(fileName, outputName):
-  im = functools.reduce(apply, [readFile, Dehaze, toOutput(256)], fileName)
+  t = []
+  im = functools.reduce(apply, [readFile, extractAlpha(t), Dehaze, toOutput(8), mergeAlpha(t)], fileName)
   return writeFile(im, outputName)
