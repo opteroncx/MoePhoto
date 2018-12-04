@@ -4,11 +4,11 @@ import re
 import sys
 import threading
 from queue import Queue, Empty
-from config import Config
+from config import config
 import imageProcess
 
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
-defaultCodec = 'libx264 -pix_fmt yuv420p'
+video_out = 'download'
 qOut = Queue(64)
 
 def getVideoInfo(videoPath):
@@ -77,9 +77,9 @@ def readSubprocess(q):
       else:
         sys.stderr.write(line)
 
-def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=defaultCodec):
+def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=config.defaultCodec):  # pylint: disable=E1101
   width, height, frameRate = getVideoInfo(video)
-  video_out, videoName = Config().getPath()
+  videoName = config.getPath()
   if not os.path.exists(video_out):
     os.mkdir(video_out)
   outputPath = video_out + '/' + videoName

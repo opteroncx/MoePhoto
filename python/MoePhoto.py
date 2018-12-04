@@ -6,31 +6,14 @@ import threading
 import time
 import codecs
 import re
-import psutil
 import traceback
-import readgpu
 import imageProcess
 from video import SR_vid, batchSR
+from config import config
 
 app = Flask(__name__, root_path='.')
 host = '127.0.0.1'
 port = 2333
-
-def system():
-  mem = psutil.virtual_memory()
-  mem_total = int(mem.total/1024**2)
-  mem_free = int(mem.free/1024**2)
-  cpu_count_phy = psutil.cpu_count(logical=False)
-  cpu_count_log = psutil.cpu_count(logical=True)
-  try:
-    gname = readgpu.getName()[0].strip('\n')
-    gram = readgpu.getGPU()
-    ginfo = [gname,gram]
-  except:
-    gerror = '没有检测到NVIDIA的显卡，系统将采用CPU模式'
-    ginfo = [gerror,gerror]
-    print(gerror)
-  return mem_total, mem_free, cpu_count_log, cpu_count_phy, ginfo
 
 ndoc = '<a href="download/{image}" class="w3effct-agile"><img src="download/{image}"'+\
   ' alt="" class="img-responsive" title="Solar Panels Image" />'+\
@@ -64,9 +47,7 @@ def enhance(f, file, *args):
     imageProcess.clean()
   return jsonify(result=result)
 
-def genNameByTime():
-  itime = int(time.time())
-  return 'download/output_{}.png'.format(itime)
+genNameByTime = lambda: 'download/output_{}.png'.format(int(time.time()))
 
 @app.route('/image_enhance', methods=['POST'])
 def image_enhance():
@@ -130,11 +111,13 @@ routes = [
   ('/dehaze', 'dehaze.html', '去雾', None),
   ('/document', 'document.html', None, None),
   ('/about', 'about.html', None, None),
-  ('/system', 'system.html', None, system, ['mem_total', 'mem_free', 'cpu_count_log', 'cpu_count_phy', 'ginfo']),
+  ('/system', 'system.html', None, config.system, ['mem_total', 'mem_free', 'cpu_count_log', 'cpu_count_phy', 'ginfo']),
   ('/gallery', 'gallery.html', None, gallery, ['var'])
 ]
 
 app.route('/', endpoint='index')(lambda:render_template("index.html"))
+
+app.route('/favicon.ico', endpoint='favicon')(lambda:send_from_directory(app.root_path, 'logo3.ico'))
 
 def genPageFunction(item, header, footer):
   def page():

@@ -9,10 +9,7 @@ from PIL import Image
 from dehaze import Dehaze
 from config import config
 
-cuda = config.cudaAvailable()
-dtype = torch.half if cuda else torch.float
 deviceCPU = torch.device('cpu')
-device = torch.device('cuda' if cuda else 'cpu')
 
 """unused
 def check_rbga(im):
@@ -101,21 +98,33 @@ def convert_ycbcr_to_rgb(ycbcr_image):
   rgb_image = rgb_image.dot(xform.T)
   return rgb_image
 """
-padImageReflect = lambda padding: torch.nn.ReflectionPad2d(padding)
+padImageReflect = torch.nn.ReflectionPad2d
 
 cropNum = lambda length, padding, size: ((length - padding) // size) + (1 if length % size > 2 * padding else 0)
 
 def doCrop(opt, model, x, padding=1, sc=1):
   pad = padImageReflect(padding)
-  size = opt.cropsize - 2 * padding
   hOut = x.shape[1] * sc
   wOut = x.shape[2] * sc
   x = pad(x.unsqueeze(1))
   c, _, h, w = x.shape
+  tmp_image = torch.zeros([c, hOut, wOut]).to(x)
+
+  cropsize = opt.cropsize
+  if not cropsize:
+    try:
+      freeRam = config.calcFreeMem()
+      cropsize = int(np.sqrt(freeRam * opt.ramCoef / c))
+    except:
+      raise MemoryError()
+  if cropsize > 2048:
+    cropsize = 2048
+  size = cropsize - 2 * padding
+  if not size > 12:
+    raise MemoryError()
 
   num_across = cropNum(h, padding, size)
   num_up = cropNum(w, padding, size)
-  tmp_image = torch.zeros([c, hOut, wOut]).to(x)
   leftS = h - padding * 2
   for _i in range(num_across):
     leftS -= size
@@ -128,7 +137,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
       if topS < 0:
         topS = 0
       topT = topS * sc
-      s = x[:, :, leftS:leftS + opt.cropsize, topS:topS + opt.cropsize]
+      s = x[:, :, leftS:leftS + cropsize, topS:topS + cropsize]
       r = model(s)[-1]
       tmp = r.squeeze(
         1)[:, sc * padding:-sc * padding, sc * padding:-sc * padding]
@@ -179,7 +188,7 @@ def toOutput(bitDepth):
     return image.to(dtype=dtype, device=deviceCPU).numpy()
   return f
 
-def toTorch(quant):
+def toTorch(quant, dtype, device):
   def f(image):
     image = torch.tensor(image, dtype=torch.float, device=device) / quant  # pylint: disable=E1102
     image = image.to(dtype=dtype)
@@ -228,15 +237,15 @@ def mergeAlpha(t):
   return f
 
 def genGetModel(f):
-  def getModel(opt):
-    if hasattr(opt, 'modelCached'):
+  def getModel(opt, cache=True):
+    if hasattr(opt, 'modelCached') and cache:
       return opt.modelCached
 
     model = f(opt)
     print('reloading weights')
     weights = torch.load(opt.model)
     model.load_state_dict(weights)
-    model.eval().to(dtype=dtype, device=device)
+    model.eval().to(dtype=config.dtype(), device=config.device())
     for param in model.parameters():
       param.requires_grad_(False)
     return model
@@ -250,6 +259,7 @@ apply = lambda v, f: f(v)
 def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', bitDepthIn=8, bitDepthOut=0):
   SRopt = runSR.getOpt(scale, mode)
   DNopt = runDN.getOpt(dnmodel)
+  config.getFreeMem(True)
   if not bitDepthOut:
     bitDepthOut = bitDepthIn
   quant = 1 << bitDepthIn
@@ -259,7 +269,7 @@ def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', 
     funcs.append(readFile)
   elif source == 'buffer':
     funcs.append(toNumPy(bitDepthIn))
-  funcs.append(toTorch(quant))
+  funcs.append(toTorch(quant, config.dtype(), config.device()))
   if (dnseq == 'before') and (dnmodel != 'no'):
     funcs.append(lambda im: runDN.dn(im, DNopt))
   if (scale > 1):

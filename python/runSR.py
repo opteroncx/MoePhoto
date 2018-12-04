@@ -13,7 +13,7 @@ mode_switch = {
   'p3': './model/p3/model_new.pth',
   'p4': './model/p4/model_new.pth',
 }
-ramCoef = 1 / np.array([.015, .05, .06, .12, .12, .24])
+ramCoef = .9 / np.array([10888.4, 4971.7, 2473., 24248., 8253.9, 4698.7, 41951.3, 16788.7, 7029.7])
 
 def sr(x, opt):
   print("doing super resolution")
@@ -22,7 +22,7 @@ def sr(x, opt):
   return doCrop(opt, getModel(opt), x, padding, sc)
 
 @genGetModel
-def getModel(opt):
+def getModel(opt, *args):
   print('loading net {}x'.format(opt.scale))
   return models[opt.scale - 2]()
 
@@ -36,16 +36,9 @@ def getOpt(scale, mode):
   opt.model = mode_switch[nmode]
   opt.scale = scale
 
-  conf = config.getConfig()
-  cropsize = conf[0]
-  modelType = (scale - 2) * 2
-  if not cropsize:
-    runType, free_ram = config.getFreeMem()
-    cropsize = int(np.sqrt(free_ram * ramCoef[runType + modelType]))
-
-  if cropsize > 2048:
-    cropsize = 2048
-  opt.cropsize = cropsize
-  print('当前SR切块大小：',cropsize)
-  opt.modelCached = getModel(opt)
+  modelType = (scale - 2) * 3
+  opt.ramCoef = ramCoef[config.getRunType() + modelType]
+  opt.cropsize = config.getConfig()[0]
+  print('当前SR切块大小：', opt.cropsize)
+  opt.modelCached = getModel(opt, False)
   return opt
