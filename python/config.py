@@ -2,6 +2,7 @@
 # pylint: disable=E1101
 import time
 import os
+from warnings import warn
 import psutil
 import torch
 import readgpu
@@ -13,7 +14,8 @@ defaultConfig = {
   'maxMemoryUsage': (0, '最大使用的内存MB'),
   'maxGraphicMemoryUsage': (0, '最大使用的显存MB'),
   'cuda': (True, '使用CUDA'),
-  'halfPrecision': (True, '使用半精度浮点数'),
+  'fp16': (True, '使用半精度浮点数'),
+  'deviceId': (0, '使用的GPU序号'),
   'defaultCodec': ('libx264 -pix_fmt yuv420p', '默认视频输出编码选项')
 }
 process = psutil.Process(os.getpid())
@@ -29,9 +31,13 @@ def transform(self):
 
 class Config():
   def __init__(self):
+    self.deviceId = 0
     for key in defaultConfig:
       self.__dict__[key] = defaultConfig[key][0]
     self.cuda &= Config.cudaAvailable()
+    if self.cuda and self.deviceId >= torch.cuda.device_count():
+      self.deviceId = 0
+      warn(RuntimeWarning('GPU #{} not available, using GPU #0 instead'.format(self.deviceId)))
 
   def getConfig(self):
     return tuple(map(transform(self), ('crop_sr', 'crop_dn', 'crop_dns')))
@@ -43,7 +49,7 @@ class Config():
     if self.cuda:
       if emptyCache:
         torch.cuda.empty_cache()
-      free_ram = readgpu.getGPU() * 2**20
+      free_ram = readgpu.getGPU()[self.deviceId]
     else:
       mem = psutil.virtual_memory()
       free_ram = mem.free
@@ -67,15 +73,15 @@ class Config():
     return free
 
   def dtype(self):
-    dtype = torch.half if self.cuda and self.halfPrecision else torch.float
+    dtype = torch.half if self.cuda and self.fp16 else torch.float
     return dtype
 
   def device(self):
-    return torch.device('cuda' if self.cuda else 'cpu')
+    return torch.device('cuda:{}'.format(self.deviceId) if self.cuda else 'cpu')
 
   def getRunType(self):
     if self.cuda:
-      if self.halfPrecision:
+      if self.fp16:
         return 2
       else:
         return 1
@@ -88,10 +94,11 @@ class Config():
     mem_free = int(mem.free/1024**2)
     cpu_count_phy = psutil.cpu_count(logical=False)
     cpu_count_log = psutil.cpu_count(logical=True)
+    deviceId = self.deviceId
     try:
-      gname = readgpu.getName()[0].strip('\n')
-      gram = readgpu.getGPU()
-      major, minor = torch.cuda.get_device_capability(0)
+      gname = readgpu.getName()[deviceId]
+      gram = int(readgpu.getGPU()[deviceId] / 2**20)
+      major, minor = torch.cuda.get_device_capability(deviceId)
       ginfo = [gname, gram, major + minor / 10]
       self.ginfo = ginfo
     except Exception as e:
