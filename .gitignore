@@ -35,5 +35,4 @@ install.exe
 
 # ignore third party files
 /ffmpeg
-nvidia-smi.exe
 *.dll
