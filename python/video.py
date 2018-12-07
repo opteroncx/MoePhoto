@@ -4,11 +4,11 @@ import re
 import sys
 import threading
 from queue import Queue, Empty
-from config import Config
+from config import config
 import imageProcess
 
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
-defaultCodec = 'libx264 -pix_fmt yuv420p'
+video_out = 'download'
 qOut = Queue(64)
 
 def getVideoInfo(videoPath):
@@ -22,10 +22,14 @@ def getVideoInfo(videoPath):
     for line in iter(pipeIn.stderr.readline, ''):
       line = line.lstrip()
       if re.match('Stream #.*: Video:', line):
-        videoInfo = re.search(', ([\\d]+)x([\\d]+) *.+, ([.\\d]+) fps', line).groups()
-        width = int(videoInfo[0])
-        height = int(videoInfo[1])
-        frameRate = float(videoInfo[2])
+        try:
+          videoInfo = re.search(', ([\\d]+)x([\\d]+) *.+, ([.\\d]+) fps', line).groups()
+          width = int(videoInfo[0])
+          height = int(videoInfo[1])
+          frameRate = float(videoInfo[2])
+        except:
+          print(line)
+          raise RuntimeError('Video info not found')
         break
 
     pipeIn.stderr.flush()
@@ -73,9 +77,9 @@ def readSubprocess(q):
       else:
         sys.stderr.write(line)
 
-def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=defaultCodec):
+def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=config.defaultCodec):  # pylint: disable=E1101
   width, height, frameRate = getVideoInfo(video)
-  video_out, videoName = Config().getPath()
+  videoName = config.getPath()
   if not os.path.exists(video_out):
     os.mkdir(video_out)
   outputPath = video_out + '/' + videoName
@@ -86,13 +90,13 @@ def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=defaultCodec
     '-sn',
     '-f', 'rawvideo',
     '-s', '{}x{}'.format(width, height),
-    '-pix_fmt', 'bgr24',
+    '-pix_fmt', 'bgr48le',
     '-']
   commandOut = [
     ffmpegPath,
     '-y',
     '-f', 'rawvideo',
-    '-pix_fmt', 'bgr24',
+    '-pix_fmt', 'bgr48le',
     '-s', '{}x{}'.format(width * scale, height * scale),
     '-r', str(frameRate),
     '-i', '-',
@@ -105,7 +109,7 @@ def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=defaultCodec
   commandOut.extend(codec.split(' '))
   commandOut.append(outputPath)
   print(video, scale, mode, dn_model, dnseq, commandOut)
-  process = imageProcess.genProcess(scale, mode, dn_model, dnseq, 'buffer')
+  process = imageProcess.genProcess(scale, mode, dn_model, dnseq, 'buffer', 16)
   pipeIn = sp.Popen(commandIn, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=10**8)
   pipeOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=10**8, shell=True)
   try:
@@ -115,14 +119,13 @@ def SR_vid(video, scale=2, mode='a', dn_model='no', dnseq='', codec=defaultCodec
 
     i = 0
     while True:
-      raw_image = pipeIn.stdout.read(width * height * 3) # read width*height*3 bytes (= 1 frame)
+      raw_image = pipeIn.stdout.read(width * height * 6) # read width*height*6 bytes (= 1 frame)
       if len(raw_image) == 0:
         break
       i += 1
       readSubprocess(qOut)
       print('processing frame #{}'.format(i))
-      image = process((raw_image, height, width))
-      buffer = image.tostring()
+      buffer = process((raw_image, height, width))
       pipeOut.stdin.write(buffer)
 
     flag = threading.Event()
