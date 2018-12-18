@@ -8,7 +8,10 @@ if os.path.exists(path+'__pycache__'):
     shutil.rmtree(path+'__pycache__')
 
 items = os.listdir(path)
-items.remove('old_files')
+try:
+    items.remove('old_files')
+except:
+    print('No deprecated old files')
 print(items)
 for item in items:    
     py_compile.compile(path+item)

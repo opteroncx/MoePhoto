@@ -15,6 +15,81 @@ mode_switch = {
 }
 ramCoef = .9 / np.array([10888.4, 4971.7, 2473., 24248., 8253.9, 4698.7, 41951.3, 16788.7, 7029.7])
 
+def data_trans(im,num):
+    org_image = im
+    if num ==0:    
+        ud_image = np.flipud(org_image)
+        tranform = ud_image
+    elif num ==1:      
+        lr_image = np.fliplr(org_image)
+        tranform = lr_image
+    elif num ==2:
+        lr_image = np.fliplr(org_image)
+        lrud_image = np.flipud(lr_image)        
+        tranform = lrud_image
+    elif num ==3:
+        rotated_image1 = np.rot90(org_image)        
+        tranform = rotated_image1
+    elif num ==4: 
+        rotated_image2 = np.rot90(org_image, -1)
+        tranform = rotated_image2
+    elif num ==5: 
+        rotated_image1 = np.rot90(org_image) 
+        ud_image1 = np.flipud(rotated_image1)
+        tranform = ud_image1
+    elif num ==6:        
+        rotated_image2 = np.rot90(org_image, -1)
+        ud_image2 = np.flipud(rotated_image2)
+        tranform = ud_image2
+    else:
+        tranform = org_image
+    return tranform
+
+def data_trans_inv(im,num):
+    org_image = im
+    if num ==0:    
+        ud_image = np.flipud(org_image)
+        tranform = ud_image
+    elif num ==1:      
+        lr_image = np.fliplr(org_image)
+        tranform = lr_image
+    elif num ==2:
+        lr_image = np.fliplr(org_image)
+        lrud_image = np.flipud(lr_image)        
+        tranform = lrud_image
+    elif num ==3:
+        rotated_image1 = np.rot90(org_image,-1)        
+        tranform = rotated_image1
+    elif num ==4: 
+        rotated_image2 = np.rot90(org_image)
+        tranform = rotated_image2
+    elif num ==5: 
+        rotated_image1 = np.rot90(org_image) 
+        ud_image1 = np.flipud(rotated_image1)
+        tranform = ud_image1
+    elif num ==6:        
+        rotated_image2 = np.rot90(org_image, -1)
+        ud_image2 = np.flipud(rotated_image2)
+        tranform = ud_image2
+    else:
+        tranform = org_image
+    return tranform
+
+def selfEnsemble(x,opt):
+  im_list = []
+  for i in range(8):
+      tmp = data_trans(x,i)
+      seim1=sr(tmp,opt)
+      seim2=data_trans_inv(seim1,i)
+      im_list.append(seim2)
+  for i in range(len(im_list)):
+      if i == 0:
+          sum = im_list[0]
+      else:
+          sum += im_list[i]
+  ensemble = sum/len(im_list)
+  return ensemble
+
 def sr(x, opt):
   print("doing super resolution")
   sc = opt.scale

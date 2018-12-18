@@ -122,7 +122,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
   if not cropsize > 32:
     raise MemoryError()
   size = cropsize - 2 * padding
-
+  print('cropsize==',cropsize)
   num_across = cropNum(h, padding, size)
   num_up = cropNum(w, padding, size)
   leftS = h - padding * 2

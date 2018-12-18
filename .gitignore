@@ -37,3 +37,4 @@ install.exe
 /ffmpeg
 *.dll
 *.pdb
+*.exe
