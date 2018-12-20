@@ -8,7 +8,10 @@ if os.path.exists(path+'__pycache__'):
     shutil.rmtree(path+'__pycache__')
 
 items = os.listdir(path)
-items.remove('old_files')
+try:
+    items.remove('old_files')
+except:
+    print('No deprecated old files')
 print(items)
 for item in items:    
     py_compile.compile(path+item)
@@ -18,4 +21,3 @@ for pyc in pycs:
     true_name = pyc.split('.')[0]+'.pyc'
     print(true_name)
     os.rename(path+'__pycache__/'+pyc,path+'__pycache__/'+true_name)
-

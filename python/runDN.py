@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 import numpy as np
-from imageProcess import doCrop, genGetModel
+from imageProcess import ensemble, genGetModel
 from models import NetDN, SEDN
 from config import config
 
@@ -14,17 +14,9 @@ model_dict = {
 }
 ramCoef = .9 / np.array([2700., 4106.9, 2400., 7405., 1253.4, 4304.2])
 
-def dn(x, opt):
-  print("doing denoise")
-  return doCrop(opt, getModel(opt), x)
+dn = lambda x, opt: ensemble(x, 0, { 'opt': opt, 'model': getModel(opt) })
 
-@genGetModel
-def getModel(opt, *args):
-  print('loading', opt.model)
-  if 'dn_lite' in opt.model:
-    return NetDN()
-  else:
-    return SEDN()
+getModel = genGetModel(lambda opt, *args: NetDN() if 'dn_lite' in opt.model else SEDN())
 
 ##################################
 
@@ -37,6 +29,7 @@ def getOpt(model):
   modelType = 0 if model[:4] == 'lite' else 1
   opt.ramCoef = ramCoef[config.getRunType() * 2 + modelType]
   opt.cropsize = config.getConfig()[modelType + 1]
-  print('当前denoise切块大小：', opt.cropsize)
+  if opt.cropsize:
+    print('当前denoise切块大小：', opt.cropsize)
   opt.modelCached = getModel(opt, False)
   return opt
