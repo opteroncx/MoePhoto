@@ -16,7 +16,8 @@ defaultConfig = {
   'cuda': (True, '使用CUDA'),
   'fp16': (True, '使用半精度浮点数'),
   'deviceId': (0, '使用的GPU序号'),
-  'defaultCodec': ('libx264 -pix_fmt yuv420p', '默认视频输出编码选项')
+  'defaultCodec': ('libx264 -pix_fmt yuv420p', '默认视频输出编码选项'),
+  'ensembleSR': (0, '放大时自集成的扩增倍数， 0-7')
 }
 process = psutil.Process(os.getpid())
 
@@ -58,7 +59,7 @@ class Config():
 
   def calcFreeMem(self):
     if self.cuda:
-      memUsed = torch.cuda.memory_allocated()
+      memUsed = torch.cuda.memory_allocated(self.deviceId) * 4
       if self.maxGraphicMemoryUsage > 0:
         free = min(self.freeRam, self.maxGraphicMemoryUsage * 2**20) - memUsed
       else:

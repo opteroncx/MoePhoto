@@ -1,9 +1,9 @@
 # pylint: disable=E1101
-import functools
+from functools import reduce
+import itertools
 import os
 import torch
 import torch.nn.functional as F
-import cv2
 import numpy as np
 from PIL import Image
 from dehaze import Dehaze
@@ -100,7 +100,8 @@ def convert_ycbcr_to_rgb(ycbcr_image):
 """
 padImageReflect = torch.nn.ReflectionPad2d
 
-cropNum = lambda length, padding, size: ((length - padding) // size) + (1 if length % size > 2 * padding else 0)
+cropIter = lambda length, padding, size:\
+  itertools.chain(range(length - padding * 2 - size, 0, -size), [] if padding >= (length - padding * 2) % size > 0 else [0])
 
 def doCrop(opt, model, x, padding=1, sc=1):
   pad = padImageReflect(padding)
@@ -122,27 +123,16 @@ def doCrop(opt, model, x, padding=1, sc=1):
   if not cropsize > 32:
     raise MemoryError()
   size = cropsize - 2 * padding
-  print('cropsize==',cropsize)
-  num_across = cropNum(h, padding, size)
-  num_up = cropNum(w, padding, size)
-  leftS = h - padding * 2
-  for _i in range(num_across):
-    leftS -= size
-    if leftS < 0:
-      leftS = 0
+
+  for topS, leftS in itertools.product(cropIter(h, padding, size), cropIter(w, padding, size)):
     leftT = leftS * sc
-    topS = w - padding * 2
-    for _j in range(num_up):
-      topS -= size
-      if topS < 0:
-        topS = 0
-      topT = topS * sc
-      s = x[:, :, leftS:leftS + cropsize, topS:topS + cropsize]
-      r = model(s)[-1]
-      tmp = r.squeeze(
-        1)[:, sc * padding:-sc * padding, sc * padding:-sc * padding]
-      tmp_image[:, leftT:leftT + tmp.shape[1], topT:topT +
-            tmp.shape[2]] = tmp
+    topT = topS * sc
+    s = x[:, :, topS:topS + cropsize, leftS:leftS + cropsize]
+    r = model(s)[-1]
+    tmp = r.squeeze(1)[:
+      , sc * padding:-sc * padding, sc * padding:-sc * padding]
+    tmp_image[:, topT:topT + tmp.shape[1]
+      , leftT:leftT + tmp.shape[2]] = tmp
 
   return tmp_image
 
@@ -201,21 +191,14 @@ def toTorch(quant, dtype, device):
 def writeFile(image, name):
   if not os.path.exists('download'):
     os.mkdir('download')
-  result = cv2.imwrite(name, image)
-  if result:
-    return name
-  else:
-    raise RuntimeError('Failed to save image')
+  Image.fromarray(image).save(name)
+  return name
 
 def readFile(file):
   image = Image.open(file)
   image = np.array(image)
-  if len(image.shape) == 2:
+  if len(image.shape) == 2 or image.shape[2] == 3 or image.shape[2] == 4:
     return image
-  elif image.shape[2] == 3:
-    return cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-  elif image.shape[2] == 4:
-    return cv2.cvtColor(image, cv2.COLOR_RGBA2BGRA)
   else:
     raise RuntimeError('Unknown image format')
 
@@ -231,9 +214,10 @@ def extractAlpha(t):
 def mergeAlpha(t):
   def f(im):
     if len(t):
-      im = cv2.cvtColor(im, cv2.COLOR_BGR2BGRA)
-      im[:,:,3] = t[0]
-    return im
+      image = np.empty((*im.shape[:2], 4), dtype=np.uint8)
+      image[:,:,:3] = im
+      image[:,:,3] = t[0]
+    return image
   return f
 
 def genGetModel(f):
@@ -241,6 +225,7 @@ def genGetModel(f):
     if hasattr(opt, 'modelCached') and cache:
       return opt.modelCached
 
+    print('loading model {}'.format(opt.model))
     model = f(opt)
     print('reloading weights')
     weights = torch.load(opt.model)
@@ -252,12 +237,20 @@ def genGetModel(f):
 
   return getModel
 
+apply = lambda v, f: f(v)
+transpose = lambda x: x.transpose(-1, -2)
+flip = lambda x: x.flip(-1)
+flip2 = lambda x: x.flip(-1, -2)
+combine = lambda *fs: lambda x: reduce(apply, fs, x)
+trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, flip), combine(transpose, flip, transpose), combine(flip2, transpose)]
+transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
+ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs))
+
 import runDN
 import runSR
-apply = lambda v, f: f(v)
 
 def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', bitDepthIn=8, bitDepthOut=0):
-  SRopt = runSR.getOpt(scale, mode)
+  SRopt = runSR.getOpt(scale, mode, config.ensembleSR)
   DNopt = runDN.getOpt(dnmodel)
   config.getFreeMem(True)
   if not bitDepthOut:
@@ -282,7 +275,7 @@ def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', 
   elif source == 'buffer':
     funcs.append(toBuffer(bitDepthOut))
   def process(im, name=None):
-    im = functools.reduce(apply, funcs, im)
+    im = reduce(apply, funcs, im)
     return last(im, name)
   return process
 
@@ -291,5 +284,5 @@ def clean():
 
 def dehaze(fileName, outputName):
   t = []
-  im = functools.reduce(apply, [readFile, extractAlpha(t), Dehaze, toOutput(8), mergeAlpha(t)], fileName)
+  im = reduce(apply, [readFile, extractAlpha(t), Dehaze, toOutput(8), mergeAlpha(t)], fileName)
   return writeFile(im, outputName)

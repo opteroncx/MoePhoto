@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
+from functools import reduce
 import numpy as np
-from imageProcess import doCrop, genGetModel
+from imageProcess import ensemble, genGetModel
 from models import Net2x, Net3x, Net4x
 from config import config
 
@@ -91,29 +92,35 @@ def selfEnsemble(x,opt):
   return ensemble
 
 def sr(x, opt):
-  print("doing super resolution")
   sc = opt.scale
-  padding = 2 if sc == 3 else 1
-  return doCrop(opt, getModel(opt), x, padding, sc)
+  sum = ensemble(x, opt.ensemble, {
+    'opt': opt,
+    'model': getModel(opt),
+    'padding': 2 if sc == 3 else 1,
+    'sc': sc
+  })
+  if opt.ensemble:
+    return sum / (opt.ensemble + 1)
+  else:
+    return sum
 
-@genGetModel
-def getModel(opt, *args):
-  print('loading net {}x'.format(opt.scale))
-  return models[opt.scale - 2]()
+getModel = genGetModel(lambda opt, *args: models[opt.scale - 2]())
 
 ##################################
 
-def getOpt(scale, mode):
+def getOpt(scale, mode, ensemble):
   def opt():pass
   nmode = mode+str(scale)
   if not nmode in mode_switch:
     return
   opt.model = mode_switch[nmode]
   opt.scale = scale
+  opt.ensemble = ensemble
 
   modelType = (scale - 2) * 3
   opt.ramCoef = ramCoef[config.getRunType() + modelType]
   opt.cropsize = config.getConfig()[0]
-  print('当前SR切块大小：', opt.cropsize)
+  if opt.cropsize:
+    print('当前SR切块大小：', opt.cropsize)
   opt.modelCached = getModel(opt, False)
   return opt

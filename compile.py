@@ -21,4 +21,3 @@ for pyc in pycs:
     true_name = pyc.split('.')[0]+'.pyc'
     print(true_name)
     os.rename(path+'__pycache__/'+pyc,path+'__pycache__/'+true_name)
-
