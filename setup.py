@@ -22,7 +22,7 @@ ifiles = ['./models.pyc',
         './libiomp5md.pdb',
         './libiompstubs5md.dll',
         './update_log.txt',
-        './nvidia-smi.exe'
+        './site-packages'
         ]
 
 # exclude files
