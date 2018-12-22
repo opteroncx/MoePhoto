@@ -7,16 +7,16 @@ os.environ['TK_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tk8.6'
 
 # include files
 ifiles = ['./models.pyc',
-        './turbo.pyc',
         './dehaze.pyc',
-        './model.pyc',
+        './config.pyc',
+        './imageProcess.pyc',
+        './models.pyc',
         './runDN.pyc',
         './runSR.pyc',
         './video.pyc',
         './templates',
         './static',
         './model',
-        './ffmpeg',
         './mkl_intel_thread.dll',
         './libiomp5md.dll',
         './libiomp5md.pdb',
@@ -48,12 +48,12 @@ base = None
 # if sys.platform == "win32":
 #     base = "Win32GUI"
 
-exe = Executable(script='MoePhoto.py', base = base, icon='logo3.ico')
+exe = Executable(script='./python/MoePhoto.py', base = base, icon='logo3.ico')
 
 
 
 setup(  name = 'MoePhoto',
-        version = '2.5',
+        version = '3.0',
         description = 'May-workshop',
         options = {'build_exe': build_exe_options},
         executables = [exe])
