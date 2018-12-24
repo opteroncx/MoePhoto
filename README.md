@@ -18,7 +18,7 @@ MoePhoto Image Toolbox萌图工具箱
 
 ### 安装
 > 下载并安装文件  
-下载并安装NVIDIA CUDA8.0环境  
+下载并安装NVIDIA CUDA9.2环境  
 下载地址 [百度云](http://pan.baidu.com/s/1W5DQTepe6jT6TGu4QFAPXg) 密码：k4s1  
 
 ### 协助开发
