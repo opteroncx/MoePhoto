@@ -34,7 +34,8 @@ install.exe
 *.pyc
 
 # ignore third party files
-/ffmpeg
+/ffmpeg/bin
+/ffmpeg/*.txt
 *.dll
 *.pdb
 *.exe
