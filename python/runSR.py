@@ -13,6 +13,7 @@ mode_switch = {
   'p2': './model/p2/model_new.pth',
   'p3': './model/p3/model_new.pth',
   'p4': './model/p4/model_new.pth',
+  'p-4': './model/gan/gan_x4.pth',
 }
 ramCoef = .9 / np.array([10888.4, 4971.7, 2473., 24248., 8253.9, 4698.7, 41951.3, 16788.7, 7029.7])
 
@@ -114,10 +115,10 @@ def getOpt(scale, mode, ensemble):
   if not nmode in mode_switch:
     return
   opt.model = mode_switch[nmode]
-  opt.scale = scale
+  opt.scale = np.abs(scale)
   opt.ensemble = ensemble
 
-  modelType = (scale - 2) * 3
+  modelType = (np.abs(scale) - 2) * 3
   opt.ramCoef = ramCoef[config.getRunType() + modelType]
   opt.cropsize = config.getConfig()[0]
   if opt.cropsize:
