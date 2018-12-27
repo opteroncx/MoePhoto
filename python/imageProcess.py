@@ -265,7 +265,7 @@ def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', 
   funcs.append(toTorch(quant, config.dtype(), config.device()))
   if (dnseq == 'before') and (dnmodel != 'no'):
     funcs.append(lambda im: runDN.dn(im, DNopt))
-  if (scale > 1):
+  if (np.abs(scale) > 1):
     funcs.append(lambda im: runSR.sr(im, SRopt))
   if (dnseq == 'after') and (dnmodel != 'no'):
     funcs.append(lambda im: runDN.dn(im, DNopt))
