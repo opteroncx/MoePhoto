@@ -3,6 +3,7 @@ from functools import reduce
 import numpy as np
 from imageProcess import ensemble, genGetModel
 from models import Net2x, Net3x, Net4x
+import gan
 from config import config
 
 models = (Net2x, Net3x, Net4x)
