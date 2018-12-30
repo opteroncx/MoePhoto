@@ -1,6 +1,7 @@
 ==========ver4.0==========
 增加慢动作（in progress）
 增加风格迁移（in progress）
+新增在线更新 （roadmap）
 ==========ver3.5==========
 新增GAN模式（in progress）
 框架调整
