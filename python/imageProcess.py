@@ -108,7 +108,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
   c = x.shape[0]
   hOut = x.shape[1] * sc
   wOut = x.shape[2] * sc
-  squeeze = 1 if hasattr(opt, 'C2B') and opt.C2B else 0
+  squeeze = 1 if (not hasattr(opt, 'C2B')) or opt.C2B else 0
   x = pad(x.unsqueeze(squeeze))
   _, _, h, w = x.shape
   tmp_image = torch.zeros([c, hOut, wOut]).to(x)
