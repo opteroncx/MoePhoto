@@ -1,3 +1,16 @@
+==========ver4.0==========
+增加慢动作（in progress）
+增加风格迁移（in progress）
+新增在线更新 （roadmap）
+==========ver3.5==========
+新增GAN模式（in progress）
+框架调整
+==========ver3.0==========
+代码重写，感谢@lotress
+修正显卡信息读取方式，保证更佳兼容性
+增加self-ensemble选项
+配置代码移动至config
+其他细节
 ==========beta 2.6/Relaease1.2==========
 更新底层
 CUDA升级至9.2

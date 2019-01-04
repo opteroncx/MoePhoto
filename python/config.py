@@ -36,6 +36,9 @@ class Config():
     for key in defaultConfig:
       self.__dict__[key] = defaultConfig[key][0]
     self.cuda &= Config.cudaAvailable()
+    try:
+      readgpu.init()
+    except: pass
     if self.cuda and self.deviceId >= torch.cuda.device_count():
       self.deviceId = 0
       warn(RuntimeWarning('GPU #{} not available, using GPU #0 instead'.format(self.deviceId)))

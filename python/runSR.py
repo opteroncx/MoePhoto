@@ -3,9 +3,11 @@ from functools import reduce
 import numpy as np
 from imageProcess import ensemble, genGetModel
 from models import Net2x, Net3x, Net4x
+from gan import RRDB_Net
 from config import config
 
-models = (Net2x, Net3x, Net4x)
+getGAN = lambda scale: lambda: RRDB_Net(upscale=scale)
+models = ((Net2x, Net3x, Net4x), (getGAN(2), getGAN(3), getGAN(4)))
 mode_switch = {
   'a2': './model/a2/model_new.pth',
   'a3': './model/a3/model_new.pth',
@@ -13,6 +15,7 @@ mode_switch = {
   'p2': './model/p2/model_new.pth',
   'p3': './model/p3/model_new.pth',
   'p4': './model/p4/model_new.pth',
+  'gan4': './model/gan/gan_x4.pth'
 }
 ramCoef = .9 / np.array([10888.4, 4971.7, 2473., 24248., 8253.9, 4698.7, 41951.3, 16788.7, 7029.7])
 
@@ -29,7 +32,7 @@ def sr(x, opt):
   else:
     return sum
 
-getModel = genGetModel(lambda opt, *args: models[opt.scale - 2]())
+getModel = genGetModel(lambda opt, *args: models[opt.model[:3] == 'gan'][opt.scale - 2]())
 
 ##################################
 
