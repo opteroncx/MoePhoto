@@ -105,10 +105,12 @@ cropIter = lambda length, padding, size:\
 
 def doCrop(opt, model, x, padding=1, sc=1):
   pad = padImageReflect(padding)
+  c = x.shape[0]
   hOut = x.shape[1] * sc
   wOut = x.shape[2] * sc
-  x = pad(x.unsqueeze(1))
-  c, _, h, w = x.shape
+  squeeze = 1 if hasattr(opt, 'C2B') and opt.C2B else 0
+  x = pad(x.unsqueeze(squeeze))
+  _, _, h, w = x.shape
   tmp_image = torch.zeros([c, hOut, wOut]).to(x)
 
   cropsize = opt.cropsize
@@ -129,7 +131,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
     topT = topS * sc
     s = x[:, :, topS:topS + cropsize, leftS:leftS + cropsize]
     r = model(s)[-1]
-    tmp = r.squeeze(1)[:
+    tmp = r.squeeze(squeeze)[:
       , sc * padding:-sc * padding, sc * padding:-sc * padding]
     tmp_image[:, topT:topT + tmp.shape[1]
       , leftT:leftT + tmp.shape[2]] = tmp

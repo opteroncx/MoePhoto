@@ -32,7 +32,7 @@ def sr(x, opt):
   else:
     return sum
 
-getModel = genGetModel(lambda opt, *args: models[opt.model[:3] == 'gan'][opt.scale - 2]())
+getModel = genGetModel(lambda opt, *args: models[opt.mode[:3] == 'gan'][opt.scale - 2]())
 
 ##################################
 
@@ -41,6 +41,8 @@ def getOpt(scale, mode, ensemble):
   nmode = mode+str(scale)
   if not nmode in mode_switch:
     return
+  opt.C2B = mode[:3] != 'gan'
+  opt.mode = mode
   opt.model = mode_switch[nmode]
   opt.scale = scale
   opt.ensemble = ensemble
