@@ -17,7 +17,7 @@ mode_switch = {
   'p4': './model/p4/model_new.pth',
   'gan4': './model/gan/gan_x4.pth'
 }
-ramCoef = .9 / np.array([10888.4, 4971.7, 2473., 24248., 8253.9, 4698.7, 41951.3, 16788.7, 7029.7])
+ramCoef = .9 / np.array([10888.4, 4971.7, 2473., 24248., 8253.9, 4698.7, 41951.3, 16788.7, 7029.7, 10888.4, 4971.7, 2473., 15282.4, 5496., 4186.6, 15282.4, 5496., 4186.6])
 
 def sr(x, opt):
   sc = opt.scale
@@ -48,6 +48,8 @@ def getOpt(scale, mode, ensemble):
   opt.ensemble = ensemble
 
   modelType = (scale - 2) * 3
+  if mode[:3] == 'gan':
+    modelType += 9
   opt.ramCoef = ramCoef[config.getRunType() + modelType]
   opt.cropsize = config.getConfig()[0]
   if opt.cropsize:
