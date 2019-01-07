@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 from dehaze import Dehaze
 from config import config
+import sys
 
 deviceCPU = torch.device('cpu')
 
@@ -105,10 +106,12 @@ cropIter = lambda length, padding, size:\
 
 def doCrop(opt, model, x, padding=1, sc=1):
   pad = padImageReflect(padding)
+  c = x.shape[0]
   hOut = x.shape[1] * sc
   wOut = x.shape[2] * sc
-  x = pad(x.unsqueeze(1))
-  c, _, h, w = x.shape
+  squeeze = 1 if (not hasattr(opt, 'C2B')) or opt.C2B else 0
+  x = pad(x.unsqueeze(squeeze))
+  _, _, h, w = x.shape
   tmp_image = torch.zeros([c, hOut, wOut]).to(x)
 
   cropsize = opt.cropsize
@@ -124,12 +127,14 @@ def doCrop(opt, model, x, padding=1, sc=1):
     raise MemoryError()
   size = cropsize - 2 * padding
 
+  print(cropsize, cropsize * cropsize * c, freeRam)
+  sys.stdin.readline()
   for topS, leftS in itertools.product(cropIter(h, padding, size), cropIter(w, padding, size)):
     leftT = leftS * sc
     topT = topS * sc
     s = x[:, :, topS:topS + cropsize, leftS:leftS + cropsize]
     r = model(s)[-1]
-    tmp = r.squeeze(1)[:
+    tmp = r.squeeze(squeeze)[:
       , sc * padding:-sc * padding, sc * padding:-sc * padding]
     tmp_image[:, topT:topT + tmp.shape[1]
       , leftT:leftT + tmp.shape[2]] = tmp
@@ -265,7 +270,7 @@ def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', 
   funcs.append(toTorch(quant, config.dtype(), config.device()))
   if (dnseq == 'before') and (dnmodel != 'no'):
     funcs.append(lambda im: runDN.dn(im, DNopt))
-  if (np.abs(scale) > 1):
+  if (scale > 1):
     funcs.append(lambda im: runSR.sr(im, SRopt))
   if (dnseq == 'after') and (dnmodel != 'no'):
     funcs.append(lambda im: runDN.dn(im, DNopt))

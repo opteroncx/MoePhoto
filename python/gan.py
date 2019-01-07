@@ -1,6 +1,4 @@
 import math
-import torch
-import torch.nn as nn
 from collections import OrderedDict
 import torch
 import torch.nn as nn
@@ -94,7 +92,7 @@ def get_valid_padding(kernel_size, dilation):
     padding = (kernel_size - 1) // 2
     return padding
 
-
+"""unused
 class ConcatBlock(nn.Module):
     # Concat the output of a submodule to its input
     def __init__(self, submodule):
@@ -110,7 +108,7 @@ class ConcatBlock(nn.Module):
         modstr = self.sub.__repr__().replace('\n', '\n|')
         tmpstr = tmpstr + modstr
         return tmpstr
-
+"""
 
 class ShortcutBlock(nn.Module):
     #Elementwise sum the output of a submodule to its input
@@ -178,13 +176,12 @@ def conv_block(in_nc, out_nc, kernel_size, stride=1, dilation=1, groups=1, bias=
 # Useful blocks
 ####################
 
+"""unused
 
 class ResNetBlock(nn.Module):
-    """
     ResNet Block, 3-3 style
     with extra residual scaling used in EDSR
     (Enhanced Deep Residual Networks for Single Image Super-Resolution, CVPRW 17)
-    """
 
     def __init__(self, in_nc, mid_nc, out_nc, kernel_size=3, stride=1, dilation=1, groups=1, \
             bias=True, pad_type='zero', norm_type=None, act_type='relu', mode='CNA', res_scale=1):
@@ -210,7 +207,7 @@ class ResNetBlock(nn.Module):
     def forward(self, x):
         res = self.res(x).mul(self.res_scale)
         return x + res
-
+"""
 
 class ResidualDenseBlock_5C(nn.Module):
     """
