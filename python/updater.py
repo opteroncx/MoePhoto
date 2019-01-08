@@ -4,14 +4,15 @@ import os
 import zipfile
 import requests
 import codecs
-releases = 'http://www.may-workshop.com/moephoto/release.txt'
+
+releases = 'http://www.may-workshop.com/moephoto/release.html'
 ufile = 'http://www.may-workshop.com/moephoto/files/'
 
 
-def getVersion():
-    f = open()
-    fv = f.readlines[-1]
-    return fv
+def getVersion(releases=releases):
+    f = requests.get(releases)
+    fv = f.text
+    return fv[7:]
 
 def update():
     # make temp dir
