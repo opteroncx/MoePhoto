@@ -14,8 +14,10 @@ __pycache__
 /MoePhoto*.exe
 /old_versions
 /server
+/python/tester.py
 # ignore configuration overriding
 /config.py
+
 
 # ignore old checkpoints
 /model/a2/model.pth
