@@ -39,9 +39,14 @@ def gallery():
 @app.route('/about', methods=['POST'])
 def about_updater():
   uplog_file = './update_log.txt'
-  uplog = codecs.open(uplog_file,encoding='utf-8')
+  uplog = codecs.open(uplog_file)
   uplog_text = uplog.readlines()
-  return uplog_text
+  nt = ''
+  for t in uplog_text:
+    # ignore /n
+    tmp = '<p>'+t[:-1]+'</p>'+'\n'
+    nt += tmp
+  return nt
 
 def enhance(f, file, *args):
   try:

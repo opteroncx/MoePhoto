@@ -19,7 +19,7 @@ def update():
     if not os.path.exists('./update_tmp'):
         os.mkdir('./update_tmp')
     v = getVersion()
-    log_file = codecs.open('./update_log.txt','utf-8')
+    log_file = codecs.open('./update_log.txt','r')
     current_v = log_file.readline()
     # version:xxx
     current_v = current_v[7:]
