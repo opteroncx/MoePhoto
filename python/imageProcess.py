@@ -133,6 +133,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
     leftT = leftS * sc
     topT = topS * sc
     s = x[:, :, topS:topS + cropsize, leftS:leftS + cropsize]
+    print('processing')
     r = model(s)[-1]
     tmp = r.squeeze(squeeze)[:
       , sc * padding:-sc * padding, sc * padding:-sc * padding]
