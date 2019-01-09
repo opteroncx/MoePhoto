@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image
 from dehaze import Dehaze
 from config import config
-import sys
+# import sys
 
 deviceCPU = torch.device('cpu')
 
@@ -128,7 +128,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
   size = cropsize - 2 * padding
 
   print(cropsize, cropsize * cropsize * c, freeRam)
-  sys.stdin.readline()
+  # sys.stdin.readline()
   for topS, leftS in itertools.product(cropIter(h, padding, size), cropIter(w, padding, size)):
     leftT = leftS * sc
     topT = topS * sc

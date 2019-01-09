@@ -13,6 +13,7 @@ __pycache__
 /upload/
 /MoePhoto*.exe
 /old_versions
+/server
 # ignore configuration overriding
 /config.py
 
