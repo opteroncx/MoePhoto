@@ -5,7 +5,7 @@ import zipfile
 import requests
 import codecs
 
-releases = 'http://www.may-workshop.com/moephoto/release.html'
+releases = 'http://www.may-workshop.com/moephoto/version.html'
 ufile = 'http://www.may-workshop.com/moephoto/files/'
 
 

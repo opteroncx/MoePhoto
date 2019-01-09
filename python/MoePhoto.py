@@ -36,6 +36,13 @@ def gallery():
   else:
     return ('暂时没有图片，快去尝试放大吧',)
 
+@app.route('/about', methods=['POST'])
+def about_updater():
+  uplog_file = './update_log.txt'
+  uplog = codecs.open(uplog_file,encoding='utf-8')
+  uplog_text = uplog.readlines()
+  return uplog_text
+
 def enhance(f, file, *args):
   try:
     result = f(file, *args)
@@ -103,6 +110,8 @@ def ednoise_enhance():
 def image_dehaze():
   inputImg = request.files['file']
   return enhance(imageProcess.dehaze, inputImg, genNameByTime())
+
+
 routes = [
   ('/video', 'video.html', '视频放大', None),
   ('/batch', 'batch.html', '批量放大', None),
@@ -110,7 +119,7 @@ routes = [
   ('/deblur', 'deblur.html', '去模糊', None),
   ('/dehaze', 'dehaze.html', '去雾', None),
   ('/document', 'document.html', None, None),
-  ('/about', 'about.html', None, None),
+  ('/about', 'about.html', None, about_updater,['uplog']),
   ('/system', 'system.html', None, config.system, ['mem_total', 'mem_free', 'cpu_count_log', 'cpu_count_phy', 'ginfo']),
   ('/gallery', 'gallery.html', None, gallery, ['var'])
 ]
