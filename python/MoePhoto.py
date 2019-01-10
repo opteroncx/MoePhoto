@@ -43,10 +43,9 @@ def about_updater():
   log = ''
   for t in uplog_text:
     # ignore /n
-    tmp = '<p>'+t[:-1]+'</p>'+'\n'
-    log += tmp
-  print(log)
-  return log
+    # tmp = '<p>'+t[:-1]+'</p>'+'\n'
+    log += t
+  return [log]
 
 def enhance(f, file, *args):
   try:
