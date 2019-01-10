@@ -36,17 +36,17 @@ def gallery():
   else:
     return ('暂时没有图片，快去尝试放大吧',)
 
-@app.route('/about', methods=['POST'])
 def about_updater():
   uplog_file = './update_log.txt'
   uplog = codecs.open(uplog_file)
   uplog_text = uplog.readlines()
-  nt = ''
+  log = ''
   for t in uplog_text:
     # ignore /n
     tmp = '<p>'+t[:-1]+'</p>'+'\n'
-    nt += tmp
-  return nt
+    log += tmp
+  print(log)
+  return log
 
 def enhance(f, file, *args):
   try:
@@ -124,8 +124,8 @@ routes = [
   ('/deblur', 'deblur.html', '去模糊', None),
   ('/dehaze', 'dehaze.html', '去雾', None),
   ('/document', 'document.html', None, None),
-  ('/about', 'about.html', None, about_updater,['uplog']),
   ('/system', 'system.html', None, config.system, ['mem_total', 'mem_free', 'cpu_count_log', 'cpu_count_phy', 'ginfo']),
+  ('/about', 'about.html', None, about_updater,['log']),
   ('/gallery', 'gallery.html', None, gallery, ['var'])
 ]
 

@@ -56,8 +56,9 @@
 					<span>检查更新</span>
 					<i class="icon glyphicon glyphicon-arrow-right"></i>
 				</a>
-				<div>{% autoescape true %} {{uplog| safe}} {% endautoescape %}</div>
-	
+				<p>更新日志</p>
+				<textarea rows="10" cols="70">{% autoescape true %} {{log| safe}} {% endautoescape %}</textarea>
+				<div class="clearfix"> </div>
 			</div>
 			<div class="clearfix"> </div>
 		</div>
