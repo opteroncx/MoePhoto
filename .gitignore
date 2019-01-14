@@ -4,6 +4,7 @@ __pycache__
 /.vscode/
 /download/
 /python/old_files/
+/python/update_tmp/
 /package/
 /build/
 /model/*.py
