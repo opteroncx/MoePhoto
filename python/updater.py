@@ -7,11 +7,12 @@ import codecs
 import shutil
 from moe_utils import compile_pyc
 from moe_utils import copyfile
-
+from mt_download import download_file
 releases = 'http://www.may-workshop.com/moephoto/version.html'
 ufile = 'http://www.may-workshop.com/moephoto/files/'
-ffmpeg = 'http://www.may-workshop.com/moephoto/files/ffmpeg.zip'
+
 ff = 'https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-20190114-d52a1be-win64-static.zip'
+
 def update_model():
     print('更新模型文件')
 
@@ -24,13 +25,17 @@ def update_ffmpeg():
     # download files
     url = ff
     print('downloading from ',url)
-    r = requests.get(url) 
-    with open(ffmpeg_home+"ffmpeg.zip", "wb") as code:
-        code.write(r.content)
+    download_file(ff,fname=ffmpeg_home+'ffmpeg.zip')
+
     # extract zip
     z = zipfile.ZipFile(ffmpeg_home+'ffmpeg.zip', 'r')
     z.extractall(path=ffmpeg_home)
     z.close()
+    ndir = os.listdir(ffmpeg_home)[0]
+    copyfile(ffmpeg_home+ndir+'/bin/ffmpeg.exe',ffmpeg_home+'ffmpeg.exe')
+    # clean tmp
+    shutil.rmtree(ffmpeg_home+ndir)
+    os.remove(ffmpeg_home+'ffmpeg.zip')
 
 def getVersion(releases=releases):
     f = requests.get(releases)
