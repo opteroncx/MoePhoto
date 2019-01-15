@@ -55,7 +55,12 @@ def update():
         for f in py_files:
             if f[-3:] == '.py':
                 copyfile('./update_tmp/'+f,'./python/update_tmp/'+f)
-        print('升级完成')
+            elif f[-4:] == '.txt':
+                copyfile('./update_tmp/'+f,'./'+f)
+        print('升级完成,请重启软件')
+        
+        #clean temp files
+    
         
         
 
