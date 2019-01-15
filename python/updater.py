@@ -10,7 +10,27 @@ from moe_utils import copyfile
 
 releases = 'http://www.may-workshop.com/moephoto/version.html'
 ufile = 'http://www.may-workshop.com/moephoto/files/'
+ffmpeg = 'http://www.may-workshop.com/moephoto/files/ffmpeg.zip'
 
+def update_model():
+    print('更新模型文件')
+
+def update_ffmpeg():
+    print('更新FFMPEG')
+    # first time, check path
+    ffmpeg_home = './ffmpeg/bin/'
+    if not os.path.exists(ffmpeg_home):
+        os.makedirs(ffmpeg_home)
+    # download files
+    url = '' 
+    print('downloading from ',url)
+    r = requests.get(url) 
+    with open(ffmpeg_home+"ffmpeg.zip", "wb") as code:
+        code.write(r.content)
+    # extract zip
+    z = zipfile.ZipFile(ffmpeg_home+'ffmpeg.zip', 'r')
+    z.extractall(path=ffmpeg_home)
+    z.close()
 
 def getVersion(releases=releases):
     f = requests.get(releases)
