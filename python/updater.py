@@ -5,6 +5,7 @@ import zipfile
 import requests
 import codecs
 import shutil
+from compile import compile_pyc
 
 releases = 'http://www.may-workshop.com/moephoto/version.html'
 ufile = 'http://www.may-workshop.com/moephoto/files/'
@@ -55,12 +56,13 @@ def update():
         for f in py_files:
             if f[-3:] == '.py':
                 copyfile('./update_tmp/'+f,'./python/update_tmp/'+f)
+                compile_pyc(path='./python/update_tmp/')
+                # recompile pyc
             elif f[-4:] == '.txt':
                 copyfile('./update_tmp/'+f,'./'+f)
-        print('升级完成,请重启软件')
-        
+        print('升级完成,请重启软件')        
         #clean temp files
-    
+        shutil.rmtree('./update_tmp')
         
         
 
