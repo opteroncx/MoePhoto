@@ -5,21 +5,11 @@ import zipfile
 import requests
 import codecs
 import shutil
-from compile import compile_pyc
+from moe_utils import compile_pyc
 
 releases = 'http://www.may-workshop.com/moephoto/version.html'
 ufile = 'http://www.may-workshop.com/moephoto/files/'
 
-
-def copyfile(srcfile,dstfile):
-    if not os.path.isfile(srcfile):
-        print("%s not exist!"%(srcfile))
-    else:
-        fpath,fname=os.path.split(dstfile)    #分离文件名和路径
-        if not os.path.exists(fpath):
-            os.makedirs(fpath)                #创建路径
-        shutil.copyfile(srcfile,dstfile)      #复制文件
-        print("copy %s -> %s"%( srcfile,dstfile)) 
 
 def getVersion(releases=releases):
     f = requests.get(releases)
@@ -55,8 +45,9 @@ def update():
         py_files = os.listdir('./update_tmp')
         for f in py_files:
             if f[-3:] == '.py':
-                copyfile('./update_tmp/'+f,'./python/update_tmp/'+f)
-                compile_pyc(path='./python/update_tmp/')
+                # copyfile('./update_tmp/'+f,'./python/update_tmp/'+f)
+                compile_pyc(path='./update_tmp/')
+                copyfile('./update_tmp/__pycache__/'+f[:-3]+'.pyc','./'+f[:-3]+'.pyc')
                 # recompile pyc
             elif f[-4:] == '.txt':
                 copyfile('./update_tmp/'+f,'./'+f)
