@@ -11,7 +11,7 @@ from moe_utils import copyfile
 releases = 'http://www.may-workshop.com/moephoto/version.html'
 ufile = 'http://www.may-workshop.com/moephoto/files/'
 ffmpeg = 'http://www.may-workshop.com/moephoto/files/ffmpeg.zip'
-
+ff = 'https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-20190114-d52a1be-win64-static.zip'
 def update_model():
     print('更新模型文件')
 
@@ -22,7 +22,7 @@ def update_ffmpeg():
     if not os.path.exists(ffmpeg_home):
         os.makedirs(ffmpeg_home)
     # download files
-    url = '' 
+    url = ff
     print('downloading from ',url)
     r = requests.get(url) 
     with open(ffmpeg_home+"ffmpeg.zip", "wb") as code:
@@ -81,4 +81,4 @@ def update():
 if __name__ == '__main__':
     v = getVersion()
     print(v)
-    update()
+    update_ffmpeg()
