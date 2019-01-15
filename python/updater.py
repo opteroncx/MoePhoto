@@ -6,6 +6,7 @@ import requests
 import codecs
 import shutil
 from moe_utils import compile_pyc
+from moe_utils import copyfile
 
 releases = 'http://www.may-workshop.com/moephoto/version.html'
 ufile = 'http://www.may-workshop.com/moephoto/files/'
