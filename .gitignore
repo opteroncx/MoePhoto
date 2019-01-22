@@ -29,7 +29,7 @@ __pycache__
 /model/p3/model.pth
 /model/p4/model.pth
 /model/old/
-
+/model/slomo/*.ckpt
 # bat and vbs
 start.bat
 start.vbs
