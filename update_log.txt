@@ -1,6 +1,7 @@
 version:3.6
 ==========ver4.0==========
 增加慢动作（in progress）
+增加高帧率（in progress）
 增加风格迁移（in progress）
 ==========ver3.6==========
 新增在线更新
