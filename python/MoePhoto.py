@@ -1,4 +1,9 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from gevent import pywsgi, monkey, idle, spawn
+monkey.patch_select()
+monkey.patch_socket()
+from gevent.event import Event
+from flask import Flask, render_template, request, jsonify, send_from_directory, make_response, Response
+import json
 import os
 import sys
 import webbrowser
@@ -10,10 +15,23 @@ import traceback
 import imageProcess
 from video import SR_vid, batchSR
 from config import config
+from progress import initialETA, Node, setCallback
 
 app = Flask(__name__, root_path='.')
 host = '127.0.0.1'
 port = 2333
+def current():pass
+current.session = None
+current.response = None
+current.root = None
+current.previewIm = None
+E403 = ('Not authorized.', 403)
+E404 = ('Not Found', 404)
+OK = ('', 200)
+pending = Event()
+sent = Event()
+sent.set()
+outDir = 'download'
 
 ndoc = '<a href="download/{image}" class="w3effct-agile"><img src="download/{image}"'+\
   ' alt="" class="img-responsive" title="Solar Panels Image" />'+\
@@ -22,7 +40,7 @@ ndoc = '<a href="download/{image}" class="w3effct-agile"><img src="download/{ima
 def gallery():
   items = ()
   try:
-    items = os.listdir('download')
+    items = os.listdir(outDir)
   except:pass
   images = filter((lambda item:item.endswith('.png')), items)
   doc = []
@@ -36,52 +54,153 @@ def gallery():
   else:
     return ('暂时没有图片，快去尝试放大吧',)
 
+busy = lambda: (jsonify(result='Busy', eta=current.root.eta), 503)
+genNameByTime = lambda: 'download/output_{}.png'.format(int(time.time()))
+
+def acquireSession(request):
+  if current.session:
+    return busy()
+  current.session = request.values['session']
+  return False if current.session else E403
+
+def notify(msg):
+  if current.session:
+    current.response = msg
+    if not pending.isSet():
+      sent.clear()
+      pending.set()
+      sent.wait()
+    idle()
+
+def onProgress(node, kwargs={}):
+  res = {
+    'eta': current.root.eta,
+    'gone': current.root.gone,
+    'total': current.root.total
+  }
+  res.update(kwargs)
+  if hasattr(node, 'name'):
+    res['stage'] = node.name
+    res['stageProgress'] = node.gone
+    res['stageTotal'] = node.total
+  notify(json.dumps(res, ensure_ascii=False))
+
+def begin(root, nodes, setAllCallback=True):
+  current.root = root
+  for n in nodes:
+    root.append(n)
+  if setAllCallback:
+    setCallback(root, onProgress)
+  else:
+    root.setCallback(onProgress)
+  initialETA(root)
+  root.running = True
+  return root, current
+
+def controlPoint(path, fMatch, fUnmatch, resNoCurrent):
+  def f():
+    try:
+      session = request.values['session']
+    except:
+      return E403
+    if not session:
+      return E403
+    if current.session:
+      if current.session == session:
+        return fMatch()
+      else:
+        return fUnmatch()
+    else:
+      return resNoCurrent
+  app.route(path, methods=['GET', 'POST'], endpoint=path)(f)
+
+def stopCurrent():
+  if current.root:
+    current.root.running = False
+    print('STOP on {} of {}'.format(current.root.gone, current.root.total)) #debug
+  return OK
+
+def onConnect():
+  pending.wait()
+  pending.clear()
+  sent.set()
+  return (current.response, 200)
+
+controlPoint('/stop', stopCurrent, lambda: E403, E404)
+controlPoint('/msg', onConnect, busy, OK)
+
+@app.route('/lock', methods=['GET', 'POST'])
+def testFunc():
+  c = acquireSession(request)
+  if c:
+    return c
+  duration = int(request.values['duration'])
+  node = begin(Node({}, 1, duration, 0), [])[0].reset()
+  flag = Event()
+  while duration > 0 and node.running:
+    duration -= 1
+    flag.wait(1)
+    flag.clear()
+    node.trace()
+  current.session = None
+  return (jsonify(result='Interrupted'), 499) if duration > 0 else OK
+
 def enhance(f, file, *args):
   try:
-    result = f(file, *args)
+    g = spawn(f, file, *args)
+    result = g.get()
+    code = 200
   except Exception as msg:
     print('错误内容=='+str(msg))
     traceback.print_exc()
     result = 'Fail'
+    code = 400
   finally:
     imageProcess.clean()
-  return jsonify(result=result)
-
-genNameByTime = lambda: 'download/output_{}.png'.format(int(time.time()))
+    current.session = None
+  return (jsonify(result=result), code)
 
 @app.route('/image_enhance', methods=['POST'])
 def image_enhance():
+  c = acquireSession(request)
+  if c:
+    return c
   scale = request.form['scale']
   mode = request.form['mode']
   denoise = request.form['denoise']
   dnseq = request.form['dn_seq']
   inputImg = request.files['file']
-  process = imageProcess.genProcess(int(scale), mode, denoise, dnseq, 'file')
-  return enhance(process, inputImg, genNameByTime())
+  process, nodes = imageProcess.genProcess(int(scale), mode, denoise, dnseq, 'file')
+  return enhance(begin(Node({'op': 'image'}, learn=0), nodes)[0].bindFunc(process), inputImg, genNameByTime())
 
-@app.route("/download/<path:filename>")
+@app.route("/{}/<path:filename>".format(outDir))
 def downloader(filename):
-  dirpath = os.path.join(app.root_path, 'download')
+  dirpath = os.path.join(app.root_path, outDir)
   return send_from_directory(dirpath, filename, as_attachment=True)
+
+app.route("/{}/preview.png".format(outDir))(lambda: Response(current.previewIm, mimetype='image/png'))
 
 @app.route('/video_enhance', methods=[
   'POST'])
 def video_enhance():
-  scale = request.form['scale']
-  mode = request.form['mode']
-  denoise = request.form['denoise']
-  dnseq = request.form['dn_seq']
-  codec = request.form['codec']
+  c = acquireSession(request)
+  if c:
+    return c
+  opt = request.form.copy()
+  opt['outDir'] = outDir
   vidfile = request.files['file']
   upload = 'upload'
   if not os.path.exists(upload):
     os.mkdir(upload)
   path ='{}/{}'.format(upload, vidfile.filename)
   vidfile.save(path)
-  return enhance(SR_vid, path, int(scale), mode, denoise, dnseq, codec)
+  return enhance(SR_vid, path, begin, opt)
 
 @app.route('/batch_enhance', methods=['POST'])
 def batch_enhance():
+  c = acquireSession(request)
+  if c:
+    return c
   scale = request.form['scale']
   mode = request.form['mode']
   denoise = request.form['denoise']
@@ -90,17 +209,23 @@ def batch_enhance():
   output_path = 'batch_SR/{}/'.format(int(time.time()))
   if not os.path.exists(output_path):
     os.makedirs(output_path)
-  return enhance(batchSR, fileList, output_path, int(scale), mode, denoise, dnseq)
+  return enhance(batchSR, fileList, output_path, int(scale), mode, denoise, dnseq, begin)
 
 @app.route('/ednoise_enhance', methods=['POST'])
 def ednoise_enhance():
+  c = acquireSession(request)
+  if c:
+    return c
   inputImg = request.files['file']
   denoise = request.form['denoise']
-  process = imageProcess.genProcess(dnmodel=denoise, source='file')
+  process, _ = imageProcess.genProcess(dnmodel=denoise, source='file')
   return enhance(process, inputImg, genNameByTime())
 
 @app.route('/image_dehaze', methods=['POST'])
 def image_dehaze():
+  c = acquireSession(request)
+  if c:
+    return c
   inputImg = request.files['file']
   return enhance(imageProcess.dehaze, inputImg, genNameByTime())
 routes = [
@@ -115,21 +240,28 @@ routes = [
   ('/gallery', 'gallery.html', None, gallery, ['var'])
 ]
 
-app.route('/', endpoint='index')(lambda:render_template("index.html"))
+def renderPage(template, header=None, footer=None):
+  def f(ks={}):
+    session = request.cookies.get('session')
+    resp = make_response(render_template(template, header=header, footer=footer, **ks))
+    t = time.time()
+    if (not session) or (float(session) > t):
+      resp.set_cookie('session', bytes(str(t), encoding='ascii'))
+    return resp
+  return f
 
+app.route('/', endpoint='index')(renderPage("index.html"))
 app.route('/favicon.ico', endpoint='favicon')(lambda:send_from_directory(app.root_path, 'logo3.ico'))
 
 def genPageFunction(item, header, footer):
+  r = renderPage(item[1], header, footer)
   def page():
     res = item[3]()
     kargs = {}
     for k, v in zip(item[4], res):
       kargs[k] = v
-    return render_template(item[1], header=header, footer=footer, **kargs)
-  if item[3]:
-    return page
-  else:
-    return lambda:render_template(item[1], header=header, footer=footer)
+    return r(kargs)
+  return page if item[3] else r
 
 header_html = codecs.open('./templates/1-header.html','r','utf-8')
 footer_html = codecs.open('./templates/1-footer.html','r','utf-8')
@@ -147,7 +279,9 @@ for item in routes:
 
 def runserver():
   app.debug = False
-  app.run(host, port)
+  server = pywsgi.WSGIServer((host, port), app)
+  print('Server starts to listen on http://{}:{}/, press Ctrl+C to exit.'.format(host, port))
+  server.serve_forever()
 
 def main_thread():
   thread1 = threading.Thread(target=runserver,)
@@ -166,7 +300,11 @@ def start_broswer():
   webbrowser.open(url)
 
 if __name__ == "__main__":
-  if (len(sys.argv) > 1) and ('-n' in sys.argv):
+  if not os.path.exists(outDir):
+    os.mkdir(outDir)
+  if len(sys.argv) > 1:
+    if '-g' in sys.argv:
+      host = ''
     runserver()
   else:
     main_thread()

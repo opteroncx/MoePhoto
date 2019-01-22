@@ -1,13 +1,13 @@
 # pylint: disable=E1101
 from functools import reduce
 import itertools
-import os
 import torch
 import torch.nn.functional as F
 import numpy as np
 from PIL import Image
 from dehaze import Dehaze
 from config import config
+from progress import Node, updateNode
 
 deviceCPU = torch.device('cpu')
 
@@ -99,12 +99,13 @@ def convert_ycbcr_to_rgb(ycbcr_image):
   return rgb_image
 """
 padImageReflect = torch.nn.ReflectionPad2d
-
+unpadImage = lambda padding: lambda im: im[:, padding:-padding, padding:-padding]
 cropIter = lambda length, padding, size:\
   itertools.chain(range(length - padding * 2 - size, 0, -size), [] if padding >= (length - padding * 2) % size > 0 else [0])
 
 def doCrop(opt, model, x, padding=1, sc=1):
   pad = padImageReflect(padding)
+  unpad = unpadImage(sc * padding)
   c = x.shape[0]
   hOut = x.shape[1] * sc
   wOut = x.shape[2] * sc
@@ -131,8 +132,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
     topT = topS * sc
     s = x[:, :, topS:topS + cropsize, leftS:leftS + cropsize]
     r = model(s)[-1]
-    tmp = r.squeeze(squeeze)[:
-      , sc * padding:-sc * padding, sc * padding:-sc * padding]
+    tmp = unpad(r.squeeze(squeeze))
     tmp_image[:, topT:topT + tmp.shape[1]
       , leftT:leftT + tmp.shape[2]] = tmp
 
@@ -160,7 +160,14 @@ def toBuffer(bitDepth):
     dtype = np.uint8
   elif bitDepth == 16:
     dtype = np.uint16
-  return lambda image: image.astype(dtype).tostring()
+  return lambda imt: (imt[0].astype(dtype).tostring(), imt[1].astype(np.uint8))
+
+def toFloat(image):
+  if len(image.shape) == 3:  # to shape (H, W, C)
+    image = image.transpose(0, 1).transpose(1, 2)
+  else:
+    image = image.squeeze(0)
+  return image.to(dtype=torch.float)
 
 def toOutput(bitDepth):
   quant = 1 << bitDepth
@@ -171,11 +178,7 @@ def toOutput(bitDepth):
   else:
     dtype = torch.int32
   def f(image):
-    if len(image.shape) == 3:  # to shape (H, W, C)
-      image = image.transpose(0, 1).transpose(1, 2)
-    else:
-      image = image.squeeze(0)
-    image = image.to(dtype=torch.float) * quant
+    image = image * quant
     image.clamp_(0, quant - 1)
     return image.to(dtype=dtype, device=deviceCPU).numpy()
   return f
@@ -190,19 +193,24 @@ def toTorch(quant, dtype, device):
       return image.unsqueeze(0)
   return f
 
-def writeFile(image, name):
-  if not os.path.exists('download'):
-    os.mkdir('download')
-  Image.fromarray(image).save(name)
+def writeFile(image, name, *args):
+  Image.fromarray(image).save(name, *args)
   return name
 
-def readFile(file):
-  image = Image.open(file)
-  image = np.array(image)
-  if len(image.shape) == 2 or image.shape[2] == 3 or image.shape[2] == 4:
-    return image
-  else:
-    raise RuntimeError('Unknown image format')
+def readFile(nodes=[]):
+  def f(file):
+    image = Image.open(file)
+    image = np.array(image)
+    for n in nodes:
+      n.load *= image.size
+      updateNode(n)
+    if len(nodes):
+      updateNode(nodes[0].parent)
+    if len(image.shape) == 2 or image.shape[2] == 3 or image.shape[2] == 4:
+      return image
+    else:
+      raise RuntimeError('Unknown image format')
+  return f
 
 def extractAlpha(t):
   def f(im):
@@ -239,6 +247,7 @@ def genGetModel(f):
 
   return getModel
 
+BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
 apply = lambda v, f: f(v)
 transpose = lambda x: x.transpose(-1, -2)
 flip = lambda x: x.flip(-1)
@@ -248,43 +257,64 @@ trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, fl
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
 ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs))
 
+def appendFuncs(f, node, funcs):
+  funcs.append(node.bindFunc(f))
+  return node
+
 import runDN
 import runSR
 
 def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', bitDepthIn=8, bitDepthOut=0):
   SRopt = runSR.getOpt(scale, mode, config.ensembleSR)
+  SRop = {'op': 'SR', 'model': mode, 'scale': scale}
   DNopt = runDN.getOpt(dnmodel)
+  DNop = {'op': 'DN', 'model': dnmodel}
   config.getFreeMem(True)
   if not bitDepthOut:
     bitDepthOut = bitDepthIn
   quant = 1 << bitDepthIn
   funcs = []
+  nodes = []
   last = lambda im, _: im
   if source == 'file':
-    funcs.append(readFile)
+    s = Node({'op': source}, learn=0, name='file')
+    f = readFile(nodes)
   elif source == 'buffer':
-    funcs.append(toNumPy(bitDepthIn))
-  funcs.append(toTorch(quant, config.dtype(), config.device()))
+    s = Node({'op': source, 'bits': bitDepthIn})
+    f = toNumPy(bitDepthIn)
+  appendFuncs(f, s, funcs)
+  dtype = config.dtype()
+  node = Node({'op': 'toTorch', 'bits': bitDepthIn, 'dtype': dtype})
+  nodes.append(appendFuncs(toTorch(quant, dtype, config.device()), node, funcs))
   if (dnseq == 'before') and (dnmodel != 'no'):
-    funcs.append(lambda im: runDN.dn(im, DNopt))
+    nodes.append(appendFuncs(lambda im: runDN.dn(im, DNopt), Node(DNop, name='DN'), funcs))
   if (scale > 1):
-    funcs.append(lambda im: runSR.sr(im, SRopt))
+    nodes.append(appendFuncs(lambda im: runSR.sr(im, SRopt), Node(SRop, name='SR'), funcs))
+  load = scale * scale
   if (dnseq == 'after') and (dnmodel != 'no'):
-    funcs.append(lambda im: runDN.dn(im, DNopt))
-  funcs.append(toOutput(bitDepthOut))
+    nodes.append(appendFuncs(lambda im: runDN.dn(im, DNopt), Node(DNop, load, name='DN'), funcs))
+  funcs.append(toFloat)
+  output = toOutput(bitDepthOut)
+  if source != 'buffer':
+    nodes.append(appendFuncs(output, Node({'op': 'toOutput', 'bits': bitDepthOut}, load), funcs))
+  else:
+    out2 = toOutput(8)
+    funcs.append(lambda im: (output(im), out2(im)))
   if source == 'file':
-    last = writeFile
+    n = Node({'op': 'write'}, load, name='write')
+    nodes.append(n)
+    last = n.bindFunc(writeFile)
   elif source == 'buffer':
-    funcs.append(toBuffer(bitDepthOut))
+    nodes.append(appendFuncs(toBuffer(bitDepthOut), Node({'op': 'toBuffer', 'bits': bitDepthOut}, load), funcs))
   def process(im, name=None):
     im = reduce(apply, funcs, im)
     return last(im, name)
-  return process
+  return process, [s] + nodes
 
 def clean():
   torch.cuda.empty_cache()
 
 def dehaze(fileName, outputName):
   t = []
-  im = reduce(apply, [readFile, extractAlpha(t), Dehaze, toOutput(8), mergeAlpha(t)], fileName)
+  im = reduce(apply, [readFile(), extractAlpha(t), Dehaze, toOutput(8), mergeAlpha(t)], fileName)
   return writeFile(im, outputName)

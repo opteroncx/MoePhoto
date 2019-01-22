@@ -2734,3 +2734,7 @@ h3.agileits-title, h2.agileits-title {
 }
 }
 /*-- //responsive-design --*/
+#progress .progress-bar {
+    width: 100%;
+    height: 0.5em
+}

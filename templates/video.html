@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-	<title>Home</title>
+	<title>MoePhoto 视频放大</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<meta name="keywords" content="" />
@@ -34,112 +34,123 @@
 	<!-- banner -->
 	{% autoescape true %} {{header| safe}} {% endautoescape %}
 	<!-- //banner -->
-	<!-- features -->
-	<div class="features">
-		<div class="container">
-			<br>
-			<br>
-			<h2 class="agileits-title">视频放大</h2>
-			<p class="pagile-text">选择一段需要放大的视频！运行完毕请点击保存</p>
-			<div class="features-row">
-				<div class="col-md-6 features-right">
+	<div id="drop_zone">
+		<!-- features -->
+		<div class="features">
+			<div class="container">
+				<br>
+				<br>
+				<h2 class="agileits-title">视频放大</h2>
+				<p class="pagile-text">选择一段需要放大的视频！运行完毕请点击保存</p>
+			</div>
+		</div>
+		<!-- //features -->
+		<!-- Stats -->
+		<div class="news-w3layouts">
+			<div class="container">
+				<hr>
+				<div class="features-grid">
+					<i class="fa fa-cogs" aria-hidden="true"></i> 属性设置
+				</div>
+				<div class="stats-agileinfo agileits-w3layouts">
+					<form id="imgUpload" enctype="multipart/form-data">
+						<br>
+						<div class="col-md-12 settings">
+							<input name="file" type="file" class="inputfile inputfile-6" style='width: 0.1px;height: 0.1px;opacity: 0 !important;overflow: hidden;position: absolute;
+						z-index: -1;'
+							 id="imgInp">
+							<label for="imgInp">
+								<span></span>
+								<strong>
+									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="17" viewBox="0 0 20 17">
+										<path d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z" />
+									</svg> 选择视频&hellip;</strong>
+							</label>
+						</div>
+						<div class="col-md-6 settings">
+							<hr> 放大倍数&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="scale" type="radio" id="scale" value="1" checked>不放大 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="scale" type="radio" id="scale" value="2" checked>2X &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="scale" type="radio" id="scale" value="3">3X &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="scale" type="radio" id="scale" value="4">4X
+							<hr> 超分模型&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="mode" type="radio" id='mode' value="a" checked>动漫 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="mode" type="radio" id='mode' value="p">照片 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						</div>
+						<div class="col-md-6 settings">
+							<hr> 是否降噪&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="denoise" type="radio" id='denoise' value="no" checked>不降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="denoise" type="radio" id='denoise' value="lite5">弱 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="denoise" type="radio" id='denoise' value="lite10">中 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="denoise" type="radio" id='denoise' value="lite15">强 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<hr> 降噪顺序&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="dn_seq" type="radio" id='dn_seq' value="before" checked>先降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="dn_seq" type="radio" id='dn_seq' value="after">后降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						</div>
+						<div class="col-md-12 settings">
+							<hr> 输出编码设置
+							<input name="codec" type="text" id="codec" class="input-sm" value="libx264 -pix_fmt yuv420p">
+						</div>
+
+					</form>
+					<div class="clearfix"></div>
+					<div class="col-md-12">
+						<hr>
+						<button id="RunButton" type="button" class="btn btn-primary btn-lg">开始</button>
+					</div>
+					<div class="col-md-12">
+						<br>
+						<br>
+					</div>
 
 				</div>
-				<div class="col-md-6 features-left">
-					<div id="FG" style="position: relative;top: 64px;left: 20%;">
-						<div id="fountainG_1" class="fountainG"></div>
-						<div id="fountainG_2" class="fountainG"></div>
-						<div id="fountainG_3" class="fountainG"></div>
-						<div id="fountainG_4" class="fountainG"></div>
-						<div id="fountainG_5" class="fountainG"></div>
-						<div id="fountainG_6" class="fountainG"></div>
-						<div id="fountainG_7" class="fountainG"></div>
-						<div id="fountainG_8" class="fountainG"></div>
-					</div>
-					<img id='outputImg' class="img-responsive" src="http://placehold.it/500x120?text=Output+Image" alt="">
-					<div id=downloader>
-						<br>
-						<div class="icon-box col-md-4">
-							<a id='downImg' class="agile-icon" href="#">
-								<i class="fa fa-floppy-o"></i>
-							</a>&nbsp;保存
-						</div>
-					</div>
-				</div>
-				<div class="clearfix"> </div>
 			</div>
 		</div>
 	</div>
-	<!-- //features -->
-	<!-- Stats -->
-	<div class="news-w3layouts">
-		<div class="container">
-			<hr>
-			<div class="features-grid">
-				<i class="fa fa-cogs" aria-hidden="true"></i> 属性设置
-			</div>
-			<div class="stats-agileinfo agileits-w3layouts">
-				<form id="imgUpload" enctype="multipart/form-data">
-					<br>
-					<div class="col-md-12 settings">
-						<input name="file" type="file" class="inputfile inputfile-6" style='width: 0.1px;height: 0.1px;opacity: 0 !important;overflow: hidden;position: absolute;
-						z-index: -1;'
-						 id="imgInp">
-						<label for="imgInp">
-							<span></span>
-							<strong>
-								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="17" viewBox="0 0 20 17">
-									<path d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z" />
-								</svg> 选择视频&hellip;</strong>
-						</label>
-					</div>
-					<div class="col-md-6 settings">
-						<hr> 放大倍数&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="scale" type="radio" id="scale" value="1" checked>不放大 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="scale" type="radio" id="scale" value="2" checked>2X &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="scale" type="radio" id="scale" value="3">3X &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="scale" type="radio" id="scale" value="4">4X
-						<hr> 超分模型&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="mode" type="radio" id='mode' value="a" checked>动漫 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="mode" type="radio" id='mode' value="p">照片 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-					</div>
-					<div class="col-md-6 settings">
-						<hr> 是否降噪&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="denoise" type="radio" id='denoise' value="no" checked>不降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="denoise" type="radio" id='denoise' value="lite5">弱 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="denoise" type="radio" id='denoise' value="lite10">中 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="denoise" type="radio" id='denoise' value="lite15">强 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<hr> 降噪顺序&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="dn_seq" type="radio" id='dn_seq' value="before" checked>先降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="dn_seq" type="radio" id='dn_seq' value="after">后降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-					</div>
-					<div class="col-md-12 settings">
-						<hr> 输出编码设置
-						<input name="codec" type="text" id="codec" class="input-sm" value="libx264 -pix_fmt yuv420p">
-					</div>
-
-				</form>
-				<div class="clearfix"></div>
-				<div class="col-md-12">
-					<hr>
-					<button id="RunButton" type="button" class="btn btn-primary btn-lg">开始</button>
+	<div class="container">
+		<div class="features-row">
+			<div>
+				<div id="FG" style="position: relative;top: 64px;left: 20%;">
+					<div id="fountainG_1" class="fountainG"></div>
+					<div id="fountainG_2" class="fountainG"></div>
+					<div id="fountainG_3" class="fountainG"></div>
+					<div id="fountainG_4" class="fountainG"></div>
+					<div id="fountainG_5" class="fountainG"></div>
+					<div id="fountainG_6" class="fountainG"></div>
+					<div id="fountainG_7" class="fountainG"></div>
+					<div id="fountainG_8" class="fountainG"></div>
 				</div>
-				<div class="col-md-12">
+				<img id='outputImg' class="img-responsive" src="http://placehold.it/1140x120?text=Output+Image" alt="">
+				<div id=downloader>
 					<br>
-					<br>
+					<div class="icon-box col-md-4">
+						<a id='downImg' class="agile-icon" href="#">
+							<i class="fa fa-floppy-o">&nbsp;保存</i>
+						</a>
+					</div>
 				</div>
-
 			</div>
+			<div class="col-md-12">
+				<button id="StopButton" type="button" class="btn btn-cancel btn-lg">中止</button>
+			</div>
+			<div class="clearfix"> </div>
 		</div>
 	</div>
 	<!-- //Stats -->
+	<div class="container" id="progress">
+		<p><span class="message"></span><span class="time"></span></p>
+		<meter class="progress-bar" value=0 max=100></meter>
+		<div class="col-md-12">
+			<br>
+		</div>
+	</div>
 	<!-- footer start here -->
 	{% autoescape true %} {{footer| safe}} {% endautoescape %}
 	<!-- //footer end here -->
 	<!-- js -->
-	<script src={{url_for( 'static', filename="js/jquery.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/jarallax.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/SmoothScroll.min.js " )}}></script>
+	<script src={{url_for( 'static', filename="js/jquery.js" )}}></script>
+	<script src={{url_for( 'static', filename="js/jarallax.js" )}}></script>
+	<script src={{url_for( 'static', filename="js/SmoothScroll.min.js" )}}></script>
 	<script type="text/javascript ">
 		/* init Jarallax */
 		$('.jarallax').jarallax({
@@ -150,8 +161,8 @@
 	</script>
 	<!-- //js -->
 	<!-- text Ticker -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/jquery.totemticker.js " )}}></script>
-	<script type="text/javascript ">
+	<script type="text/javascript" src={{url_for( 'static', filename="js/jquery.totemticker.js" )}}></script>
+	<script type="text/javascript">
 		$(function () {
 			$('#vertical-ticker').totemticker({
 				row_height: '100px',
@@ -165,9 +176,9 @@
 	</script>
 	<!-- //text Ticker -->
 	<!-- start-smooth-scrolling -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/move-top.js " )}}></script>
-	<script type="text/javascript " src={{url_for( 'static', filename="js/easing.js " )}}></script>
-	<script type="text/javascript ">
+	<script type="text/javascript" src={{url_for( 'static', filename="js/move-top.js" )}}></script>
+	<script type="text/javascript" src={{url_for( 'static', filename="js/easing.js" )}}></script>
+	<script type="text/javascript">
 		jQuery(document).ready(function ($) {
 			$(".scroll ").click(function (event) {
 				event.preventDefault();
@@ -194,36 +205,60 @@
 	<!-- Bootstrap core JavaScript
     ================================================== -->
 	<!-- Placed at the end of the document so the pages load faster -->
-	<script src={{url_for( 'static', filename="js/bootstrap.js " )}}></script>
+	<script src={{url_for( 'static', filename="js/bootstrap.js" )}}></script>
 	<script src={{url_for( 'static', filename="js/custom-file-input.js" )}}></script>
+	<script src={{url_for( 'static', filename="js/message.js" )}}></script>
+	<script src={{url_for( 'static', filename="js/progress.js" )}}></script>
 	<script>
 		$(document).ready(function () {
-			function readURL(input) {
-				if (input.files && input.files[0]) {
-					var reader = new FileReader();
-
-					reader.onload = function (e) {
-						$('#inputImg').attr('src', e.target.result);
-					}
-
-					reader.readAsDataURL(input.files[0]);
-				}
-			}
-
-			$("#imgInp ").change(function () {
-				readURL(this);
-			});
+			var dropZone = $('#drop_zone')[0], imgInp = $("#imgInp"), outputImg = $('#outputImg')
+			dropZone.addEventListener('dragover', e => {
+				e.stopPropagation()
+				e.preventDefault()
+				e.dataTransfer.dropEffect = 'copy'
+			}, false)
+			dropZone.addEventListener('drop', e => {
+				e.stopPropagation()
+				e.preventDefault()
+				imgInp[0].files = e.dataTransfer.files
+			}, false)
 
 			var loading = $('#FG');
 			loading.hide();
 
 			var downloader = $('#downloader');
 			downloader.hide();
+			var runButton = $('#RunButton'), stopButton = $('#StopButton').hide(), total = 0
+			const onProgress = gone => `处理中，共${total}帧，已处理${gone}帧`
+			const getResource = path => [path, '?', (new Date()).getTime()].join('')
+			const setPreview = (_ => {
+				let idle = true
+				outputImg.on('load', _ => idle = true)
+				return path => {
+					if (idle) {
+						idle = false
+						outputImg.attr('src', path)
+					}
+				}
+			})()
+			const onMessage = e => {
+				if (!e.data) return
+				data = e.data
+				data.preview ? setPreview(getResource(data.preview)) : void 0
+				data.total ? total = data.total : void 0
+				data.gone ? progress.setMessage(onProgress(data.gone)) : void 0
+			}
+			var progress = bindMessager('/msg', $('#progress'), _ => runButton.attr('disabled', false))
+			progress.messager.on('error', _ => runButton.attr('disabled', true))
+				.on('message', onMessage)
+				.on('open', onMessage)
+			var session = progress.messager.session
 
-			$('#RunButton').bind('click', function () {
+			runButton.bind('click', _ => {
 				var fdata = new FormData(document.querySelector("#imgUpload"));
+				if (!fdata.get('file').size) return progress.setMessage('缺少输入文件')
 				$.ajax({
-					url: "/video_enhance",
+					url: `/video_enhance?session=${session}`,
 					type: "POST",
 					data: fdata,
 					cache: false,
@@ -231,21 +266,45 @@
 					processData: false,
 					async: true,
 					dataType: 'json',
-					beforeSend: function () {
-						loading.show();
+					beforeSend: _ => {
+						loading.show()
+						runButton.hide()
+						stopButton.attr('disabled', false).show()
+						progress.begin('正在处理您的任务')
 					},
-					success: function (result) {
-						console.log(result);
-						loading.hide();
-						downloader.show();
-						let d = new Date()
-						let im = [result.result, '?', d.getTime()].join('')
-						$('#outputImg').attr('src', im)
+					success: result => {
+						console.log(result)
+						loading.hide()
+						downloader.show()
+						runButton.show()
+						stopButton.hide()
+						result = result.result
+						progress.final(`完成啦，处理到第${result[1]}帧`)
+						let im = getResource(result[0])
 						$('#downImg').attr('href', im)
 					},
-
-				});
-			});
+					error: (xhr, status, error) => {
+						console.error(xhr, status, error)
+						progress.final('出错啦')
+						runButton.show()
+						stopButton.hide()
+						loading.hide()
+					}
+				})
+			})
+			stopButton.click(_ => {
+				$.ajax({
+					url: `/stop?session=${session}`,
+					beforeSend: _ => {
+						stopButton.attr('disabled', true)
+						progress.hide().setMessage('等待保存已处理部分')
+					},
+					error: (xhr, status, error) => {
+						console.error(xhr, status, error)
+						progress.final('出错啦')
+					}
+				})
+			})
 		});
 	</script>
 </body>
