@@ -16,11 +16,11 @@
 		}
 	</script>
 	<!-- Custom Theme files -->
-	<link href="{{url_for('static', filename='css/bootstrap.css')}}" type="text/css" rel="stylesheet" media="all">
-	<link href="{{url_for('static', filename='css/style.css')}}" type="text/css" rel="stylesheet" media="all">
-	<link href="{{url_for('static', filename='css/font-awesome.css')}}" rel="stylesheet">
-	<link href="{{url_for('static', filename='css/loader.css')}}" rel="stylesheet">
-	<link href="{{url_for('static', filename='css/component.css')}}" rel="stylesheet">
+	<link href="static/css/bootstrap.css" type="text/css" rel="stylesheet" media="all">
+	<link href="static/css/style.css" type="text/css" rel="stylesheet" media="all">
+	<link href="static/css/font-awesome.css" rel="stylesheet">
+	<link href="static/css/loader.css" rel="stylesheet">
+	<link href="static/css/component.css" rel="stylesheet">
 	<!-- font-awesome icons -->
 	<!-- //Custom Theme files -->
 	<!-- web-fonts -->
@@ -120,9 +120,9 @@
 	{% autoescape true %} {{footer| safe}} {% endautoescape %}
 	<!-- //footer end here -->
 	<!-- js -->
-	<script src={{url_for( 'static', filename="js/jquery.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/jarallax.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/SmoothScroll.min.js " )}}></script>
+	<script src="static/js/jquery.js"></script>
+	<script src="static/js/jarallax.js"></script>
+	<script src="static/js/SmoothScroll.min.js"></script>
 	<script type="text/javascript ">
 		/* init Jarallax */
 		$('.jarallax').jarallax({
@@ -133,7 +133,7 @@
 	</script>
 	<!-- //js -->
 	<!-- text Ticker -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/jquery.totemticker.js " )}}></script>
+	<script type="text/javascript " src="static/js/jquery.totemticker.js"></script>
 	<script type="text/javascript ">
 		$(function () {
 			$('#vertical-ticker').totemticker({
@@ -148,8 +148,8 @@
 	</script>
 	<!-- //text Ticker -->
 	<!-- start-smooth-scrolling -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/move-top.js " )}}></script>
-	<script type="text/javascript " src={{url_for( 'static', filename="js/easing.js " )}}></script>
+	<script type="text/javascript " src="static/js/move-top.js"></script>
+	<script type="text/javascript " src="static/js/easing.js"></script>
 	<script type="text/javascript ">
 		jQuery(document).ready(function ($) {
 			$(".scroll ").click(function (event) {
@@ -172,14 +172,14 @@
 	</script>
 	<!-- //smooth-scrolling-of-move-up -->
 	<!-- Progressive-Effects-Animation-JavaScript -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/numscroller-1.0.js " )}}></script>
+	<script type="text/javascript " src="static/js/numscroller-1.0.js"></script>
 	<!-- //Progressive-Effects-Animation-JavaScript -->
 	<!-- Bootstrap core JavaScript
     ================================================== -->
 	<!-- Placed at the end of the document so the pages load faster -->
-	<script src={{url_for( 'static', filename="js/bootstrap.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/custom-file-input.js" )}}></script>
-	<script src={{url_for( 'static', filename="js/message.js" )}}></script>
+	<script src="static/js/bootstrap.js"></script>
+	<script src="static/js/custom-file-input.js"></script>
+	<script src="static/js/message.js"></script>
 	<script>
 		$(document).ready(function () {
 			function readURL(input) {
@@ -214,7 +214,7 @@
 			downloader.hide();
 			var runButton = $('#RunButton'), session = getSession()
 			const getResource = path => [path, '?', (new Date()).getTime()].join('')
-			const messager = global.newMessager('/msg', session)
+			const messager = newMessager('/msg', session)
 				.on('message', event => {
 					if (!event.data) {
 						messager.abort()

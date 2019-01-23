@@ -16,17 +16,17 @@
 		}
 	</script>
 	<!-- Custom Theme files -->
-	<link href="{{url_for('static', filename='css/bootstrap.css')}}" type="text/css" rel="stylesheet" media="all">
-	<link href="{{url_for('static', filename='css/style.css')}}" type="text/css" rel="stylesheet" media="all">
-	<link href="{{url_for('static', filename='css/font-awesome.css')}}" rel="stylesheet">
-	<link href="{{url_for('static', filename='css/loader.css')}}" rel="stylesheet">
-	<link href="{{url_for('static', filename='css/component.css')}}" rel="stylesheet">
+	<link href="static/css/bootstrap.css" type="text/css" rel="stylesheet" media="all">
+	<link href="static/css/style.css" type="text/css" rel="stylesheet" media="all">
+	<link href="static/css/font-awesome.css" rel="stylesheet">
+	<link href="static/css/loader.css" rel="stylesheet">
+	<link href="static/css/component.css" rel="stylesheet">
 	<!-- font-awesome icons -->
 	<!-- //Custom Theme files -->
 	<!-- web-fonts -->
 	<link href="http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:200,300,400,700" rel="stylesheet">
 	<link href='http://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900,900italic'
-	    rel='stylesheet' type='text/css'>
+	 rel='stylesheet' type='text/css'>
 	<!-- //web-fonts -->
 </head>
 
@@ -57,9 +57,9 @@
 	{% autoescape true %} {{footer| safe}} {% endautoescape %}
 	<!-- //footer end here -->
 	<!-- js -->
-	<script src={{url_for( 'static', filename="js/jquery.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/jarallax.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/SmoothScroll.min.js " )}}></script>
+	<script src="static/js/jquery.js"></script>
+	<script src="static/js/jarallax.js"></script>
+	<script src="static/js/SmoothScroll.min.js"></script>
 	<script type="text/javascript ">
 		/* init Jarallax */
 		$('.jarallax').jarallax({
@@ -70,7 +70,7 @@
 	</script>
 	<!-- //js -->
 	<!-- text Ticker -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/jquery.totemticker.js " )}}></script>
+	<script type="text/javascript " src="static/js/jquery.totemticker.js"></script>
 	<script type="text/javascript ">
 		$(function () {
 			$('#vertical-ticker').totemticker({
@@ -85,8 +85,8 @@
 	</script>
 	<!-- //text Ticker -->
 	<!-- start-smooth-scrolling -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/move-top.js " )}}></script>
-	<script type="text/javascript " src={{url_for( 'static', filename="js/easing.js " )}}></script>
+	<script type="text/javascript " src="static/js/move-top.js"></script>
+	<script type="text/javascript " src="static/js/easing.js"></script>
 	<script type="text/javascript ">
 		jQuery(document).ready(function ($) {
 			$(".scroll ").click(function (event) {
@@ -109,13 +109,13 @@
 	</script>
 	<!-- //smooth-scrolling-of-move-up -->
 	<!-- Progressive-Effects-Animation-JavaScript -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/numscroller-1.0.js " )}}></script>
+	<script type="text/javascript " src="static/js/numscroller-1.0.js"></script>
 	<!-- //Progressive-Effects-Animation-JavaScript -->
 	<!-- Bootstrap core JavaScript
     ================================================== -->
 	<!-- Placed at the end of the document so the pages load faster -->
-	<script src={{url_for( 'static', filename="js/bootstrap.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/custom-file-input.js" )}}></script>
+	<script src="static/js/bootstrap.js"></script>
+	<script src="static/js/custom-file-input.js"></script>
 </body>
 
 </html>

@@ -12,6 +12,8 @@ __pycache__
 /batch_SR/
 /upload/
 /MoePhoto*.exe
+/templates/deblur.html
+/templates/lab.html
 
 # ignore configuration overriding
 /config.py
