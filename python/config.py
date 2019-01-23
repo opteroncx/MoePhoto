@@ -40,8 +40,8 @@ class Config():
       readgpu.init()
     except: pass
     if self.cuda and self.deviceId >= torch.cuda.device_count():
-      self.deviceId = 0
       warn(RuntimeWarning('GPU #{} not available, using GPU #0 instead'.format(self.deviceId)))
+      self.deviceId = 0
 
   def getConfig(self):
     return tuple(map(transform(self), ('crop_sr', 'crop_dn', 'crop_dns')))
@@ -73,22 +73,18 @@ class Config():
       if self.maxMemoryUsage > 0:
         free = min(self.freeRam - 2**28, self.maxMemoryUsage * 2**20 - memUsed)
       else:
-        free = self.freeRam
+        free = self.freeRam - 2**28
     return free
 
   def dtype(self):
-    dtype = torch.half if self.cuda and self.fp16 else torch.float
-    return dtype
+    return torch.half if self.cuda and self.fp16 else torch.float
 
   def device(self):
     return torch.device('cuda:{}'.format(self.deviceId) if self.cuda else 'cpu')
 
   def getRunType(self):
     if self.cuda:
-      if self.fp16:
-        return 2
-      else:
-        return 1
+      return 2 if self.fp16 else 1
     else:
       return 0
 

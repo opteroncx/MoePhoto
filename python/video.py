@@ -123,7 +123,7 @@ def SR_vid(video, begin, opt={}):
   root.reset().trace(0)
   videoName = config.getPath()
   outputPath = outDir + '/' + videoName
-  previewPath = outDir + '/preview.png'
+  previewPath = outDir + '/.preview.png'
   commandIn = [
     ffmpegPath,
     '-i', video,

@@ -20,6 +20,7 @@
       }
     const hide = _ => {
       intervalId && clearInterval(intervalId)
+      intervalId = 0
       remain = 0
       timeBox.hide()
       bar.hide()
@@ -53,10 +54,9 @@
         return typeof idleFunc === 'function' ? idleFunc(): void 0
       } else {
         let data = event.data
-        if (data) progress.setMessage(data)
-        if (data.eta) {
-          let eta = +data.eta
-          progress.setStatus(eta)
+        if (data) {
+          progress.setMessage(data)
+          if (data.eta) progress.setStatus(+data.eta)
         }
       }
     }

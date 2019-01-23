@@ -178,7 +178,7 @@ def downloader(filename):
   dirpath = os.path.join(app.root_path, outDir)
   return send_from_directory(dirpath, filename, as_attachment=True)
 
-app.route("/{}/preview.png".format(outDir))(lambda: Response(current.previewIm, mimetype='image/png'))
+app.route("/{}/.preview.png".format(outDir))(lambda: Response(current.previewIm, mimetype='image/png'))
 
 @app.route('/video_enhance', methods=[
   'POST'])

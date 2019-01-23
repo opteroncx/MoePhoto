@@ -2,15 +2,16 @@
 <html lang="en">
 
 <head>
-	<title>Lock</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<link href="css/bootstrap.css" type="text/css" rel="stylesheet" media="all">
-	<link href="css/style.css" type="text/css" rel="stylesheet" media="all">
-	<link href="css/font-awesome.css" rel="stylesheet">
-	<link href="css/loader.css" rel="stylesheet">
-	<link href="css/component.css" rel="stylesheet">
+  <title>Lock</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <link href="css/bootstrap.css" type="text/css" rel="stylesheet" media="all">
+  <link href="css/style.css" type="text/css" rel="stylesheet" media="all">
+  <link href="css/font-awesome.css" rel="stylesheet">
+  <link href="css/loader.css" rel="stylesheet">
+  <link href="css/component.css" rel="stylesheet">
 </head>
+
 <body>
   <div class="container" id="progress">
     <p><span class="message"></span><span class="time"></span></p>
@@ -25,13 +26,22 @@
   <script>
     $(document).ready(_ => {
       var params = new URLSearchParams(location.search)
+      const onProgress = gone => `锁定中，共${duration}秒，已经过${gone}秒`
+      const onMessage = e => {
+        if (!e.data) return
+        data = e.data
+        data.total ? total = data.total : void 0
+        data.gone ? progress.setMessage(onProgress(data.gone)) : void 0
+      }
       var duration = params.get('duration'), session = params.get('session'),
         progress = bindMessager('/msg', $('#progress'), void 0, session)
+      progress.messager.on('message', onMessage)
+        .on('open', onMessage)
       duration && session && $.ajax({
         url: '/lock',
         data: { duration, session },
-				cache: false,
-        beforeSend: _ => progress.begin('处理中'),
+        cache: false,
+        beforeSend: _ => progress.begin('正在处理您的任务'),
         success: _ => progress.final('完成啦'),
         error: (xhr, status, error) => {
           console.error(xhr, status, error)
@@ -41,4 +51,5 @@
     })
   </script>
 </body>
+
 </html>
