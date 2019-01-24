@@ -1,4 +1,5 @@
 # pylint: disable=E1101
+import time
 from functools import reduce
 import itertools
 import torch
@@ -7,9 +8,12 @@ import numpy as np
 from PIL import Image
 from dehaze import Dehaze
 from config import config
+from defaultConfig import defaultConfig
 from progress import Node, updateNode
 
 deviceCPU = torch.device('cpu')
+outDir = defaultConfig['outDir'][0]
+genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
 
 """unused
 def check_rbga(im):
@@ -194,6 +198,8 @@ def toTorch(quant, dtype, device):
   return f
 
 def writeFile(image, name, *args):
+  if not name:
+    name = genNameByTime()
   Image.fromarray(image).save(name, *args)
   return name
 
@@ -215,7 +221,7 @@ def readFile(nodes=[]):
 def extractAlpha(t):
   def f(im):
     if im.shape[2] == 4:
-      t.append(im[:,:,3])
+      t['im'] = im[:,:,3]
       return im[:,:,:3]
     else:
       return im
@@ -226,7 +232,7 @@ def mergeAlpha(t):
     if len(t):
       image = np.empty((*im.shape[:2], 4), dtype=np.uint8)
       image[:,:,:3] = im
-      image[:,:,3] = t[0]
+      image[:,:,3] = t['im']
     return image
   return f
 
@@ -248,6 +254,8 @@ def genGetModel(f):
   return getModel
 
 BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
+BGR2RGBTorch = lambda im: torch.stack([im[2], im[1], im[0]])
+toOutput8 = toOutput(8)
 apply = lambda v, f: f(v)
 transpose = lambda x: x.transpose(-1, -2)
 flip = lambda x: x.flip(-1)
@@ -257,28 +265,38 @@ trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, fl
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
 ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs))
 
-def appendFuncs(f, node, funcs):
-  funcs.append(node.bindFunc(f))
+def appendFuncs(f, node, funcs, bind=True):
+  funcs.append(node.bindFunc(f) if bind else f)
   return node
 
 import runDN
 import runSR
 
-def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', bitDepthIn=8, bitDepthOut=0):
-  SRopt = runSR.getOpt(scale, mode, config.ensembleSR)
-  SRop = {'op': 'SR', 'model': mode, 'scale': scale}
-  DNopt = runDN.getOpt(dnmodel)
-  DNop = {'op': 'DN', 'model': dnmodel}
+def genProcess(opt, context=None, source='file'):
+  scale = opt[0] if opt[0] else 1
+  mode = opt[1] if opt[1] else 'a'
+  dnmodel = opt[2] if opt[2] else 'no'
+  dnseq = opt[3] if opt[3] else 'before'
+  bitDepthIn = opt[4] if len(opt) > 4 and opt[4] else 8
+  bitDepthOut = opt[5] if len(opt) > 5 else bitDepthIn
+  if scale > 1:
+    SRopt = runSR.getOpt(scale, mode, config.ensembleSR)
+    SRop = {'op': 'SR', 'model': mode, 'scale': scale}
+  if dnmodel != 'no':
+    DNopt = runDN.getOpt(dnmodel)
+    DNop = {'op': 'DN', 'model': dnmodel}
   config.getFreeMem(True)
   if not bitDepthOut:
     bitDepthOut = bitDepthIn
   quant = 1 << bitDepthIn
   funcs = []
   nodes = []
+  load = 1
   last = lambda im, _: im
   if source == 'file':
     s = Node({'op': source}, learn=0, name='file')
     f = readFile(nodes)
+    funcs.append(context.getFile)
   elif source == 'buffer':
     s = Node({'op': source, 'bits': bitDepthIn})
     f = toNumPy(bitDepthIn)
@@ -288,9 +306,13 @@ def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', 
   nodes.append(appendFuncs(toTorch(quant, dtype, config.device()), node, funcs))
   if (dnseq == 'before') and (dnmodel != 'no'):
     nodes.append(appendFuncs(lambda im: runDN.dn(im, DNopt), Node(DNop, name='DN'), funcs))
+  load *= scale * scale
   if (scale > 1):
+    if source == 'buffer' and mode == 'gan':
+      nodes.append(appendFuncs(BGR2RGBTorch, Node({'op': 'Channel'}), funcs))
     nodes.append(appendFuncs(lambda im: runSR.sr(im, SRopt), Node(SRop, name='SR'), funcs))
-  load = scale * scale
+    if source == 'buffer' and mode == 'gan':
+      nodes.append(appendFuncs(BGR2RGBTorch, Node({'op': 'Channel'}, load), funcs))
   if (dnseq == 'after') and (dnmodel != 'no'):
     nodes.append(appendFuncs(lambda im: runDN.dn(im, DNopt), Node(DNop, load, name='DN'), funcs))
   funcs.append(toFloat)
@@ -298,8 +320,7 @@ def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', 
   if source != 'buffer':
     nodes.append(appendFuncs(output, Node({'op': 'toOutput', 'bits': bitDepthOut}, load), funcs))
   else:
-    out2 = toOutput(8)
-    funcs.append(lambda im: (output(im), out2(im)))
+    funcs.append(lambda im: (output(im), toOutput8(im)))
   if source == 'file':
     n = Node({'op': 'write'}, load, name='write')
     nodes.append(n)
@@ -314,7 +335,10 @@ def genProcess(scale=1, mode='a', dnmodel='no', dnseq='before', source='image', 
 def clean():
   torch.cuda.empty_cache()
 
-def dehaze(fileName, outputName):
-  t = []
-  im = reduce(apply, [readFile(), extractAlpha(t), Dehaze, toOutput(8), mergeAlpha(t)], fileName)
-  return writeFile(im, outputName)
+def dehaze(context):
+  t = {}
+  funcs = [context.getFile, readFile(), extractAlpha(t), Dehaze, toOutput(8), mergeAlpha(t)]
+  def f(size, outputName=None):
+    im = reduce(apply, funcs, size)
+    return writeFile(im, outputName)
+  return f

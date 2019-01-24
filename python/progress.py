@@ -17,7 +17,8 @@ def updateNode(node):
   node.ett = node.total * s
   node.eta = (node.total - node.gone) * s
 slideAverage = lambda coef: lambda op, sample: coef * op.weight + (1 - coef) * sample
-setCallback = lambda node, callback: recurse(lambda node: node.setCallback(callback))(node)
+setNodeCallback = lambda node, callback, any: node.setCallback(callback) if any or hasattr(node, 'name') else None
+setCallback = lambda node, callback, all=False: recurse(lambda node: setNodeCallback(node, callback, all))(node)
 getOpKey = lambda op: hash(frozenset(op.items()))
 NullFunc = lambda *args: None
 
@@ -56,7 +57,6 @@ class Node():
     self.learn = learn
     self.callback = callback
     self.nodes = []
-    self.running = False
     key = getOpKey(op)
     self.op = key
     if name:

@@ -16,11 +16,11 @@
 		}
 	</script>
 	<!-- Custom Theme files -->
-	<link href="{{url_for('static', filename='css/bootstrap.css')}}" type="text/css" rel="stylesheet" media="all">
-	<link href="{{url_for('static', filename='css/style.css')}}" type="text/css" rel="stylesheet" media="all">
-	<link href="{{url_for('static', filename='css/font-awesome.css')}}" rel="stylesheet">
-	<link href="{{url_for('static', filename='css/loader.css')}}" rel="stylesheet">
-	<link href="{{url_for('static', filename='css/component.css')}}" rel="stylesheet">
+	<link href="static/css/bootstrap.css" type="text/css" rel="stylesheet" media="all">
+	<link href="static/css/style.css" type="text/css" rel="stylesheet" media="all">
+	<link href="static/css/font-awesome.css" rel="stylesheet">
+	<link href="static/css/loader.css" rel="stylesheet">
+	<link href="static/css/component.css" rel="stylesheet">
 	<!-- font-awesome icons -->
 	<!-- //Custom Theme files -->
 	<!-- web-fonts -->
@@ -46,23 +46,43 @@
 					<br> 系统状态</h4>
 				<p> CPU物理核心:{{cpu_count_phy}} </p>
 				<p> CPU逻辑核心:{{cpu_count_log}} </p>
+				<p> CPU频率:{{cpu_freq}} MHz</p>
 				<p> 系统总内存:{{mem_total}} MB</p>
 				<p> 系统空闲内存:{{mem_free}} MB</p>
-				<p> 显卡型号:{{ginfo[0]}}</p>
-				<p> 显卡显存空余:{{ginfo[1]}} MB</p>
-				<p> 显卡CUDA能力:{{ginfo[2]}}</p>
+				<p> 总工作硬盘空间:{{disk_total}} MB</p>
+				<p> 可用工作硬盘空间:{{disk_free}} MB</p>
+				<p> Python版本:{{python}}</p>
+				<p> PyTorch版本:{{torch}}</p>
+				<ul>
+					{% for gpu in gpus %}
+					<li>
+						<p> 显卡型号:{{gpu['name']}}</p>
+						<p> 显卡CUDA能力:{{gpu['capability']}}</p>
+						<p> 处理器数量:{{gpu['total_memory']}}</p>
+						<p> 总显存:{{gpu['total_memory']}} MB</p>
+						<p> 空余显存:<span class="freeGPUMemory"></span> MB</p>
+					</li>
+					{% endfor %}
+				</ul>
 			</div>
 			<div class="clearfix"> </div>
 		</div>
 	</div>
 	<!-- //about -->
+	<div class="container" id="progress">
+		<p><span class="message"></span><span class="time"></span></p>
+		<meter class="progress-bar" value=0 max=100></meter>
+		<div class="col-md-12">
+			<br>
+		</div>
+	</div>
 	<!-- footer start here -->
 	{% autoescape true %} {{footer| safe}} {% endautoescape %}
 	<!-- //footer end here -->
 	<!-- js -->
-	<script src={{url_for( 'static', filename="js/jquery.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/jarallax.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/SmoothScroll.min.js " )}}></script>
+	<script src="static/js/jquery.js"></script>
+	<script src="static/js/jarallax.js"></script>
+	<script src="static/js/SmoothScroll.min.js"></script>
 	<script type="text/javascript ">
 		/* init Jarallax */
 		$('.jarallax').jarallax({
@@ -73,7 +93,7 @@
 	</script>
 	<!-- //js -->
 	<!-- text Ticker -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/jquery.totemticker.js " )}}></script>
+	<script type="text/javascript " src="static/js/jquery.totemticker.js"></script>
 	<script type="text/javascript ">
 		$(function () {
 			$('#vertical-ticker').totemticker({
@@ -88,8 +108,8 @@
 	</script>
 	<!-- //text Ticker -->
 	<!-- start-smooth-scrolling -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/move-top.js " )}}></script>
-	<script type="text/javascript " src={{url_for( 'static', filename="js/easing.js " )}}></script>
+	<script type="text/javascript " src="static/js/move-top.js"></script>
+	<script type="text/javascript " src="static/js/easing.js"></script>
 	<script type="text/javascript ">
 		jQuery(document).ready(function ($) {
 			$(".scroll ").click(function (event) {
@@ -112,14 +132,37 @@
 	</script>
 	<!-- //smooth-scrolling-of-move-up -->
 	<!-- Progressive-Effects-Animation-JavaScript -->
-	<script type="text/javascript " src={{url_for( 'static', filename="js/numscroller-1.0.js " )}}></script>
+	<script type="text/javascript " src="static/js/numscroller-1.0.js"></script>
 	<!-- //Progressive-Effects-Animation-JavaScript -->
 	<!-- Bootstrap core JavaScript
     ================================================== -->
 	<!-- Placed at the end of the document so the pages load faster -->
-	<script src={{url_for( 'static', filename="js/bootstrap.js " )}}></script>
-	<script src={{url_for( 'static', filename="js/custom-file-input.js" )}}></script>
-
+	<script src="static/js/bootstrap.js"></script>
+	<script src="static/js/custom-file-input.js"></script>
+	<script src="static/js/message.js"></script>
+	<script src="static/js/progress.js"></script>
+	<script>
+		$(document).ready(_ => {
+			var progress = bindMessager('/msg', $('#progress'))
+			var session = progress.messager.session, GPUfrees = $('.freeGPUMemory')
+			session && $.ajax({
+				url: '/systemInfo',
+				data: { session },
+				cache: false,
+				dataType: 'json',
+				beforeSend: _ => progress.begin('正在处理您的任务'),
+				success: res => {
+					freeMems = res.result
+					progress.final('空闲中')
+					GPUfrees.each((i, elem) => elem.innerHTML = freeMems[i])
+				},
+				error: (xhr, status, error) => {
+					console.error(xhr, status, error)
+					progress.final('出错啦')
+				}
+			})
+		})
+	</script>
 </body>
 
 </html>

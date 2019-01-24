@@ -30,7 +30,6 @@
       const onMessage = e => {
         if (!e.data) return
         data = e.data
-        data.total ? total = data.total : void 0
         data.gone ? progress.setMessage(onProgress(data.gone)) : void 0
       }
       var duration = params.get('duration'), session = params.get('session'),
