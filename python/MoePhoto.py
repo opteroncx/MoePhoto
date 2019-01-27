@@ -11,6 +11,8 @@ import imageProcess
 from video import SR_vid, batchSR
 from config import config
 
+from slomo_run import run_slomo 
+
 app = Flask(__name__, root_path='.')
 host = '127.0.0.1'
 port = 2333
@@ -90,6 +92,21 @@ def video_enhance():
   path ='{}/{}'.format(upload, vidfile.filename)
   vidfile.save(path)
   return enhance(SR_vid, path, int(scale), mode, denoise, dnseq, codec)
+
+@app.route('/video_hifps', methods=[
+  'POST'])
+def video_hifps():
+  infps = request.form['infps']
+  sf = request.form['sf']
+  out_fps = int(infps)*int(sf)
+  vidfile = request.files['file']
+  upload = 'upload'
+  if not os.path.exists(upload):
+    os.mkdir(upload)
+  path ='{}/{}'.format(upload, vidfile.filename)
+  vidfile.save(path)
+  return run_slomo(path,out_fps,sf)
+
 
 @app.route('/batch_enhance', methods=['POST'])
 def batch_enhance():

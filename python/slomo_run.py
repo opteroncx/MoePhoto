@@ -16,78 +16,35 @@ import slomo_vid_loader
 import platform
 from tqdm import tqdm
 
-# For parsing commandline arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("--ffmpeg_dir", type=str, default="", help='path to ffmpeg.exe')
-parser.add_argument("--video", type=str, required=True, help='path of video to be converted')
-parser.add_argument("--checkpoint", type=str, required=True, help='path of checkpoint for pretrained model')
-parser.add_argument("--fps", type=float, default=30, help='specify fps of output video. Default: 30.')
-parser.add_argument("--sf", type=int, required=True, help='specify the slomo factor N. This will increase the frames by Nx. Example sf=2 ==> 2x frames')
-parser.add_argument("--batch_size", type=int, default=1, help='Specify batch size for faster conversion. This will depend on your cpu/gpu memory. Default: 1')
-parser.add_argument("--output", type=str, default="output.mp4", help='Specify output file name. Default: output.mp4')
-args = parser.parse_args()
 
-def check():
-    """
-    Checks the validity of commandline arguments.
-
-    Parameters
-    ----------
-        None
-
-    Returns
-    -------
-        error : string
-            Error message if error occurs otherwise blank string.
-    """
-
-
+def check(sf,batch_size,fps):
     error = ""
-    if (args.sf < 2):
+    if (sf < 2):
         error = "Error: --sf/slomo factor has to be atleast 2"
-    if (args.batch_size < 1):
+    if (batch_size < 1):
         error = "Error: --batch_size has to be atleast 1"
-    if (args.fps < 1):
+    if (fps < 1):
         error = "Error: --fps has to be atleast 1"
     return error
 
 def extract_frames(video, outDir):
-    """
-    Converts the `video` to images.
-
-    Parameters
-    ----------
-        video : string
-            full path to the video file.
-        outDir : string
-            path to directory to output the extracted images.
-
-    Returns
-    -------
-        error : string
-            Error message if error occurs otherwise blank string.
-    """
-
-
-    error = ""
-    print('{} -i {} -vsync 0 -qscale:v 2 {}/%06d.jpg'.format(os.path.join(args.ffmpeg_dir, "ffmpeg.exe"), video, outDir))
+    error = ""    
     retn = os.system('.\\ffmpeg\\bin\\ffmpeg -i {} -vsync 0 -qscale:v 2 {}/%06d.jpg'.format(video, outDir))
     if retn:
         error = "Error converting file:{}. Exiting.".format(video)
     return error
 
-def create_video(dir):
-    error = ""
-    print('{} -r {} -i {}/%d.jpg -qscale:v 2 {}'.format(os.path.join(args.ffmpeg_dir, "ffmpeg.exe"), args.fps, dir, args.output))
-    retn = os.system('.\\ffmpeg\\bin\\ffmpeg -r {} -i {}/%d.jpg -crf 17 -vcodec libx264 {}'.format(args.fps, dir, args.output))
+def create_video(dir,fps,output):
+    error = ""    
+    retn = os.system('.\\ffmpeg\\bin\\ffmpeg -r {} -i {}/%d.jpg -crf 17 -vcodec libx264 {}'.format(fps, dir, output))
     if retn:
         error = "Error creating output video. Exiting."
     return error
 
-
-def main():
+def run_slomo(vid_path,fps,sf,out_base='./download/',batch_size=1,model_path = './model/slomo/SuperSloMo.ckpt'):
     # Check if arguments are okay
-    error = check()
+    output = out_base+os.path.split(vid_path)[-1]
+    error = check(sf,batch_size,fps)
     if error:
         print(error)
         exit(1)
@@ -110,7 +67,7 @@ def main():
     outputPath     = os.path.join(extractionDir, "output")
     os.mkdir(extractionPath)
     os.mkdir(outputPath)
-    error = extract_frames(args.video, extractionPath)
+    error = extract_frames(vid_path, extractionPath)
     if error:
         print(error)
         exit(1)
@@ -137,7 +94,7 @@ def main():
 
     # Load data
     videoFrames = slomo_vid_loader.Video(root=extractionPath, transform=transform)
-    videoFramesloader = torch.utils.data.DataLoader(videoFrames, batch_size=args.batch_size, shuffle=False)
+    videoFramesloader = torch.utils.data.DataLoader(videoFrames, batch_size=batch_size, shuffle=False)
 
     # Initialize model
     flowComp = model.UNet(6, 4)
@@ -152,7 +109,7 @@ def main():
     flowBackWarp = model.backWarp(videoFrames.dim[0], videoFrames.dim[1], device)
     flowBackWarp = flowBackWarp.to(device)
 
-    dict1 = torch.load(args.checkpoint, map_location='cpu')
+    dict1 = torch.load(model_path, map_location='cpu')
     ArbTimeFlowIntrp.load_state_dict(dict1['state_dictAT'])
     flowComp.load_state_dict(dict1['state_dictFC'])
 
@@ -170,13 +127,13 @@ def main():
             F_1_0 = flowOut[:,2:,:,:]
 
             # Save reference frames in output folder
-            for batchIndex in range(args.batch_size):
-                (TP(frame0[batchIndex].detach())).resize(videoFrames.origDim, Image.BILINEAR).save(os.path.join(outputPath, str(frameCounter + args.sf * batchIndex) + ".jpg"))
+            for batchIndex in range(batch_size):
+                (TP(frame0[batchIndex].detach())).resize(videoFrames.origDim, Image.BILINEAR).save(os.path.join(outputPath, str(frameCounter + sf * batchIndex) + ".jpg"))
             frameCounter += 1
 
             # Generate intermediate frames
-            for intermediateIndex in range(1, args.sf):
-                t = intermediateIndex / args.sf
+            for intermediateIndex in range(1, sf):
+                t = intermediateIndex / sf
                 temp = -t * (1 - t)
                 fCoeff = [temp, t * t, (1 - t) * (1 - t), temp]
 
@@ -201,15 +158,15 @@ def main():
                 Ft_p = (wCoeff[0] * V_t_0 * g_I0_F_t_0_f + wCoeff[1] * V_t_1 * g_I1_F_t_1_f) / (wCoeff[0] * V_t_0 + wCoeff[1] * V_t_1)
 
                 # Save intermediate frame
-                for batchIndex in range(args.batch_size):
-                    (TP(Ft_p[batchIndex].cpu().detach())).resize(videoFrames.origDim, Image.BILINEAR).save(os.path.join(outputPath, str(frameCounter + args.sf * batchIndex) + ".jpg"))
+                for batchIndex in range(batch_size):
+                    (TP(Ft_p[batchIndex].cpu().detach())).resize(videoFrames.origDim, Image.BILINEAR).save(os.path.join(outputPath, str(frameCounter + sf * batchIndex) + ".jpg"))
                 frameCounter += 1
             
             # Set counter accounting for batching of frames
-            frameCounter += args.sf * (args.batch_size - 1)
+            frameCounter += sf * (batch_size - 1)
 
     # Generate video from interpolated frames
-    create_video(outputPath)
+    create_video(outputPath,fps,output)
 
     # Remove temporary files
     rmtree(extractionDir)
@@ -217,4 +174,4 @@ def main():
     exit(0)
     
 if __name__ == '__main__':
-    main()
+    print('run slomo/hi-fps')
