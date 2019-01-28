@@ -6,7 +6,8 @@ os.environ['TK_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tk8.6'
 # Dependencies are automatically detected, but it might need fine tuning.
 
 # include files
-ifiles = ['./models.pyc',
+ifiles = [
+        './models.pyc',
         './dehaze.pyc',
         './config.pyc',
         './imageProcess.pyc',
@@ -14,9 +15,16 @@ ifiles = ['./models.pyc',
         './runDN.pyc',
         './runSR.pyc',
         './video.pyc',
+        './gan.pyc',
+        './moe_utils.pyc',
+        './mt_download.pyc',
+        './slomo.pyc',
+        './slomo_run.pyc',
+        './slomo_vid_loader.pyc',        
         './templates',
         './static',
         './model',
+        './ffmpeg',
         './mkl_intel_thread.dll',
         './libiomp5md.dll',
         './libiomp5md.pdb',
@@ -53,7 +61,7 @@ exe = Executable(script='./python/MoePhoto.py', base = base, icon='logo3.ico')
 
 
 setup(  name = 'MoePhoto',
-        version = '3.0',
+        version = '4.0',
         description = 'May-workshop',
         options = {'build_exe': build_exe_options},
         executables = [exe])
