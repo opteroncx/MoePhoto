@@ -19,7 +19,7 @@ __pycache__
 /python/tester.py
 # ignore configuration overriding
 /config.py
-
+/tmpSuperSloMo/
 
 # ignore old checkpoints
 /model/a2/model.pth

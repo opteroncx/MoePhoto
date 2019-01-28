@@ -105,7 +105,7 @@ def video_hifps():
     os.mkdir(upload)
   path ='{}/{}'.format(upload, vidfile.filename)
   vidfile.save(path)
-  return run_slomo(path,out_fps,sf)
+  return run_slomo(path,out_fps,int(sf))
 
 
 @app.route('/batch_enhance', methods=['POST'])
@@ -135,6 +135,7 @@ def image_dehaze():
 
 routes = [
   ('/video', 'video.html', '视频放大', None),
+  ('/video_hifps', 'video_hifps.html', '视频插帧', None),
   ('/batch', 'batch.html', '批量放大', None),
   ('/ednoise', 'ednoise.html', '风格化', None),
   ('/deblur', 'deblur.html', '去模糊', None),
