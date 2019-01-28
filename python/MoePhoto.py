@@ -105,7 +105,8 @@ def video_hifps():
     os.mkdir(upload)
   path ='{}/{}'.format(upload, vidfile.filename)
   vidfile.save(path)
-  return run_slomo(path,out_fps,int(sf))
+  result = run_slomo(path,out_fps,int(sf))
+  return jsonify(result=result)
 
 
 @app.route('/batch_enhance', methods=['POST'])

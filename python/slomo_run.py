@@ -16,7 +16,6 @@ import slomo_vid_loader
 import platform
 from tqdm import tqdm
 
-
 def check(sf,batch_size,fps):
     error = ""
     if (sf < 2):
@@ -41,9 +40,13 @@ def create_video(dir,fps,output):
         error = "Error creating output video. Exiting."
     return error
 
+def combine(path_v,path_a,output):
+    os.system('.\\ffmpeg\\bin\\ffmpeg -i ' + path_v +' -i '+path_a+' '+output)
+
 def run_slomo(vid_path,fps,sf,out_base='./download/',batch_size=1,model_path = './model/slomo/SuperSloMo.ckpt'):
     # Check if arguments are okay
     output = out_base+os.path.split(vid_path)[-1]
+    output_tmp = out_base+'tmp_'+os.path.split(vid_path)[-1]
     error = check(sf,batch_size,fps)
     if error:
         print(error)
@@ -166,12 +169,12 @@ def run_slomo(vid_path,fps,sf,out_base='./download/',batch_size=1,model_path = '
             frameCounter += sf * (batch_size - 1)
 
     # Generate video from interpolated frames
-    create_video(outputPath,fps,output)
-
+    create_video(outputPath,fps,output_tmp)
+    combine(output_tmp,vid_path,output)
     # Remove temporary files
     rmtree(extractionDir)
-
-    exit(0)
+    return output
+    # exit(0)
     
 if __name__ == '__main__':
     print('run slomo/hi-fps')
