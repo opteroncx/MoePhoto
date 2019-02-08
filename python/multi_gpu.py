@@ -21,17 +21,21 @@ class DatasetFromImage(data.Dataset):
         self.trans = transforms.Compose([
             transforms.ToTensor(),
         ])
-        h, w = Image.open(self.ims[0]).size()
+        tim = Image.open(os.path.join(file_path, self.ims[0]))
+        h, w = tim.size
         self.trans_bic = transforms.Compose([
             transforms.Resize((h*scale, w*scale), Image.BICUBIC),
+            transforms.ToTensor()
         ])
 
     def __getitem__(self, index):
-        data = Image.open(self.file_path+self.ims[index])
+        data = Image.open(os.path.join(self.file_path, self.ims[index]))
         bic_im = self.trans_bic(data)
         data = data.convert("YCbCr")
         data_y, cb, cr = data.split()
         data = self.trans(data_y)
+        # batch must contain tensors, numbers, dicts or lists;
+        # data_dict = {'bic':bic_im,'name':self.ims[index]}
         return data, bic_im, self.ims[index]
 
     def __len__(self):
@@ -117,7 +121,6 @@ if __name__ == '__main__':
     outpath = './temp/vsr/'
     if not os.path.exists(outpath):
         os.makedirs(outpath)
-    model = model_convert('./model/a2/model_new.pth',2,gpus)
+    model = model_convert('./model/a2/model_new.pth', 2, gpus)
     print('load success')
-    # multi_gpu_run(model,inpath,outpath,gpus)
-
+    multi_gpu_run(model, inpath, outpath, gpus)
