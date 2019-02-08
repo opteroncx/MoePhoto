@@ -65,7 +65,7 @@ def model_convert(path, scale, gpus=1):
         weights = torch.load(path)
         # saved_state = weights.state_dict()
         model.load_state_dict(weights)
-        # multi gpu loader
+        # multi gpu loader之前存的模型好像去掉了这部分只有权重
         # if loadmultiGPU:
         #     from collections import OrderedDict
         #     new_state_dict = OrderedDict()
