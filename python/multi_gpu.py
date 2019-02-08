@@ -100,7 +100,7 @@ def multi_gpu_run(model, im_path, outpath, gpus):
         y = batch[0]
         bicubic = batch[1]
         names = batch[2]
-
+        # print(y)
         if torch.cuda.is_available():
             y = y.cuda()
         else:
@@ -108,7 +108,7 @@ def multi_gpu_run(model, im_path, outpath, gpus):
         im_h_y = model(y)
         print(im_h_y.shape)
         im_h_y = trans(im_h_y)
-        bicubic = bicubic.convert("YCbCr")
+        bicubic = trans(bicubic).convert("YCbCr")
         y, cb, cr = bicubic.split()
         HR = Image.merge('YCbCr', (im_h_y, cb, cr))
         HR.save(outpath)
@@ -117,7 +117,7 @@ def multi_gpu_run(model, im_path, outpath, gpus):
 if __name__ == '__main__':
     print('running with multi GPU')
     gpus = 1
-    inpath = './temp/video_frame/'
+    inpath = './temp/out/'
     outpath = './temp/vsr/'
     if not os.path.exists(outpath):
         os.makedirs(outpath)
