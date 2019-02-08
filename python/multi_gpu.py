@@ -107,6 +107,7 @@ def multi_gpu_run(model, im_path, outpath, gpus):
             y = y.cpu()
         im_h_y = model(y)
         print(im_h_y.shape)
+        #得看下shape，此处应该有个循环，把batch分解成多个图再合成
         im_h_y = trans(im_h_y)
         bicubic = trans(bicubic).convert("YCbCr")
         y, cb, cr = bicubic.split()
