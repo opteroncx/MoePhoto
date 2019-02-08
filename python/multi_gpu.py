@@ -62,19 +62,20 @@ def model_convert(path, scale, gpus=1):
     # optionally resume from a checkpoint
     if os.path.isfile(path):
         print("=> loading checkpoint '{}'".format(path))
-        checkpoint = torch.load(path)
-        saved_state = checkpoint.state_dict()
+        weights = torch.load(path)
+        # saved_state = weights.state_dict()
+        model.load_state_dict(weights)
         # multi gpu loader
-        if loadmultiGPU:
-            from collections import OrderedDict
-            new_state_dict = OrderedDict()
-            for k, v in saved_state.items():
-                namekey = 'module.'+k  # add `module.`
-                new_state_dict[namekey] = v
-                # load params
-            model.load_state_dict(new_state_dict)
-        else:
-            model.load_state_dict(saved_state)
+        # if loadmultiGPU:
+        #     from collections import OrderedDict
+        #     new_state_dict = OrderedDict()
+        #     for k, v in saved_state.items():
+        #         namekey = 'module.'+k  # add `module.`
+        #         new_state_dict[namekey] = v
+        #         # load params
+        #     model.load_state_dict(new_state_dict)
+        # else:
+        #     model.load_state_dict(saved_state)
     else:
         print("=> no checkpoint found at '{}'".format(path))
     return model
@@ -112,8 +113,10 @@ def multi_gpu_run(model, im_path, outpath, gpus):
 if __name__ == '__main__':
     print('running with multi GPU')
     gpus = 1
-    inpath = ''
-    outpath = './tmp/'
+    inpath = './temp/video_frame/'
+    outpath = './temp/vsr/'
+    if not os.path.exists(outpath):
+        os.makedirs(outpath)
     model = model_convert('./model/a2/model_new.pth',2,gpus)
     print('load success')
     # multi_gpu_run(model,inpath,outpath,gpus)
