@@ -10,7 +10,12 @@ ifiles = [
         './models.pyc',
         './dehaze.pyc',
         './config.pyc',
+        './defaultConfig.pyc',
         './imageProcess.pyc',
+        './progress.pyc',
+        './readgpu.pyc',
+        './server.pyc',
+        './worker.pyc',
         './models.pyc',
         './runDN.pyc',
         './runSR.pyc',
@@ -19,8 +24,7 @@ ifiles = [
         './moe_utils.pyc',
         './mt_download.pyc',
         './slomo.pyc',
-        './slomo_run.pyc',
-        './slomo_vid_loader.pyc',        
+        './runSlomo.pyc',
         './templates',
         './static',
         './model',
@@ -46,7 +50,7 @@ efiles = ['./model/__pycache__',
         ]
 
 build_exe_options = {
-        'packages': ['tkinter', 'scipy', 'asyncio','numpy','torch'], 
+        'packages': ['tkinter', 'scipy', 'asyncio', 'numpy', 'torch', 'gevent'], 
         'includes': ['numpy.core._methods','jinja2','jinja2.ext','asyncio.compat'],
         'include_files': ifiles,
         'bin_excludes': efiles}

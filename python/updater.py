@@ -1,17 +1,23 @@
 # updater scripts
 
 import os
+import sys
 import zipfile
+import tarfile
 import requests
-import codecs
 import shutil
+import json
 from moe_utils import compile_pyc
 from moe_utils import copyfile
 from mt_download import download_file
 releases = 'http://www.may-workshop.com/moephoto/version.html'
 ufile = 'http://www.may-workshop.com/moephoto/files/'
 
-ff = 'https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-20190114-d52a1be-win64-static.zip'
+ffmpeg_home = './ffmpeg/bin/'
+platform = 1 if sys.platform[:3] == 'win' else 0
+ff = 'https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-20190114-d52a1be-win64-static.zip' if platform else 'https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz'
+ffname = 'ffmpeg.zip' if platform else 'ffmpeg.tar.xz'
+outfname = 'ffmpeg.exe' if platform else 'ffmpeg'
 
 def update_model():
     print('更新模型文件')
@@ -19,40 +25,60 @@ def update_model():
 def update_ffmpeg():
     print('更新FFMPEG')
     # first time, check path
-    ffmpeg_home = './ffmpeg/bin/'
     if not os.path.exists(ffmpeg_home):
         os.makedirs(ffmpeg_home)
     # download files
     url = ff
     print('downloading from ',url)
-    download_file(ff,fname=ffmpeg_home+'ffmpeg.zip')
+    fname = '{}{}'.format(ffmpeg_home, ffname)
+    outPath = '{}{}'.format(ffmpeg_home, outfname)
+    download_file(ff,fname=fname)
 
-    # extract zip
-    z = zipfile.ZipFile(ffmpeg_home+'ffmpeg.zip', 'r')
-    z.extractall(path=ffmpeg_home)
-    z.close()
-    ndir = os.listdir(ffmpeg_home)[0]
-    copyfile(ffmpeg_home+ndir+'/bin/ffmpeg.exe',ffmpeg_home+'ffmpeg.exe')
-    # clean tmp
-    shutil.rmtree(ffmpeg_home+ndir)
-    os.remove(ffmpeg_home+'ffmpeg.zip')
+    if platform:
+        # extract zip
+        z = zipfile.ZipFile(fname, 'r')
+        z.extractall(path=ffmpeg_home)
+        z.close()
+        ndir = os.listdir(ffmpeg_home)[0]
+        copyfile(ffmpeg_home+ndir+'/bin/ffmpeg.exe',outPath)
+        # clean tmp
+        shutil.rmtree(ffmpeg_home+ndir)
+    else:
+        file = tarfile.open(fname).extractfile('ffmpeg-4.1-64bit-static/ffmpeg-10bit')
+        buf = file.read()
+        file.close()
+        with open(outPath, 'wb') as out:
+            out.write(buf)
+    os.remove(fname)
 
 def getVersion(releases=releases):
     f = requests.get(releases)
     fv = f.text
     return fv[8:]
 
+def compareVersion(a, b):
+    for v0, v1 in zip(a.split('.'), b.split('.')):
+        n0 = int(v0)
+        n1 = int(v1)
+        if n0 < n1:
+            return -1
+        elif n0 > n1:
+            return 1
+    if len(a) < len(b):
+        return -1
+    elif len(a) > len(b):
+        return 1
+    else:
+        return 0
+
 def update():
     # make temp dir
     if not os.path.exists('./update_tmp'):
         os.mkdir('./update_tmp')
     v = getVersion()
-    log_file = codecs.open('./update_log.txt','r')
-    current_v = log_file.readline()
-    # version:xxx
-    current_v = current_v[8:]
+    current_v = json.load('./package.json')['version']
     print('current version==',current_v)
-    if v<current_v:
+    if compareVersion(v, current_v) <= 0:
         print('已是最新版本')
     else:
         url_new_version = ufile+v+'.zip'
@@ -80,8 +106,6 @@ def update():
         print('升级完成,请重启软件')        
         #clean temp files
         shutil.rmtree('./update_tmp')
-        
-        
 
 if __name__ == '__main__':
     v = getVersion()

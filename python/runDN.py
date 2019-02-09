@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 import numpy as np
-from imageProcess import ensemble, genGetModel
+from torch import load
+from imageProcess import ensemble, genGetModel, initModel
 from models import NetDN, SEDN
 from config import config
 
@@ -14,7 +15,7 @@ model_dict = {
 }
 ramCoef = .9 / np.array([2700., 4106.9, 2400., 7405., 1253.4, 4304.2])
 
-dn = lambda x, opt: ensemble(x, 0, { 'opt': opt, 'model': getModel(opt) })
+dn = lambda x, opt: ensemble(x, 0, { 'opt': opt, 'model': opt.modelCached })
 
 getModel = genGetModel(lambda opt, *args: NetDN() if 'dn_lite' in opt.model else SEDN())
 
@@ -31,5 +32,5 @@ def getOpt(model):
   opt.cropsize = config.getConfig()[modelType + 1]
   if opt.cropsize:
     print('当前denoise切块大小：', opt.cropsize)
-  opt.modelCached = getModel(opt, False)
+  opt.modelCached = initModel(getModel(opt), load(opt.model))
   return opt

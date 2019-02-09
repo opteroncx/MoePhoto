@@ -1,7 +1,7 @@
-# -*- coding:utf-8 -*-
 from functools import reduce
 import numpy as np
-from imageProcess import ensemble, genGetModel
+from torch import load
+from imageProcess import ensemble, genGetModel, initModel
 from models import Net2x, Net3x, Net4x
 from gan import RRDB_Net
 from config import config
@@ -17,13 +17,13 @@ mode_switch = {
   'p4': './model/p4/model_new.pth',
   'gan4': './model/gan/gan_x4.pth'
 }
-ramCoef = .9 / np.array([10888.4, 4971.7, 2473., 24248., 8253.9, 4698.7, 41951.3, 16788.7, 7029.7, 10888.4, 4971.7, 2473., 15282.4, 5496., 4186.6, 15282.4, 5496., 4186.6])
+ramCoef = .9 / np.array([10888.4, 4971.7, 2473., 24248., 8253.9, 4698.7, 41951.3, 16788.7, 7029.7, 15282.4, 5496., 4186.6, 15282.4, 5496., 4186.6, 15282.4, 5496., 4186.6])
 
 def sr(x, opt):
   sc = opt.scale
   sum = ensemble(x, opt.ensemble, {
     'opt': opt,
-    'model': getModel(opt),
+    'model': opt.modelCached,
     'padding': 2 if sc == 3 else 1,
     'sc': sc
   })
@@ -55,5 +55,6 @@ def getOpt(scale, mode, ensemble):
   opt.cropsize = config.getConfig()[0]
   if opt.cropsize:
     print('当前SR切块大小：', opt.cropsize)
-  opt.modelCached = getModel(opt, False)
+  opt.modelCached = getModel(opt)
+  initModel(opt.modelCached, load(opt.model))
   return opt
