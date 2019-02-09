@@ -6,13 +6,25 @@ os.environ['TK_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tk8.6'
 # Dependencies are automatically detected, but it might need fine tuning.
 
 # include files
-ifiles = ['./models.pyc',
-        './turbo.pyc',
+ifiles = [
+        './models.pyc',
         './dehaze.pyc',
-        './model.pyc',
+        './config.pyc',
+        './defaultConfig.pyc',
+        './imageProcess.pyc',
+        './progress.pyc',
+        './readgpu.pyc',
+        './server.pyc',
+        './worker.pyc',
+        './models.pyc',
         './runDN.pyc',
         './runSR.pyc',
         './video.pyc',
+        './gan.pyc',
+        './moe_utils.pyc',
+        './mt_download.pyc',
+        './slomo.pyc',
+        './runSlomo.pyc',
         './templates',
         './static',
         './model',
@@ -22,7 +34,7 @@ ifiles = ['./models.pyc',
         './libiomp5md.pdb',
         './libiompstubs5md.dll',
         './update_log.txt',
-        './nvidia-smi.exe'
+        './site-packages'
         ]
 
 # exclude files
@@ -38,7 +50,7 @@ efiles = ['./model/__pycache__',
         ]
 
 build_exe_options = {
-        'packages': ['tkinter', 'scipy', 'asyncio','numpy', 'torch', 'gevent'], 
+        'packages': ['tkinter', 'scipy', 'asyncio', 'numpy', 'torch', 'gevent'], 
         'includes': ['numpy.core._methods','jinja2','jinja2.ext','asyncio.compat'],
         'include_files': ifiles,
         'bin_excludes': efiles}
@@ -48,12 +60,12 @@ base = None
 # if sys.platform == "win32":
 #     base = "Win32GUI"
 
-exe = Executable(script='MoePhoto.py', base = base, icon='logo3.ico')
+exe = Executable(script='./python/MoePhoto.py', base = base, icon='logo3.ico')
 
 
 
 setup(  name = 'MoePhoto',
-        version = '2.5',
+        version = '4.0',
         description = 'May-workshop',
         options = {'build_exe': build_exe_options},
         executables = [exe])

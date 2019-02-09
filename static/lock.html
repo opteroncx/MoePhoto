@@ -5,11 +5,6 @@
   <title>Lock</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <link href="css/bootstrap.css" type="text/css" rel="stylesheet" media="all">
-  <link href="css/style.css" type="text/css" rel="stylesheet" media="all">
-  <link href="css/font-awesome.css" rel="stylesheet">
-  <link href="css/loader.css" rel="stylesheet">
-  <link href="css/component.css" rel="stylesheet">
 </head>
 
 <body>
@@ -20,31 +15,33 @@
       <br>
     </div>
   </div>
-  <script src="js/jquery.js"></script>
-  <script src="js/message.js"></script>
+  <script src="js/c75c69a77ab0be866744.js"></script>
   <script src="js/progress.js"></script>
   <script>
     $(document).ready(_ => {
       var params = new URLSearchParams(location.search)
-      const onProgress = gone => `锁定中，共${duration}秒，已经过${gone}秒`
-      const onMessage = e => {
-        if (!e.data) return
-        data = e.data
-        data.gone ? progress.setMessage(onProgress(data.gone)) : void 0
-      }
-      var duration = params.get('duration'), session = params.get('session'),
-        progress = bindMessager('/msg', $('#progress'), void 0, session)
-      progress.messager.on('message', onMessage)
-        .on('open', onMessage)
+      var duration = params.get('duration'), session = params.get('session')
+      const path = '/lock'
+      const progress = window.app.setup({
+        onProgress: gone => `锁定中，共${duration}秒，已经过${gone}秒`,
+        session: params.get('session'),
+        progress: $('#progress'),
+        path
+      })
       duration && session && $.ajax({
-        url: '/lock',
+        url: path,
         data: { duration, session },
         cache: false,
         beforeSend: _ => progress.begin('正在处理您的任务'),
         success: _ => progress.final('完成啦'),
         error: (xhr, status, error) => {
-          console.error(xhr, status, error)
-          progress.final('出错啦')
+          let busy = xhr ? xhr.responseJSON ? xhr.responseJSON.eta == null ? 0 : 1 : 0 : 0
+          if (busy) {
+            progress.setStatus(+xhr.responseJSON.eta)
+          } else {
+            console.error(xhr, status, error)
+            progress.final('出错啦')
+          }
         }
       })
     })

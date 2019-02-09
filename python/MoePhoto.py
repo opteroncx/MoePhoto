@@ -1,7 +1,8 @@
 import sys
 from mmap import mmap
+from defaultConfig import defaultConfig
 
-sharedMemSize = 100 * 2 ** 20
+sharedMemSize = defaultConfig['sharedMemSize'][0]
 mm = mmap(-1, sharedMemSize, tagname='SharedMemory') if sys.platform[:3] == 'win' else mmap(-1, sharedMemSize)
 
 def lock(duration):
@@ -16,9 +17,9 @@ def lock(duration):
     node.trace()
   return duration
 
-def imageEnhance(*args):
-  process, nodes = genProcess(args[1:], context=context)
-  return begin(imNode, nodes).bindFunc(process)(args[0])
+def imageEnhance(size, *args, name=None, trace=True):
+  process, nodes = genProcess(stepFile + list(args))
+  return begin(imNode, nodes, True if trace else -1).bindFunc(process)(size, name=name)
 
 if __name__ == '__main__':
   import multiprocessing as mp
@@ -30,7 +31,7 @@ if __name__ == '__main__':
   noter, notifier = mp.Pipe(False)
   stopEvent = mp.Event()
   mp.Process(target=worker, args=(taskInReceiver, taskOutSender, notifier, stopEvent), daemon=True).start()
-  run = runserver(taskInSender, taskOutReceiver, noter, stopEvent, mm)
+  run = runserver(taskInSender, taskOutReceiver, noter, stopEvent, notifier, mm)
   host = '127.0.0.1'
   port = defaultConfig['port'][0]
   if len(sys.argv) > 1:
@@ -45,16 +46,16 @@ if __name__ == '__main__':
 else:
   from progress import Node
   from worker import begin, setup, context, enhance
-  from imageProcess import genProcess, dehaze
-  from video import batchSR, SR_vid
+  from imageProcess import genProcess
+  from video import SR_vid
   from config import config
+  stepFile = [{'op': 'file'}]
   imNode = Node({'op': 'image'}, learn=0)
   setup(mm, {
     'lock': lock,
     'image_enhance': enhance(imageEnhance),
     'video_enhance': enhance(SR_vid),
-    'batch_enhance': enhance(batchSR),
     'ednoise_enhance': enhance(imageEnhance),
-    'image_dehaze': enhance(dehaze(context)),
+    'image_dehaze': enhance(imageEnhance),
     'systemInfo': enhance(config.system)
   })

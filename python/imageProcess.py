@@ -4,9 +4,9 @@ from functools import reduce
 import itertools
 import torch
 import torch.nn.functional as F
+from torchvision.transforms.functional import to_tensor
 import numpy as np
 from PIL import Image
-from dehaze import Dehaze
 from config import config
 from defaultConfig import defaultConfig
 from progress import Node, updateNode
@@ -142,21 +142,47 @@ def doCrop(opt, model, x, padding=1, sc=1):
 
   return tmp_image
 
+def windowWrap(f, window=2, batchSize=1):
+  cache = []
+  h = 0
+  getData = lambda arr: [arr[i:i + window] for i in range(len(arr) - window + 1)]
+  def init(r=False):
+    nonlocal h, cache
+    if r:
+      cache = cache[1 - window:] + [0 for _ in range(batchSize)]
+      h = window - 1
+    else:
+      cache = [0 for _ in range(window + batchSize - 1)]
+      h = 0
+  init()
+  def g(inp=None):
+    nonlocal h
+    if type(inp) != type(None):
+      cache[h] = inp
+      h += 1
+      if h == len(cache):
+        data = getData(cache)
+        init(True)
+        return f(data)
+    elif h >= window:
+      data = getData(cache[0:h])
+      init()
+      return f(data)
+  return g
+
 def toNumPy(bitDepth):
-  dtypeT = False
   if bitDepth <= 8:
     dtype = np.uint8
   elif bitDepth <= 16:
     dtype = np.uint16
-    dtypeT = np.int32
   else:
     dtype = np.int32
   def f(args):
     buffer, height, width = args
+    if not buffer:
+      return
     image = np.frombuffer(buffer, dtype=dtype)
-    if dtypeT:
-      image = image.astype(dtypeT)
-    return image.reshape((height, width, 3))
+    return image.reshape((height, width, 3)).astype(np.float32)
   return f
 
 def toBuffer(bitDepth):
@@ -164,7 +190,7 @@ def toBuffer(bitDepth):
     dtype = np.uint8
   elif bitDepth == 16:
     dtype = np.uint16
-  return lambda imt: (imt[0].astype(dtype).tostring(), imt[1].astype(np.uint8))
+  return lambda im: im.astype(dtype).tostring() if type(im) != type(None) else None
 
 def toFloat(image):
   if len(image.shape) == 3:  # to shape (H, W, C)
@@ -187,19 +213,17 @@ def toOutput(bitDepth):
     return image.to(dtype=dtype, device=deviceCPU).numpy()
   return f
 
-def toTorch(quant, dtype, device):
-  def f(image):
-    image = torch.tensor(image, dtype=torch.float, device=device) / quant  # pylint: disable=E1102
-    image = image.to(dtype=dtype)
-    if len(image.shape) == 3:
-      return image.transpose(2, 1).transpose(1, 0)
-    else:
-      return image.unsqueeze(0)
-  return f
+def toTorch(bitDepth, dtype, device):
+  if bitDepth <= 8:
+    return lambda image: to_tensor(image).to(dtype=dtype, device=device)
+  quant = 1 << bitDepth
+  return lambda image: (to_tensor(image).to(dtype=torch.float, device=device) / quant).to(dtype=dtype)
 
 def writeFile(image, name, *args):
   if not name:
     name = genNameByTime()
+  elif hasattr(name, 'seek'):
+    name.seek(0)
   Image.fromarray(image).save(name, *args)
   return name
 
@@ -207,8 +231,8 @@ def readFile(nodes=[]):
   def f(file):
     image = Image.open(file)
     image = np.array(image)
-    for n in nodes:
-      n.load *= image.size
+    for n in nodes[1:]:
+      n.multipleLoad(image.size)
       updateNode(n)
     if len(nodes):
       updateNode(nodes[0].parent)
@@ -218,45 +242,28 @@ def readFile(nodes=[]):
       raise RuntimeError('Unknown image format')
   return f
 
-def extractAlpha(t):
-  def f(im):
-    if im.shape[2] == 4:
-      t['im'] = im[:,:,3]
-      return im[:,:,:3]
-    else:
-      return im
-  return f
-
-def mergeAlpha(t):
-  def f(im):
-    if len(t):
-      image = np.empty((*im.shape[:2], 4), dtype=np.uint8)
-      image[:,:,:3] = im
-      image[:,:,3] = t['im']
-    return image
-  return f
-
 def genGetModel(f):
-  def getModel(opt, cache=True):
-    if hasattr(opt, 'modelCached') and cache:
-      return opt.modelCached
-
+  def getModel(opt):
     print('loading model {}'.format(opt.model))
-    model = f(opt)
-    print('reloading weights')
-    weights = torch.load(opt.model)
-    model.load_state_dict(weights)
-    model.eval().to(dtype=config.dtype(), device=config.device())
-    for param in model.parameters():
-      param.requires_grad_(False)
-    return model
-
+    return f(opt)
   return getModel
 
+def initModel(model, weights=None):
+  if weights:
+    print('reloading weights')
+    model.load_state_dict(weights)
+  for param in model.parameters():
+    param.requires_grad_(False)
+  return model.eval().to(dtype=config.dtype(), device=config.device())
+
+identity = lambda x, *_: x
+clean = lambda: torch.cuda.empty_cache()
+NonNullWrap = lambda f: lambda x: f(x) if type(x) != type(None) else None
 BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
 BGR2RGBTorch = lambda im: torch.stack([im[2], im[1], im[0]])
 toOutput8 = toOutput(8)
 apply = lambda v, f: f(v)
+applyNonNull = lambda v, f: f(v) if type(v) != type(None) else None
 transpose = lambda x: x.transpose(-1, -2)
 flip = lambda x: x.flip(-1)
 flip2 = lambda x: x.flip(-1, -2)
@@ -264,81 +271,148 @@ combine = lambda *fs: lambda x: reduce(apply, fs, x)
 trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, flip), combine(transpose, flip, transpose), combine(flip2, transpose)]
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
 ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs))
+previewPath = defaultConfig['outDir'][0] + '/.preview.png'
 
-def appendFuncs(f, node, funcs, bind=True):
-  funcs.append(node.bindFunc(f) if bind else f)
+def appendFuncs(f, node, funcs, wrap=True):
+  g = node.bindFunc(f)
+  funcs.append(NonNullWrap(g) if wrap else g)
   return node
 
 import runDN
 import runSR
+import runSlomo
+import dehaze
+from worker import context
 
-def genProcess(opt, context=None, source='file'):
-  scale = opt[0] if opt[0] else 1
-  mode = opt[1] if opt[1] else 'a'
-  dnmodel = opt[2] if opt[2] else 'no'
-  dnseq = opt[3] if opt[3] else 'before'
-  bitDepthIn = opt[4] if len(opt) > 4 and opt[4] else 8
-  bitDepthOut = opt[5] if len(opt) > 5 else bitDepthIn
-  if scale > 1:
-    SRopt = runSR.getOpt(scale, mode, config.ensembleSR)
-    SRop = {'op': 'SR', 'model': mode, 'scale': scale}
-  if dnmodel != 'no':
-    DNopt = runDN.getOpt(dnmodel)
-    DNop = {'op': 'DN', 'model': dnmodel}
-  config.getFreeMem(True)
-  if not bitDepthOut:
-    bitDepthOut = bitDepthIn
-  quant = 1 << bitDepthIn
-  funcs = []
-  nodes = []
-  load = 1
-  last = lambda im, _: im
-  if source == 'file':
-    s = Node({'op': source}, learn=0, name='file')
-    f = readFile(nodes)
-    funcs.append(context.getFile)
-  elif source == 'buffer':
-    s = Node({'op': source, 'bits': bitDepthIn})
-    f = toNumPy(bitDepthIn)
-  appendFuncs(f, s, funcs)
-  dtype = config.dtype()
-  node = Node({'op': 'toTorch', 'bits': bitDepthIn, 'dtype': dtype})
-  nodes.append(appendFuncs(toTorch(quant, dtype, config.device()), node, funcs))
-  if (dnseq == 'before') and (dnmodel != 'no'):
-    nodes.append(appendFuncs(lambda im: runDN.dn(im, DNopt), Node(DNop, name='DN'), funcs))
-  load *= scale * scale
-  if (scale > 1):
-    if source == 'buffer' and mode == 'gan':
-      nodes.append(appendFuncs(BGR2RGBTorch, Node({'op': 'Channel'}), funcs))
-    nodes.append(appendFuncs(lambda im: runSR.sr(im, SRopt), Node(SRop, name='SR'), funcs))
-    if source == 'buffer' and mode == 'gan':
-      nodes.append(appendFuncs(BGR2RGBTorch, Node({'op': 'Channel'}, load), funcs))
-  if (dnseq == 'after') and (dnmodel != 'no'):
-    nodes.append(appendFuncs(lambda im: runDN.dn(im, DNopt), Node(DNop, load, name='DN'), funcs))
-  funcs.append(toFloat)
-  output = toOutput(bitDepthOut)
-  if source != 'buffer':
-    nodes.append(appendFuncs(output, Node({'op': 'toOutput', 'bits': bitDepthOut}, load), funcs))
+fPreview = [toOutput8,
+  (lambda im: im.astype(np.uint8)),
+  BGR2RGB,
+  lambda im: writeFile(im, context.shared, 'PNG'),
+  lambda *_: context.root.trace(0, preview=previewPath, fileSize=context.shared.tell())]
+funcPreview = lambda im: reduce(applyNonNull, fPreview, im)
+
+def procInput(source, bitDepth, fs, out):
+  out['load'] = 1
+  node = Node({'op': 'toTorch', 'bits': bitDepth})
+  fs.append(NonNullWrap(node.bindFunc(toTorch(bitDepth, config.dtype(), config.device()))))
+  return fs, [node], out
+
+def procDN(opt, out, *_):
+  DNopt = opt['opt']
+  node = Node(dict(op='DN', model=opt['model']), out['load'])
+  if 'name' in opt:
+    node.name = opt['name']
+  return [NonNullWrap(node.bindFunc(lambda im: runDN.dn(im, DNopt)))], [node], out
+
+def convertChannel(out):
+  out['channel'] = 0
+  fs=[]
+  return fs, [appendFuncs(BGR2RGBTorch, Node(dict(op='Channel')), fs)]
+
+def procSR(opt, out, *_):
+  load = out['load']
+  scale = opt['scale']
+  mode = opt['model']
+  SRopt = opt['opt']
+  if not scale > 1:
+    raise TypeError('Invalid scale setting for SR.')
+  out['load'] = load * scale * scale
+  fs, ns = convertChannel(out) if out['channel'] and mode == 'gan' else ([], [])
+  ns.append(appendFuncs(lambda im: runSR.sr(im, SRopt), Node(dict(op='SR', model=mode), load), fs))
+  if 'name' in opt:
+    ns[-1].name = opt['name']
+  return fs, ns, out
+
+def procSlomo(opt, out, *_):
+  load = out['load']
+  fs, ns = convertChannel(out) if out['channel'] else ([], [])
+  node = Node(dict(op='slomo'), load, opt['sf'], name=opt['name'] if 'name' in opt else None)
+  return fs + [runSlomo.doSlomo], ns + [node], out
+
+def procDehaze(opt, out, *_):
+  load = out['load']
+  dehazeOpt = opt['opt']
+  fs, ns = convertChannel(out) if out['channel'] else ([], [])
+  node = Node(dict(op='dehaze'), load, name=opt['name'] if 'name' in opt else None)
+  ns.append(appendFuncs(lambda im: dehaze.Dehaze(im, dehazeOpt), node, fs))
+  return fs, ns, out
+
+def procOutput(opt, out, *_):
+  load = out['load']
+  node0 = Node(dict(op='toFloat'), load)
+  bitDepthOut = out['bitDepth']
+  node1 = Node(dict(op='toOutput', bits=bitDepthOut), load, name=opt['name'] if 'name' in opt else None)
+  fOutput = node1.bindFunc(toOutput(bitDepthOut))
+  fs = [NonNullWrap(node0.bindFunc(toFloat)), NonNullWrap(fOutput)]
+  ns = [node0, node1]
+  if out['source']:
+    fs1 = [fOutput]
+    def o(im):
+      res = reduce(applyNonNull, fs1, im)
+      funcPreview(im)
+      return [res]
+    fs[1] = o
+    if out['channel']:
+      fPreview[2] = BGR2RGB
+    else:
+      fPreview[2] = identity
+      ns.append(appendFuncs(BGR2RGB, Node(dict(op='Channel')), fs1, False))
+      out['channel'] = 1
+    ns.append(appendFuncs(toBuffer(bitDepthOut), Node(dict(op='toBuffer', bits=bitDepthOut), load), fs1, False))
+  return fs, ns, out
+
+procs = dict(
+  file=(lambda _, _0, nodes:
+    procInput('file', 8, [context.getFile, readFile(nodes)], dict(bitDepth=8, channel=0, source=0))),
+  buffer=(lambda opt, *_:
+    procInput('buffer', opt['bitDepth'], [toNumPy(opt['bitDepth'])], dict(bitDepth=opt['bitDepth'], channel=1, source=1))),
+  DN=procDN, SR=procSR, output=procOutput, slomo=procSlomo, dehaze=procDehaze
+  )
+
+def genProcess(steps, root=True, outType=None):
+  funcs=[]
+  nodes=[]
+  last = identity
+  rf = lambda im: reduce(apply, funcs, im)
+  if root:
+    for opt in filter((lambda opt: opt['op'] == 'SR'), steps):
+      opt['scale'] = int(opt['scale'])
+      opt['opt'] = runSR.getOpt(opt['scale'], opt['model'], config.ensembleSR)
+    for opt in filter((lambda opt: opt['op'] == 'resize'), steps):
+      opt['scale'] = int(opt['scale'])
+    for opt in filter((lambda opt: opt['op'] == 'DN'), steps):
+      opt['opt'] = runDN.getOpt(opt['model'])
+    for opt in filter((lambda opt: opt['op'] == 'dehaze'), steps):
+      opt['opt'] = dehaze.getOpt()
+    for opt in filter((lambda opt: opt['op'] == 'slomo'), steps):
+      opt['sf'] = int(opt['sf'])
+      opt['opt'] = runSlomo.getOpt(opt)
+    steps.append(dict(op='output'))
+    config.getFreeMem(True)
+    process = lambda im, name=None: last(rf(im), name)
   else:
-    funcs.append(lambda im: (output(im), toOutput8(im)))
-  if source == 'file':
-    n = Node({'op': 'write'}, load, name='write')
+    process = rf
+  for i, opt in enumerate(steps):
+    op = opt['op']
+    fs, ns, outType = procs[op](opt, outType, nodes)
+    funcs.extend(fs)
+    nodes.extend(ns)
+    if op == 'slomo':
+      if i + 1 < len(steps):
+        f, nodesAfter = genProcess(steps[i + 1:], False, outType)
+      else:
+        f = identity
+        nodesAfter = []
+      slomoOpt = opt['opt']
+      slomo = funcs[-1](f, nodes[-1])
+      funcs[-1] = windowWrap(lambda data: slomo(data, slomoOpt), 2, runSlomo.getBatchSize(opt))
+      nodeAfter = Node({}, total=opt['sf'], learn=0)
+      for node in nodesAfter:
+        nodeAfter.append(node)
+      nodes.append(nodeAfter)
+      break
+  if root and steps[0]['op'] == 'file':
+    n = Node({'op': 'write'}, outType['load'], name='write')
     nodes.append(n)
     last = n.bindFunc(writeFile)
-  elif source == 'buffer':
-    nodes.append(appendFuncs(toBuffer(bitDepthOut), Node({'op': 'toBuffer', 'bits': bitDepthOut}, load), funcs))
-  def process(im, name=None):
-    im = reduce(apply, funcs, im)
-    return last(im, name)
-  return process, [s] + nodes
-
-def clean():
-  torch.cuda.empty_cache()
-
-def dehaze(context):
-  t = {}
-  funcs = [context.getFile, readFile(), extractAlpha(t), Dehaze, toOutput(8), mergeAlpha(t)]
-  def f(size, outputName=None):
-    im = reduce(apply, funcs, size)
-    return writeFile(im, outputName)
-  return f
+  return process, nodes

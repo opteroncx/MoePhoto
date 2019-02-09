@@ -9,9 +9,11 @@ defaultConfig = {
   'cuda': (True, '使用CUDA'),
   'fp16': (True, '使用半精度浮点数'),
   'deviceId': (0, '使用的GPU序号'),
-  'defaultCodec': ('libx264 -pix_fmt yuv420p', '默认视频输出编码选项'),
+  'defaultDecodec': ('', '默认视频输入解码选项'),
+  'defaultEncodec': ('libx264 -pix_fmt yuv420p', '默认视频输出编码选项'),
   'ensembleSR': (0, '放大时自集成的扩增倍数， 0-7'),
   'outDir': ('download', '输出目录'),
   'uploadDir': ('upload', '上传目录'),
+  'sharedMemSize': (100 * 2 ** 20, '前后台共享的内存文件交换区字节大小，要能装下png格式的一张输入或输出图片'),
   'port': (2333, '监听端口')
 }

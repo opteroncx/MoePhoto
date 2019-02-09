@@ -46,8 +46,18 @@ def updateAncestor(node, eta=False):
     node = p
     p = p.parent
 
+def initialETA(node):
+  node.gone = 0
+  c = getNodeETA(node)
+  if len(node.nodes):
+    node.eta = c * sum(map(initialETA, node.nodes))
+  else:
+    node.eta = c
+  node.ett = node.eta
+  return node.ett
+
 class Node():
-  def __init__(self, op, load=1, total=1, learn=1, callback=NullFunc, name=None):
+  def __init__(self, op, load=1, total=1, learn=3, callback=NullFunc, name=None):
     self.load = load
     self.total = total
     self.gone = 0
@@ -74,6 +84,13 @@ class Node():
 
   def setCallback(self, callback=NullFunc):
     self.callback = callback
+
+  def multipleLoad(self, scale=1):
+    if len(self.nodes):
+      for node in self.nodes:
+        node.multipleLoad(scale)
+    else:
+      self.load *= scale
 
   def reset(self):
     self.gone = 0
@@ -130,13 +147,3 @@ class Node():
       self.parent = target
     if flag:
       updateAncestor(self)
-
-def initialETA(node):
-  node.gone = 0
-  c = getNodeETA(node)
-  if len(node.nodes):
-    node.eta = c * sum(map(initialETA, node.nodes))
-  else:
-    node.eta = c
-  node.ett = node.eta
-  return node.ett

@@ -2,21 +2,38 @@
 __pycache__
 .ipynb_checkpoints
 /.vscode/
-/download/
 /python/old_files/
+/python/update_tmp/
+/update_tmp/
 /package/
 /build/
 /model/*.py
 /model/*.pyc
 /temp/
-/batch_SR/
-/upload/
 /MoePhoto*.exe
+/old_versions
+/server
+/python/tester.py
+/tmpSuperSloMo/
+
+# ignore user files
+/download/
+/upload/
+/.user/
+
+# ignore generated static files
+/static/bg/
+/static/css/
+/static/fonts/
+/static/js/
+/static/manifest.json
+
+# ignore developments
+/node_modules/
+
+# ignore WIP
 /templates/deblur.html
 /templates/lab.html
-
-# ignore configuration overriding
-/config.py
 
 # ignore old checkpoints
 /model/a2/model.pth
@@ -26,6 +43,7 @@ __pycache__
 /model/p3/model.pth
 /model/p4/model.pth
 /model/old/
+/model/slomo/*.ckpt
 
 # bat and vbs
 start.bat
@@ -36,8 +54,7 @@ install.exe
 *.pyc
 
 # ignore third party files
-/ffmpeg/bin
-/ffmpeg/*.txt
+/ffmpeg
 *.dll
 *.pdb
 *.exe

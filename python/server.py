@@ -15,6 +15,7 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = staticMaxAge
 startupTime = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime())
 def current():pass
 current.session = None
+current.path = None
 current.eta = 0
 current.fileSize = 0
 E403 = ('Not authorized.', 403)
@@ -27,15 +28,21 @@ uploadDir = defaultConfig['uploadDir'][0]
 downDir = os.path.join(app.root_path, outDir)
 if not os.path.exists(outDir):
   os.mkdir(outDir)
+with open('static/manifest.json') as manifest:
+  assetMapping = json.load(manifest)
+vendorsJs = assetMapping['vendors.js']
 
 def acquireSession(request):
   if current.session:
     return busy()
+  while noter.poll():
+    noter.recv()
   current.session = request.values['session']
+  current.path = request.path
   current.eta = 10
   return False if current.session else E403
 
-def controlPoint(path, fMatch, fUnmatch, resNoCurrent):
+def controlPoint(path, fMatch, fUnmatch, resNoCurrent, check=lambda *_: True):
   def f():
     try:
       session = request.values['session']
@@ -44,7 +51,7 @@ def controlPoint(path, fMatch, fUnmatch, resNoCurrent):
     if not session:
       return E403
     if current.session:
-      return spawn(fMatch).get() if current.session == session else fUnmatch()
+      return spawn(fMatch).get() if current.session == session and check(request) else fUnmatch()
     else:
       return resNoCurrent
   app.route(path, methods=['GET', 'POST'], endpoint=path)(f)
@@ -54,11 +61,18 @@ def stopCurrent():
     current.stopFlag.set()
   return OK
 
+def checkMsgMatch(request):
+  if not 'path' in request.values:
+    return True
+  path = request.values['path']
+  return path == current.path
+
 def onConnect():
   while current.session and not noter.poll():
     idle()
   if current.session and noter.poll():
-    res = noter.recv()
+    while noter.poll():
+      res = noter.recv()
     current.eta = res['eta']
     if 'fileSize' in res:
       current.fileSize = res['fileSize']
@@ -80,20 +94,25 @@ def makeHandler(name, prepare, final, methods=['POST']):
     return final(result)
   app.route('/' + name, methods=methods, endpoint=name)(f)
 
-def renderPage(template, header=None, footer=None, dynamic=False, other={}):
-  if dynamic:
-    g = lambda ks: render_template(template, header=header, footer=footer, **other, **ks)
+def renderPage(item, header=None, footer=None):
+  other = item[5] if len(item) > 5 else {}
+  other['vendorsJs'] = vendorsJs
+  template = item[1]
+  func = item[3]
+  if func:
+    g = lambda req: render_template(
+      template, header=header, footer=footer, **other, **dict(zip(item[4], func(req))))
   else:
     with app.app_context():
       cache = render_template(template, header=header, footer=footer, **other)
     g = lambda _: cache
-  def f(ks={}):
+  def f():
     session = request.cookies.get('session')
-    resp = make_response(g(ks))
+    resp = make_response(g(request))
     t = time.time()
     if (not session) or (float(session) > t):
       resp.set_cookie('session', bytes(str(t), encoding='ascii'))
-    if dynamic:
+    if func:
       resp.cache_control.private = True
     else:
       resp.headers['Last-Modified'] = startupTime
@@ -101,23 +120,19 @@ def renderPage(template, header=None, footer=None, dynamic=False, other={}):
     return resp
   return f
 
-def genPageFunction(item, header, footer):
-  r = renderPage(item[1], header, footer, item[3], item[5] if len(item) > 5 else {})
-  page = lambda: r(dict(zip(item[4], item[3]())))
-  return page if item[3] else r
-
-ndoc = '<a href="download/{image}" class="w3effct-agile"><img src="download/{image}"'+\
+ndoc = '<a href="{dirName}/{image}" class="w3effct-agile"><img src="{dirName}/{image}"'+\
   ' alt="" class="img-responsive" title="Solar Panels Image" />'+\
   '<div class="agile-figcap"><h4>相册</h4><p>图片{image}</p></div></a>'
 
-def gallery():
+def gallery(req):
   items = ()
+  dirName = req.values['dir'] if 'dir' in req.values else outDir
   try:
-    items = os.listdir(outDir)
+    items = os.listdir(dirName)
   except:pass
-  images = filter((lambda item:item.endswith('.png')), items)
+  images = filter((lambda item:item.endswith('.png') or item.endswith('.jpg')), items)
   doc = []
-  images = [*map(lambda image:ndoc.format(image=image), images)]
+  images = [*map(lambda image:ndoc.format(image=image, dirName=dirName), images)]
   for i in range((len(images) - 1) // 3 + 1):
     doc.append('<div class="col-sm-4 col-xs-4 w3gallery-grids">')
     doc.extend(images[i * 3:(i + 1) * 3])
@@ -140,22 +155,24 @@ def getSystemInfo():
   del readgpu
   return info
 
-def getDynamicInfo():
+def getDynamicInfo(_):
   disk_free = psutil.disk_usage(cwd).free // 2**20
   mem_free = psutil.virtual_memory().free // 2**20
-  return disk_free, mem_free
+  return disk_free, mem_free, current.session, current.path
+
+about_updater = lambda *_: [codecs.open('./update_log.txt').read()]
 
 header = codecs.open('./templates/1-header.html','r','utf-8').read()
 footer = codecs.open('./templates/1-footer.html','r','utf-8').read()
 routes = [
+  ('/', 'index.html', None, None),
   ('/video', 'video.html', '视频放大', None),
   ('/batch', 'batch.html', '批量放大', None),
   ('/ednoise', 'ednoise.html', '风格化', None),
-  ('/deblur', 'deblur.html', '去模糊', None),
   ('/dehaze', 'dehaze.html', '去雾', None),
   ('/document', 'document.html', None, None),
-  ('/about', 'about.html', None, None),
-  ('/system', 'system.html', None, getDynamicInfo, ['disk_free', 'mem_free'], getSystemInfo()),
+  ('/about', 'about.html', None, about_updater, ['log']),
+  ('/system', 'system.html', None, getDynamicInfo, ['disk_free', 'mem_free', 'session', 'path'], getSystemInfo()),
   ('/gallery', 'gallery.html', None, gallery, ['var'])
 ]
 
@@ -166,18 +183,12 @@ for item in routes:
     h = re.sub(pattern,new,header)
   else:
     h = header
-  app.route(item[0], endpoint=item[0])(genPageFunction(item, h, footer))
-
-optKeys = ('scale', 'mode', 'denoise', 'dn_seq')
-def readOpt(req):
-  t = [req.values[key] if key in req.values else 0 for key in optKeys]
-  t[0] = int(t[0])
-  return t
+  app.route(item[0], endpoint=item[0])(renderPage(item, h, footer))
 
 identity = lambda x: x
+readOpt = lambda req: json.loads(req.values['steps'])
 controlPoint('/stop', stopCurrent, lambda: E403, E404)
-controlPoint('/msg', onConnect, busy, OK)
-app.route('/', endpoint='index')(renderPage("index.html"))
+controlPoint('/msg', onConnect, busy, OK, checkMsgMatch)
 app.route('/favicon.ico', endpoint='favicon')(lambda: send_from_directory(app.root_path, 'logo3.ico'))
 app.route("/{}/.preview.png".format(outDir), endpoint='preview')(lambda: Response(current.getPreview(), mimetype='image/png'))
 sendFromDownDir = lambda filename: send_from_directory(downDir, filename, as_attachment=True)
@@ -188,31 +199,72 @@ makeHandler('systemInfo', (lambda _: []), identity, ['GET', 'POST'])
 imageEnhancePrep = lambda req: (current.writeFile(req.files['file']), *readOpt(req))
 makeHandler('image_enhance', imageEnhancePrep, identity)
 makeHandler('ednoise_enhance', imageEnhancePrep, identity)
-makeHandler('image_dehaze', imageEnhancePrep, identity)
+makeHandler('image_dehaze', lambda req: (current.writeFile(req.files['file']), {'op': 'dehaze'}), identity)
 
 def videoEnhancePrep(req):
-  opt = req.form.copy()
   vidfile = req.files['file']
   if not os.path.exists(uploadDir):
     os.mkdir(uploadDir)
   path ='{}/{}'.format(uploadDir, vidfile.filename)
   vidfile.save(path)
-  return (path, opt)
+  return (path, *readOpt(req))
 makeHandler('video_enhance', videoEnhancePrep, identity)
 
-def batchEnhancePrep(req):
-  fileList = req.files.getlist('filein')
+@app.route('/batch_enhance', methods=['POST'])
+def batchEnhance():
+  c = acquireSession(request)
+  if c:
+    return c
+  count = 0
+  fail = 0
+  result = 'Success'
+  fileList = request.files.getlist('file')
   output_path = '{}/{}/'.format(outDir, int(time.time()))
   if not os.path.exists(output_path):
     os.makedirs(output_path)
-  return (fileList, output_path, *readOpt(req))
-makeHandler('batch_enhance', batchEnhancePrep, identity)
+  opt = readOpt(request)
+  total = len(fileList)
+  print(total)
+  current.notifier.send({
+    'eta': total,
+    'gone': 0,
+    'total': total
+  })
+  for image in fileList:
+    if current.stopFlag.is_set():
+      result = 'Interrupted'
+      break
+    name = output_path + os.path.basename(image.filename)
+    start = time.time()
+    sender.send({
+      'name': 'image_enhance',
+      'args': (current.writeFile(image), *opt),
+      'kwargs': { 'name': name, 'trace': False }
+    })
+    while not receiver.poll():
+      idle()
+    if receiver.poll():
+      output = receiver.recv()
+      count += 1
+      note = {
+        'eta': (total - count) * (time.time() - start),
+        'gone': count,
+        'total': total
+      }
+      if output[1] == 200:
+        note['preview'] = name
+      else:
+        fail += 1
+      current.notifier.send(note)
+  current.session = None
+  return json.dumps({'result': (result, count, fail, output_path)}, ensure_ascii=False)
 
-def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm):
+def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, notifier, mm):
   global sender, receiver, noter
   sender = taskInSender
   receiver = taskOutReceiver
   noter = noteReceiver
+  current.notifier = notifier
   current.stopFlag = stopEvent
   def preview():
     mm.seek(0)

@@ -76,8 +76,12 @@ class Config():
       return 0
 
   def system(self):
+    if not Config.cudaAvailable():
+      return []
     try:
-      gram = [freeMem // 2**20 for freeMem in readgpu.getGPU()]
+      freeMems = readgpu.getGPU()
+      self.freeRam = freeMems[self.deviceId]
+      gram = [freeMem // 2**20 for freeMem in freeMems]
     except Exception as e:
       print(e)
       gram = []
@@ -86,3 +90,7 @@ class Config():
 Config.cudaAvailable = lambda *args:torch.cuda.is_available()
 
 config = Config()
+
+if __name__ == '__main__':
+  config.getFreeMem()
+  print(config.calcFreeMem())

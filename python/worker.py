@@ -2,7 +2,6 @@ import json
 from io import BytesIO
 from traceback import print_exc
 from progress import setCallback, initialETA
-from imageProcess import clean
 
 def context(): pass
 context.root = None
@@ -14,7 +13,8 @@ def begin(root, nodes=[], setAllCallback=True):
   for n in nodes:
     root.append(n)
   if setAllCallback:
-    setCallback(root, onProgress)
+    if not setAllCallback < 0:
+      setCallback(root, onProgress, True)
   else:
     root.setCallback(onProgress)
   initialETA(root)
@@ -34,9 +34,9 @@ def onProgress(node, kwargs={}):
   context.notifier.send(res)
 
 def enhance(f):
-  def g(*args):
+  def g(*args, **kwargs):
     try:
-      result = f(*args)
+      result = f(*args, **kwargs)
       code = 200
     except Exception as e:
       print('错误内容=='+str(e))
@@ -56,10 +56,13 @@ def setup(mm, routesDef):
   context.shared = mm
 
 def worker(taskIn, taskOut, notifier, stopEvent):
+  global clean
+  import imageProcess
+  clean = imageProcess.clean
   context.notifier = notifier
   context.stopFlag = stopEvent
   while True:
     task = taskIn.recv()
     stopEvent.clear()
-    result = routes[task[0]](*task[1:])
+    result = routes[task['name']](*task['args'], **task['kwargs']) if type(task) == dict else routes[task[0]](*task[1:])
     taskOut.send(result)

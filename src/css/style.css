@@ -350,7 +350,6 @@ h3.agileits-title,h2.agileits-title{
 /*-- //features --*/
 /*-- stats --*/ 
 .stats{
-    background: url(../images/bg1.jpg)no-repeat center 0px fixed;
     background-size: cover;
 	background:#FF5722;
 	margin-top:6em;

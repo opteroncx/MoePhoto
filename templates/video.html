@@ -15,19 +15,6 @@
 			window.scrollTo(0, 1);
 		}
 	</script>
-	<!-- Custom Theme files -->
-	<link href="static/css/bootstrap.css" type="text/css" rel="stylesheet" media="all">
-	<link href="static/css/style.css" type="text/css" rel="stylesheet" media="all">
-	<link href="static/css/font-awesome.css" rel="stylesheet">
-	<link href="static/css/loader.css" rel="stylesheet">
-	<link href="static/css/component.css" rel="stylesheet">
-	<!-- font-awesome icons -->
-	<!-- //Custom Theme files -->
-	<!-- web-fonts -->
-	<link href="http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:200,300,400,700" rel="stylesheet">
-	<link href='http://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900,900italic'
-	 rel='stylesheet' type='text/css'>
-	<!-- //web-fonts -->
 </head>
 
 <body>
@@ -57,39 +44,58 @@
 						<br>
 						<div class="col-md-12 settings">
 							<input name="file" type="file" class="inputfile inputfile-6" style='width: 0.1px;height: 0.1px;opacity: 0 !important;overflow: hidden;position: absolute;
-						z-index: -1;'
-							 id="imgInp">
+						z-index: -1;' id="imgInp">
 							<label for="imgInp">
 								<span></span>
 								<strong>
 									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="17" viewBox="0 0 20 17">
-										<path d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z" />
+										<path
+											d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z" />
 									</svg> 选择视频&hellip;</strong>
 							</label>
 						</div>
 						<div class="col-md-6 settings">
+							<hr> 输入解码设置<br>
+							<input name="decodec" type="text" id="decodec" class="input-sm col-sm-10" value="">
+						</div>
+						<div class="col-md-6 settings">
+							<hr>
+							开始于第<input name="start" type="number" id="startFrame" class="input-sm" value="0" style="width:20%">帧<br>
+							结束于第<input name="stop" type="number" id="stopFrame" class="input-sm" value="0" style="width:20%">帧
+						</div>
+						<div class="col-md-6 settings">
 							<hr> 放大倍数&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-							<input name="scale" type="radio" id="scale" value="1" checked>不放大 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="scale" type="radio" id="scale" value="1">不放大 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 							<input name="scale" type="radio" id="scale" value="2" checked>2X &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 							<input name="scale" type="radio" id="scale" value="3">3X &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 							<input name="scale" type="radio" id="scale" value="4">4X
 							<hr> 超分模型&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 							<input name="mode" type="radio" id='mode' value="a" checked>动漫 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 							<input name="mode" type="radio" id='mode' value="p">照片 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="mode" type="radio" id='mode' value="gan">GAN （仅适用于RGB图像）
 						</div>
 						<div class="col-md-6 settings">
 							<hr> 是否降噪&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-							<input name="denoise" type="radio" id='denoise' value="no" checked>不降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="denoise" type="radio" id='denoise' value="no" checked>不降噪
+							&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 							<input name="denoise" type="radio" id='denoise' value="lite5">弱 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 							<input name="denoise" type="radio" id='denoise' value="lite10">中 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 							<input name="denoise" type="radio" id='denoise' value="lite15">强 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 							<hr> 降噪顺序&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-							<input name="dn_seq" type="radio" id='dn_seq' value="before" checked>先降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<input name="dn_seq" type="radio" id='dn_seq' value="before" checked>先降噪
+							&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 							<input name="dn_seq" type="radio" id='dn_seq' value="after">后降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 						</div>
-						<div class="col-md-12 settings">
-							<hr> 输出编码设置
-							<input name="codec" type="text" id="codec" class="input-sm" value="libx264 -pix_fmt yuv420p">
+						<div class="col-md-6 settings">
+							<hr> 插帧倍数<br>
+							<input name="sf" type="number" id="sf" class="input-sm col-sm-1" value="1">
+						</div>
+						<div class="col-md-6 settings">
+							<hr> 输出编码设置<br>
+							<input name="encodec" type="text" id="encodec" class="input-sm col-sm-10"
+								value="libx264 -pix_fmt yuv420p">
+							<hr> 覆盖输出帧率<br>
+							<input name="frameRate" type="number" id="frameRate" class="input-sm col-sm-2" value="0">
 						</div>
 
 					</form>
@@ -108,7 +114,7 @@
 		</div>
 	</div>
 	<div class="container">
-		<div class="features-row">
+		<div class="features-row stats-agileinfo agileits-w3layouts">
 			<div>
 				<div id="FG" style="position: relative;top: 64px;left: 20%;">
 					<div id="fountainG_1" class="fountainG"></div>
@@ -123,17 +129,15 @@
 				<img id='outputImg' class="img-responsive" src="http://placehold.it/1140x120?text=Output+Image" alt="">
 				<div id=downloader>
 					<br>
-					<div class="icon-box col-md-4">
-						<a id='downImg' class="agile-icon" href="#">
-							<i class="fa fa-floppy-o">&nbsp;保存</i>
-						</a>
-					</div>
+					<a id='downImg' class="agile-icon btn btn-success btn-lg" href="#">
+						<i class="fa fa-floppy-o">&nbsp;保存</i>
+					</a>
 				</div>
 			</div>
-			<div class="col-md-12">
-				<button id="StopButton" type="button" class="btn btn-cancel btn-lg">中止</button>
-			</div>
-			<div class="clearfix"> </div>
+		</div>
+		<div class="col-md-12 stats-agileinfo agileits-w3layouts">
+			<hr>
+			<button id="StopButton" type="button" class="btn btn-warning btn-lg">中止</button>
 		</div>
 	</div>
 	<!-- //Stats -->
@@ -148,164 +152,51 @@
 	{% autoescape true %} {{footer| safe}} {% endautoescape %}
 	<!-- //footer end here -->
 	<!-- js -->
-	<script src="static/js/jquery.js"></script>
-	<script src="static/js/jarallax.js"></script>
-	<script src="static/js/SmoothScroll.min.js"></script>
-	<script type="text/javascript ">
-		/* init Jarallax */
-		$('.jarallax').jarallax({
-			speed: 0.5,
-			imgWidth: 1366,
-			imgHeight: 768
-		})
-	</script>
-	<!-- //js -->
-	<!-- text Ticker -->
-	<script type="text/javascript" src="static/js/jquery.totemticker.js"></script>
-	<script type="text/javascript">
-		$(function () {
-			$('#vertical-ticker').totemticker({
-				row_height: '100px',
-				next: '#ticker-next',
-				previous: '#ticker-previous',
-				stop: '#stop',
-				start: '#start',
-				mousestop: true
-			});
-		});
-	</script>
-	<!-- //text Ticker -->
-	<!-- start-smooth-scrolling -->
-	<script type="text/javascript" src="static/js/move-top.js"></script>
-	<script type="text/javascript" src="static/js/easing.js"></script>
-	<script type="text/javascript">
-		jQuery(document).ready(function ($) {
-			$(".scroll ").click(function (event) {
-				event.preventDefault();
-				$('html,body').animate({
-					scrollTop: $(this.hash).offset().top
-				}, 1000);
-			});
-		});
-	</script>
-	<!-- //end-smooth-scrolling -->
-	<!-- smooth-scrolling-of-move-up -->
-	<script type="text/javascript ">
-		$(document).ready(function () {
-			$().UItoTop({
-				easingType: 'easeOutQuart'
-			});
-
-		});
-	</script>
-	<!-- //smooth-scrolling-of-move-up -->
-	<!-- Progressive-Effects-Animation-JavaScript -->
-	<script type="text/javascript " src="static/js/numscroller-1.0.js"></script>
-	<!-- //Progressive-Effects-Animation-JavaScript -->
-	<!-- Bootstrap core JavaScript
-    ================================================== -->
-	<!-- Placed at the end of the document so the pages load faster -->
-	<script src="static/js/bootstrap.js"></script>
-	<script src="static/js/custom-file-input.js"></script>
-	<script src="static/js/message.js"></script>
+	<script src="{{vendorsJs}}"></script>
 	<script src="static/js/progress.js"></script>
 	<script>
-		$(document).ready(function () {
-			var dropZone = $('#drop_zone')[0], imgInp = $("#imgInp"), outputImg = $('#outputImg')
-			dropZone.addEventListener('dragover', e => {
-				e.stopPropagation()
-				e.preventDefault()
-				e.dataTransfer.dropEffect = 'copy'
-			}, false)
-			dropZone.addEventListener('drop', e => {
-				e.stopPropagation()
-				e.preventDefault()
-				imgInp[0].files = e.dataTransfer.files
-			}, false)
-
-			var loading = $('#FG');
-			loading.hide();
-
-			var downloader = $('#downloader');
-			downloader.hide();
-			var runButton = $('#RunButton'), stopButton = $('#StopButton').hide(), total = 0
-			const onProgress = gone => `处理中，共${total}帧，已处理${gone}帧`
-			const getResource = path => [path, '?', (new Date()).getTime()].join('')
-			const setPreview = (_ => {
-				let idle = true
-				outputImg.on('load', _ => idle = true)
-				return path => {
-					if (idle) {
-						idle = false
-						outputImg.attr('src', path)
-					}
-				}
-			})()
-			const onMessage = e => {
-				if (!e.data) return
-				data = e.data
-				data.preview ? setPreview(getResource(data.preview)) : void 0
-				data.total ? total = data.total : void 0
-				data.gone ? progress.setMessage(onProgress(data.gone)) : void 0
-			}
-			var progress = bindMessager('/msg', $('#progress'), _ => runButton.attr('disabled', false))
-			progress.messager.on('error', _ => runButton.attr('disabled', true))
-				.on('message', onMessage)
-				.on('open', onMessage)
-			var session = progress.messager.session
-
-			runButton.bind('click', _ => {
-				var fdata = new FormData(document.querySelector("#imgUpload"));
-				if (!fdata.get('file').size) return progress.setMessage('缺少输入文件')
-				$.ajax({
-					url: `/video_enhance?session=${session}`,
-					type: "POST",
-					data: fdata,
-					cache: false,
-					contentType: false,
-					processData: false,
-					async: true,
-					dataType: 'json',
-					beforeSend: _ => {
-						loading.show()
-						runButton.hide()
-						stopButton.attr('disabled', false).show()
-						progress.begin('正在处理您的任务')
-					},
-					success: result => {
-						console.log(result)
-						loading.hide()
-						downloader.show()
-						runButton.show()
-						stopButton.hide()
-						result = result.result
-						progress.final(`完成啦，处理到第${result[1]}帧`)
-						let im = getResource(result[0])
-						$('#downImg').attr('href', im)
-					},
-					error: (xhr, status, error) => {
-						console.error(xhr, status, error)
-						progress.final('出错啦')
-						runButton.show()
-						stopButton.hide()
-						loading.hide()
-					}
-				})
+		$(document).ready(_ => {
+			const downImg = $('#downImg')
+			const progress = window.app.setup({
+				onProgress: (gone, total) => `处理中，共${total}帧，已处理${gone}帧`,
+				beforeSend: data => {
+					let steps = [{ codec: data.get('decodec') },
+					{ start: +data.get('start'), stop: +data.get('stop') }],
+						dn_seq = data.get('dn_seq'),
+						model = data.get('denoise'),
+						scale = +data.get('scale'),
+						sf = +data.get('sf'),
+						frameRate = +data.get('frameRate')
+					if (dn_seq === 'before' && model !== 'no') steps.push({ op: 'DN', model })
+					if (scale > 1) steps.push({ op: 'SR', model: data.get('mode'), scale })
+					if (dn_seq === 'after' && model !== 'no') steps.push({ op: 'DN', model })
+					if (sf > 1) steps.push({ op: 'slomo', sf })
+					let optEncode = { codec: data.get('encodec') }
+					if (frameRate > 0) optEncode.frameRate = frameRate
+					steps.push(optEncode)
+					data.delete('start')
+					data.delete('stop')
+					data.delete('dn_seq')
+					data.delete('denoise')
+					data.delete('scale')
+					data.delete('mode')
+					data.delete('sf')
+					data.delete('decodec')
+					data.delete('encodec')
+					data.delete('frameRate')
+					data.set('steps', JSON.stringify(steps))
+				},
+				success: (result, progress) => {
+					progress.final(`完成啦，处理到第${result[1]}帧`)
+					let im = app.getResource(result[0])
+					downImg.attr('href', im)
+				},
+				path: '/video_enhance',
+				progress: $('#progress'),
+				outputImg: $('#outputImg'),
+				dropZone: $('#drop_zone')
 			})
-			stopButton.click(_ => {
-				$.ajax({
-					url: `/stop?session=${session}`,
-					beforeSend: _ => {
-						stopButton.attr('disabled', true)
-						progress.hide().setMessage('等待保存已处理部分')
-					},
-					error: (xhr, status, error) => {
-						console.error(xhr, status, error)
-						progress.final('出错啦')
-					}
-				})
-			})
-		});
+		})
 	</script>
 </body>
 
