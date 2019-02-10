@@ -30,7 +30,7 @@ def compile_pyc(path = './python/'):
         true_name = pyc.split('.')[0]+'.pyc'
         print(true_name)
         os.rename(path+'__pycache__/'+pyc,path+'__pycache__/'+true_name)
-        copyfile(path+'__pycache__/'+true_name,'./'+true_name)
+        copyfile(path+'__pycache__/'+true_name,'./pyc/'+true_name)
 
 if __name__ == '__main__':
     compile_pyc()

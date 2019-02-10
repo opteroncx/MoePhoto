@@ -160,7 +160,7 @@ def getDynamicInfo(_):
   mem_free = psutil.virtual_memory().free // 2**20
   return disk_free, mem_free, current.session, current.path
 
-about_updater = lambda *_: [codecs.open('./update_log.txt').read()]
+about_updater = lambda *_: [codecs.open('./update_log.txt',encoding='utf-8').read()]
 
 header = codecs.open('./templates/1-header.html','r','utf-8').read()
 footer = codecs.open('./templates/1-footer.html','r','utf-8').read()
