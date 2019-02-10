@@ -48,15 +48,12 @@ def enhance(f):
     return (json.dumps({'result': result}, ensure_ascii=False), code)
   return g
 
-def setup(mm, routesDef):
-  global routes
-  routes = routesDef
+def worker(main, taskIn, taskOut, notifier, stopEvent):
+  global clean, routes
+  mm, routes = main()
   mm.seek(0)
   context.sharedView = memoryview(mm)
   context.shared = mm
-
-def worker(taskIn, taskOut, notifier, stopEvent):
-  global clean
   import imageProcess
   clean = imageProcess.clean
   context.notifier = notifier
