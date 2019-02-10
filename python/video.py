@@ -54,9 +54,11 @@ def getVideoInfo(videoPath):
   return width, height, frameRate, totalFrames
 
 def enqueueOutput(out, queue, t):
-  for line in iter(out.readline, b''):
-    queue.put((t, line))
-  out.flush()
+  try:
+    for line in iter(out.readline, b''):
+      queue.put((t, line))
+    out.flush()
+  except: pass
 
 def createEnqueueThread(pipe, t):
   t = threading.Thread(target=enqueueOutput, args=(pipe, qOut, t))
@@ -193,15 +195,12 @@ def SR_vid(video, *steps):
     pipeIn.terminate()
     pipeOut.terminate()
     clean()
-    spawn_later(5, remove, video)
+    try:
+      os.remove(video)
+    except:
+      print('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(video))
   readSubprocess(qOut)
   return outputPath, i
-
-def remove(path):
-  try:
-    os.remove(path)
-  except:
-    print('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(path))
 
 if __name__ == '__main__':
   from io import BytesIO

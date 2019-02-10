@@ -58,10 +58,8 @@ def worker(main, taskIn, taskOut, notifier, stopEvent):
   clean = imageProcess.clean
   context.notifier = notifier
   context.stopFlag = stopEvent
-  print(routes)
   while True:
     task = taskIn.recv()
-    print(task)
     stopEvent.clear()
     result = routes[task['name']](*task['args'], **task['kwargs']) if type(task) == dict else routes[task[0]](*task[1:])
     taskOut.send(result)
