@@ -23,6 +23,7 @@ def imageEnhance(size, *args, name=None, trace=True):
 
 if __name__ == '__main__':
   import multiprocessing as mp
+  mp.freeze_support()
   from server import runserver
   from worker import worker
   from defaultConfig import defaultConfig
