@@ -35,6 +35,8 @@ const setup = opt => {
       if (!event.data) {
         messager.abort()
         runButton.attr('disabled', false)
+      } else {
+        runButton.attr('disabled', true)
       }
     }).on('error', event => {
       console.error(event)
