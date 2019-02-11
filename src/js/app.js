@@ -26,7 +26,7 @@ const setup = opt => {
     }, false)
   }
   var downloader = $('#downloader'), loading = $('#FG'), runButton = $('#RunButton'),
-    imgUpload = document.querySelector("#imgUpload")
+    imgUpload = document.querySelector("#imgUpload"), intervalId, inTaskFlag = 0
   loading.hide()
   downloader.hide()
 
@@ -36,10 +36,12 @@ const setup = opt => {
         messager.abort()
         runButton.attr('disabled', false)
       } else {
+        clearInterval(intervalId)
         runButton.attr('disabled', true)
       }
     }).on('error', event => {
       console.error(event)
+      clearInterval(intervalId)
       runButton.attr('disabled', true)
       let eta = 0
       if (event.data) {
@@ -60,7 +62,7 @@ const setup = opt => {
   if (opt.session) {
     const noFileMsg = '缺少输入文件', errorMsg = '出错啦'
     runButton.bind('click', function () {
-      var fdata = new FormData(imgUpload);
+      var fdata = new FormData(imgUpload)
       if (!fdata.get('file').size) return opt.setMessage ? opt.setMessage(noFileMsg) : alert(noFileMsg)
       $.ajax({
         url: `${opt.path}?session=${opt.session}`,
@@ -74,11 +76,12 @@ const setup = opt => {
         beforeSend: _ => {
           loading.show()
           runButton.attr('disabled', true)
-          setTimeout(openMessager, 200)
+          intervalId = setInterval(openMessager, 200)
           opt.beforeSend && opt.beforeSend(fdata)
         },
         success: result => {
           console.log(result)
+          clearInterval(intervalId)
           loading.hide()
           downloader.show()
           runButton.attr('disabled', false)
@@ -86,6 +89,7 @@ const setup = opt => {
         },
         error: (xhr, status, error) => {
           console.error(xhr, status, error)
+          clearInterval(intervalId)
           loading.hide()
           opt.error ? opt.error(errorMsg) : alert(errorMsg)
         }

@@ -31,6 +31,7 @@ if not os.path.exists(outDir):
 with open('static/manifest.json') as manifest:
   assetMapping = json.load(manifest)
 vendorsJs = assetMapping['vendors.js']
+commonJs = assetMapping['common.js']
 
 def acquireSession(request):
   if current.session:
@@ -97,6 +98,7 @@ def makeHandler(name, prepare, final, methods=['POST']):
 def renderPage(item, header=None, footer=None):
   other = item[5] if len(item) > 5 else {}
   other['vendorsJs'] = vendorsJs
+  other['commonJs'] = commonJs
   template = item[1]
   func = item[3]
   if func:
