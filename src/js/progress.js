@@ -91,8 +91,10 @@ const setup = opt => {
   const onMessage = e => {
     if (!e.data) return
     let data = e.data
-    runButton.hide()
-    stopButton.attr('disabled', false).show()
+    if (data.eta) {
+      runButton.hide()
+      stopButton.attr('disabled', false).show()
+    }
     data.preview ? setPreview(getResource(data.preview)) : 0
     data.total ? total = data.total : 0
     data.gone ? progress.setMessage(opt.onProgress(data.gone, total, data)) : 0

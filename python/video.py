@@ -15,6 +15,8 @@ ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn 
 qOut = Queue(64)
 stepVideo = [dict(op='buffer', bitDepth=16)]
 pix_fmt = 'bgr48le'
+pixBytes = 6
+bufsize = 10 ** 8
 
 def getVideoInfo(videoPath):
   commandIn = [
@@ -78,7 +80,7 @@ def readSubprocess(q):
       else:
         sys.stderr.write(line)
 
-def SR_vid(video, *steps):
+def prepare(video, steps):
   optEncode = steps[-1]
   encodec = optEncode['codec'] if 'codec' in optEncode else config.defaultEncodec  # pylint: disable=E1101
   optDecode = steps[0]
@@ -91,10 +93,11 @@ def SR_vid(video, *steps):
   root = begin(Node({'op': 'video', 'encodec': encodec}, 1, 2, 0), nodes, False)
   context.root = root
   width, height, frameRate, totalFrames = getVideoInfo(video)
+  slomos = [*filter((lambda opt: opt['op'] == 'slomo'), procSteps)]
   if 'frameRate' in optEncode:
     frameRate = optEncode['frameRate']
   else:
-    for opt in filter((lambda opt: opt['op'] == 'slomo'), procSteps):
+    for opt in slomos:
       frameRate *= opt['sf']
   if 'width' in optDecode:
     width = optDecode['width']
@@ -119,6 +122,10 @@ def SR_vid(video, *steps):
         outHeight = opt['height']
   if start < 0:
     start = 0
+  if start and len(slomos):
+    start -= 1
+    for opt in slomos:
+      opt['opt'].firstTime = 0
   stop = None
   if 'stop' in optRange:
     stop = int(optRange['stop'])
@@ -162,17 +169,19 @@ def SR_vid(video, *steps):
   if len(encodec):
     commandOut.extend(encodec.split(' '))
   commandOut.append(outputPath)
-  pipeIn = sp.Popen(commandIn, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=10**8)
-  pipeOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=10**8, shell=True)
+  return commandIn, commandOut, outputPath, width, height, start, stop, root, process
+
+def SR_vid(video, *steps):
+  commandIn, commandOut, outputPath, width, height, start, stop, root, process = prepare(video, steps)
+  pipeIn = sp.Popen(commandIn, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize)
+  pipeOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, shell=True)
   def p(raw_image=None):
-    nonlocal i
     bufs = process((raw_image, height, width))
     if type(bufs) != type(None) and len(bufs):
       for buffer in bufs:
         if buffer:
           pipeOut.stdin.write(buffer)
     if raw_image:
-      i += 1
       root.trace()
 
   try:
@@ -181,13 +190,13 @@ def SR_vid(video, *steps):
     createEnqueueThread(pipeOut.stderr, 1)
     i = 0
     while i <= stop and not context.stopFlag.is_set():
-      raw_image = pipeIn.stdout.read(width * height * 6) # read width*height*6 bytes (= 1 frame)
+      raw_image = pipeIn.stdout.read(width * height * pixBytes) # read width*height*6 bytes (= 1 frame)
       if len(raw_image) == 0:
         break
       readSubprocess(qOut)
-      if i < start:
-        continue
-      p(raw_image)
+      if i >= start:
+        p(raw_image)
+      i += 1
     p()
 
     pipeOut.communicate()
@@ -201,10 +210,3 @@ def SR_vid(video, *steps):
       print('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(video))
   readSubprocess(qOut)
   return outputPath, i
-
-if __name__ == '__main__':
-  from io import BytesIO
-  from worker import setup
-  print('video')
-  setup(BytesIO(), None)
-  SR_vid('./ves.mp4', {}, {}, dict(op='SR', scale=2), {})

@@ -35,6 +35,7 @@ def getOpt(option):
   opt.flowBackWarp = 0
   opt.sf = option['sf']
   opt.firstTime = 1
+  opt.notLast = 1
   if opt.sf < 2:
     raise RuntimeError('Error: --sf/slomo factor has to be atleast 2')
   return opt
@@ -48,7 +49,7 @@ def doSlomo(func, node):
 
   def f(data, opt):
     node.reset()
-    node.trace(0)
+    node.trace(0, p='slomo start')
     _, oriHeight, oriWidth = data[0][0].size()
     width = upTruncBy32(oriWidth)
     height = upTruncBy32(oriHeight)
@@ -60,8 +61,11 @@ def doSlomo(func, node):
     sf = opt.sf
     tempOut = [0 for _ in range(batchSize * sf + 1)]
     # Save reference frames
-    if opt.firstTime:
+    if opt.notLast or opt.firstTime:
       tempOut[0] = func(data[0][0])
+      outStart = 0
+    else:
+      outStart = 1
     for i, frames in enumerate(data):
       tempOut[(i + 1) * sf] = frames[1]
 
@@ -108,7 +112,7 @@ def doSlomo(func, node):
     for i in range(sf, len(tempOut)):
       tempOut[i] = func(tempOut[i])
     res = []
-    for item in tempOut[(0 if opt.firstTime else 1):]:
+    for item in tempOut[outStart:]:
       if type(item) == list:
         res.extend(item)
       elif type(item) != type(None):
