@@ -170,7 +170,7 @@ support_doc ='<div class="col-md-3 col-xs-6 team-grids"><div class="thumbnail te
 	<i class="fa fa-home"></i></a></div></div></div></div>'
 support_row_doc = '<div class="team-row-agileinfo">'
 def about_supporter():
-  info_doc = codecs.open('./supporter.json',encoding='utf-8').read()
+  info_doc = codecs.open('static/supporter.json',encoding='utf-8').read()
   info_doc = json.loads(info_doc)
   show_doc = support_row_doc
   counter = 0
