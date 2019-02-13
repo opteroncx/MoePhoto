@@ -172,7 +172,7 @@ def about_supporter():
   info_doc = codecs.open('./supporter.json',encoding='utf-8').read()
   info_doc = json.loads(info_doc)
   show_doc = support_row_doc
-  counter = 1
+  counter = 0
   for k in info_doc.keys():
     show_doc += support_doc%(k,info_doc[k])
     counter += 1
