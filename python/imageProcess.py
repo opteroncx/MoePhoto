@@ -10,98 +10,13 @@ from PIL import Image
 from config import config
 from defaultConfig import defaultConfig
 from progress import Node, updateNode
+import torch.backends.cudnn as cudnn
 
+cudnn.benchmark = True
 deviceCPU = torch.device('cpu')
 outDir = defaultConfig['outDir'][0]
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
 
-"""unused
-def check_rbga(im):
-  '''convert rbga2rbg'''
-  if im.shape[2] == 4:
-    rbg = im[:, :, 0:3]
-  else:
-    rbg = im
-  return rbg
-
-def resize_image_by_pil(image, scale, resampling_method="bicubic"):
-  width, height = image.shape[1], image.shape[0]
-  new_width = int(width * scale)
-  new_height = int(height * scale)
-  if resampling_method == "bicubic":
-  method = Image.BICUBIC
-  elif resampling_method == "bilinear":
-  method = Image.BILINEAR
-  elif resampling_method == "nearest":
-  method = Image.NEAREST
-  else:
-  method = Image.LANCZOS
-
-  if len(image.shape) == 3 and image.shape[2] == 3:
-  image = Image.fromarray(image, "RGB")
-  image = image.resize([new_width, new_height], resample=method)
-  image = np.asarray(image)
-  elif len(image.shape) == 3 and image.shape[2] == 4:
-  # RGBA images
-  image = Image.fromarray(image, "RGB")
-  image = image.resize([new_width, new_height], resample=method)
-  image = np.asarray(image)
-  else:
-  image = Image.fromarray(image.reshape(height, width))
-  image = image.resize([new_width, new_height], resample=method)
-  image = np.asarray(image)
-  image = image.reshape(new_height, new_width, 1)
-  return image
-
-def convert_rgb_to_ycbcr(image, jpeg_mode=False, max_value=255):
-  if len(image.shape) < 2 or image.shape[2] == 1:
-  return image
-
-  if jpeg_mode:
-  xform = np.array([[0.299, 0.587, 0.114], [-0.169, - 0.331, 0.500], [0.500, - 0.419, - 0.081]])
-  ycbcr_image = image.dot(xform.T)
-  ycbcr_image[:, :, [1, 2]] += max_value / 2
-  else:
-  xform = np.array(
-    [[65.738 / 256.0, 129.057 / 256.0, 25.064 / 256.0], [- 37.945 / 256.0, - 74.494 / 256.0, 112.439 / 256.0],
-     [112.439 / 256.0, - 94.154 / 256.0, - 18.285 / 256.0]])
-  ycbcr_image = image.dot(xform.T)
-  ycbcr_image[:, :, 0] += (16.0 * max_value / 256.0)
-  ycbcr_image[:, :, [1, 2]] += (128.0 * max_value / 256.0)
-  return ycbcr_image
-
-def convert_rgb_to_y(image, jpeg_mode=False, max_value=255.0):
-  if len(image.shape) <= 2 or image.shape[2] == 1:
-  return image
-
-  if jpeg_mode:
-  xform = np.array([[0.299, 0.587, 0.114]])
-  y_image = image.dot(xform.T)
-  else:
-  xform = np.array([[65.738 / 256.0, 129.057 / 256.0, 25.064 / 256.0]])
-  y_image = image.dot(xform.T) + (16.0 * max_value / 256.0)
-  return y_image
-
-def convert_y_and_cbcr_to_rgb(y_image, cbcr_image, jpeg_mode=False, max_value=255.0):
-  if len(y_image.shape) == 3 and y_image.shape[2] == 3:
-  y_image = y_image[:, :, 0:1]
-  ycbcr_image = np.zeros([y_image.shape[0], y_image.shape[1], 3])
-  ycbcr_image[:, :, 0] = y_image
-  ycbcr_image[:, :, 1:3] = cbcr_image[:, :, 0:2]
-  return convert_ycbcr_to_rgb(ycbcr_image)
-
-def convert_ycbcr_to_rgb(ycbcr_image):
-  rgb_image = np.zeros([ycbcr_image.shape[0], ycbcr_image.shape[1], 3])  # type: np.ndarray
-
-  rgb_image[:, :, 0] = ycbcr_image[:, :, 0] - 16.0
-  rgb_image[:, :, [1, 2]] = ycbcr_image[:, :, [1, 2]] - 128.0
-  xform = np.array(
-  [[298.082 / 256.0, 0, 408.583 / 256.0],
-   [298.082 / 256.0, -100.291 / 256.0, -208.120 / 256.0],
-   [298.082 / 256.0, 516.412 / 256.0, 0]])
-  rgb_image = rgb_image.dot(xform.T)
-  return rgb_image
-"""
 padImageReflect = torch.nn.ReflectionPad2d
 unpadImage = lambda padding: lambda im: im[:, padding:-padding, padding:-padding]
 cropIter = lambda length, padding, size:\
