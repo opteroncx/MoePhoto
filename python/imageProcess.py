@@ -110,10 +110,15 @@ cropIter = lambda length, padding, size:\
 def doCrop(opt, model, x, padding=1, sc=1):
   pad = padImageReflect(padding)
   unpad = unpadImage(sc * padding)
+  squeeze = 1 if (not hasattr(opt, 'C2B')) or opt.C2B else 0
   c = x.shape[0]
+  baseFlag = hasattr(opt, 'mode') and opt.mode == 'lite'
+  if baseFlag:
+    c = c >> 1
+    base = padImageReflect(sc * padding)(x[c:].unsqueeze(squeeze))
+    x = x[:c,:x.shape[1] >> 1,:x.shape[2] >> 1]
   hOut = x.shape[1] * sc
   wOut = x.shape[2] * sc
-  squeeze = 1 if (not hasattr(opt, 'C2B')) or opt.C2B else 0
   x = pad(x.unsqueeze(squeeze))
   _, _, h, w = x.shape
   tmp_image = torch.zeros([c, hOut, wOut]).to(x)
@@ -134,13 +139,34 @@ def doCrop(opt, model, x, padding=1, sc=1):
   for topS, leftS in itertools.product(cropIter(h, padding, size), cropIter(w, padding, size)):
     leftT = leftS * sc
     topT = topS * sc
-    s = x[:, :, topS:topS + cropsize, leftS:leftS + cropsize]
-    r = model(s)[-1]
+    bottomS = topS + cropsize
+    rightS = leftS + cropsize
+    s = x[:, :, topS:bottomS, leftS:rightS]
+    r = model(s, base[:, :, topT:bottomS * sc,leftT:rightS * sc]) if baseFlag else model(s)[-1]
     tmp = unpad(r.squeeze(squeeze))
     tmp_image[:, topT:topT + tmp.shape[1]
       , leftT:leftT + tmp.shape[2]] = tmp
 
   return tmp_image
+
+def resizeByPIL(x, width, height):
+  if x.shape[0] == 1:
+    x = x.squeeze(0)
+  y = Image.fromarray(toOutput8(toFloat(x))).resize((width, height), resample=Image.BICUBIC)
+  y = np.array(y)
+  if len(y.shape) == 2:
+    y = y.reshape(*y.shape, 1)
+  return to_tensor(y).to(dtype=x.dtype, device=x.device)
+
+resizeByTorch = lambda x, width, height: F.interpolate(x.unsqueeze(0), size=(height, width), mode='bilinear', align_corners=False).squeeze()
+
+def interpolate(x):
+  shape = [s << 1 for s in x.shape]
+  t = torch.zeros(shape, dtype=x.dtype, device=x.device)
+  t[:x.shape[0],:x.shape[1],:x.shape[2]] = x
+  t[x.shape[0]:] = resizeByPIL(x, t.shape[2], t.shape[1])
+  #t[x.shape[0]:] = resizeByTorch(x, t.shape[2], t.shape[1])
+  return t
 
 def windowWrap(f, window=2, batchSize=1):
   cache = []
@@ -224,6 +250,8 @@ def writeFile(image, name, *args):
     name = genNameByTime()
   elif hasattr(name, 'seek'):
     name.seek(0)
+  if image.shape[2] == 1:
+    image = image.squeeze(2)
   Image.fromarray(image).save(name, *args)
   return name
 
@@ -236,7 +264,9 @@ def readFile(nodes=[]):
       updateNode(n)
     if len(nodes):
       updateNode(nodes[0].parent)
-    if len(image.shape) == 2 or image.shape[2] == 3 or image.shape[2] == 4:
+    if len(image.shape) == 2:
+      return image.reshape(*image.shape, 1)
+    if image.shape[2] == 3 or image.shape[2] == 4:
       return image
     else:
       raise RuntimeError('Unknown image format')
@@ -384,9 +414,11 @@ def genProcess(steps, root=True, outType=None):
       opt['opt'] = runDN.getOpt(opt['model'])
     for opt in filter((lambda opt: opt['op'] == 'dehaze'), steps):
       opt['opt'] = dehaze.getOpt()
-    for opt in filter((lambda opt: opt['op'] == 'slomo'), steps):
+    slomos = [*filter((lambda opt: opt['op'] == 'slomo'), steps)]
+    for opt in slomos:
       opt['sf'] = int(opt['sf'])
       opt['opt'] = runSlomo.getOpt(opt)
+    slomos[-1]['opt'].notLast = 0
     steps.append(dict(op='output'))
     config.getFreeMem(True)
     process = lambda im, name=None: last(rf(im), name)
@@ -412,7 +444,7 @@ def genProcess(steps, root=True, outType=None):
       nodes.append(nodeAfter)
       break
   if root and steps[0]['op'] == 'file':
-    n = Node({'op': 'write'}, outType['load'], name='write')
+    n = Node({'op': 'write'}, outType['load'])
     nodes.append(n)
     last = n.bindFunc(writeFile)
   return process, nodes

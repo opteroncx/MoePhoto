@@ -31,6 +31,7 @@ if not os.path.exists(outDir):
 with open('static/manifest.json') as manifest:
   assetMapping = json.load(manifest)
 vendorsJs = assetMapping['vendors.js']
+commonJs = assetMapping['common.js']
 
 def acquireSession(request):
   if current.session:
@@ -97,6 +98,7 @@ def makeHandler(name, prepare, final, methods=['POST']):
 def renderPage(item, header=None, footer=None):
   other = item[5] if len(item) > 5 else {}
   other['vendorsJs'] = vendorsJs
+  other['commonJs'] = commonJs
   template = item[1]
   func = item[3]
   if func:
@@ -160,7 +162,7 @@ def getDynamicInfo(_):
   mem_free = psutil.virtual_memory().free // 2**20
   return disk_free, mem_free, current.session, current.path
 
-about_updater = lambda *_: [codecs.open('./update_log.txt',encoding='utf-8').read()]
+about_updater = lambda *_: [codecs.open('./update_log.txt').read()]
 
 header = codecs.open('./templates/1-header.html','r','utf-8').read()
 footer = codecs.open('./templates/1-footer.html','r','utf-8').read()

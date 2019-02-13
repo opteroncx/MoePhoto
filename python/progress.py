@@ -106,6 +106,8 @@ class Node():
       mark = time.perf_counter()
       delta = mark - self.mark
       ops[self.op].update(delta / self.load / progress)
+      if ops[self.op].samples >= self.learn:
+        self.learn = False
       self.mark = mark
     if progress > 0:
       updateNode(self)
