@@ -163,17 +163,41 @@ def getDynamicInfo(_):
   return disk_free, mem_free, current.session, current.path
 
 about_updater = lambda *_: [codecs.open('./update_log.txt',encoding='utf-8').read()]
+support_doc ='<div class="col-md-3 col-xs-6 team-grids"><div class="thumbnail team-agileits"><div class="w3agile-caption ">\
+  <h4>%s</h4><div class="social-icon social-w3lsicon">\
+  <a href="%s" class="social-button drb1">\
+	<i class="fa fa-github"></i></a></div></div></div></div>'
+support_row_doc = '<div class="team-row-agileinfo">'
+def about_supporter():
+  info_doc = codecs.open('./supporter.json',encoding='utf-8').read()
+  info_doc = json.loads(info_doc)
+  show_doc = support_row_doc
+  counter = 1
+  for k in info_doc.keys():
+    show_doc += support_doc%(k,info_doc[k])
+    counter += 1
+    if counter%4 ==0:
+      counter = 0
+      show_doc += '</div>'
+      show_doc += support_row_doc
+  print(show_doc)
+  return show_doc
+
+def about(_):
+  log = about_updater()
+  sdoc = about_supporter()
+  return log[0],sdoc
 
 header = codecs.open('./templates/1-header.html','r','utf-8').read()
 footer = codecs.open('./templates/1-footer.html','r','utf-8').read()
 routes = [
   ('/', 'index.html', None, None),
-  ('/video', 'video.html', '视频放大', None),
+  ('/video', 'video.html', 'AI视频', None),
   ('/batch', 'batch.html', '批量放大', None),
   ('/ednoise', 'ednoise.html', '风格化', None),
   ('/dehaze', 'dehaze.html', '去雾', None),
   ('/document', 'document.html', None, None),
-  ('/about', 'about.html', None, about_updater, ['log']),
+  ('/about', 'about.html', None, about, ['log','sdoc']),
   ('/system', 'system.html', None, getDynamicInfo, ['disk_free', 'mem_free', 'session', 'path'], getSystemInfo()),
   ('/gallery', 'gallery.html', None, gallery, ['var'])
 ]
