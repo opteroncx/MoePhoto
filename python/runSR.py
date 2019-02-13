@@ -38,6 +38,7 @@ getModel = genGetModel(lambda opt, *args: opt.modelDef())
 
 ##################################
 
+
 def getOpt(scale, mode, ensemble):
   def opt():pass
   nmode = mode+str(scale)

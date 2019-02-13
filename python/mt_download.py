@@ -32,7 +32,6 @@ def download_file(url, num_thread = 5,fname = ''):
     fp = open(file_name, "wb")
     fp.truncate(file_size)
     fp.close()
-
     # 启动多线程写文件
     part = file_size // num_thread  # 如果不能整除，最后一块应该多几个字节
     for i in range(num_thread):
@@ -53,7 +52,6 @@ def download_file(url, num_thread = 5,fname = ''):
             continue
         t.join()
     print('%s 下载完成' % file_name)
-
 if __name__ == '__main__':
     print('mt downloader')
     # download_file(url)
