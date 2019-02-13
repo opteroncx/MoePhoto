@@ -418,7 +418,8 @@ def genProcess(steps, root=True, outType=None):
     for opt in slomos:
       opt['sf'] = int(opt['sf'])
       opt['opt'] = runSlomo.getOpt(opt)
-    slomos[-1]['opt'].notLast = 0
+    if len(slomos):
+      slomos[-1]['opt'].notLast = 0
     steps.append(dict(op='output'))
     config.getFreeMem(True)
     process = lambda im, name=None: last(rf(im), name)
