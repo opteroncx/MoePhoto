@@ -166,7 +166,7 @@ about_updater = lambda *_: [codecs.open('./update_log.txt',encoding='utf-8').rea
 support_doc ='<div class="col-md-3 col-xs-6 team-grids"><div class="thumbnail team-agileits"><div class="w3agile-caption ">\
   <h4>%s</h4><div class="social-icon social-w3lsicon">\
   <a href="%s" class="social-button drb1">\
-	<i class="fa fa-github"></i></a></div></div></div></div>'
+	<i class="fa fa-home"></i></a></div></div></div></div>'
 support_row_doc = '<div class="team-row-agileinfo">'
 def about_supporter():
   info_doc = codecs.open('./supporter.json',encoding='utf-8').read()
@@ -178,9 +178,8 @@ def about_supporter():
     counter += 1
     if counter%4 ==0:
       counter = 0
-      show_doc += '</div>'
+      show_doc += '</div><div class="clearfix"> </div>'
       show_doc += support_row_doc
-  print(show_doc)
   return show_doc
 
 def about(_):
