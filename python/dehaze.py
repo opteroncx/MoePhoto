@@ -4,11 +4,12 @@ import numpy as np
 from models import AODnet
 from imageProcess import genGetModel, initModel
 modelPath = './model/dehaze/AOD_net_epoch_relu_10.pth'
-getModel = genGetModel(lambda *_: AODnet())
+getModel = genGetModel()
 
 def getOpt(*_):
   def opt():pass
   opt.model = modelPath
+  opt.modelDef = AODnet
   dict1 = load(modelPath, map_location='cpu')
   opt.modelCached = initModel(getModel(opt), dict1)
   return opt

@@ -1,4 +1,5 @@
 import { getResource, getSession, newMessager } from './common.js'
+import $ from 'jquery'
 const reconnectPeriod = 5
 const setup = opt => {
   var imgInp = $("#imgInp")
