@@ -174,7 +174,7 @@ routes = [
   ('/ednoise', 'ednoise.html', '风格化', None),
   ('/dehaze', 'dehaze.html', '去雾', None),
   ('/document', 'document.html', None, None),
-  ('/about', 'about.html', None, about, ['log','sdoc']),
+  ('/about', 'about.html', None, about_updater, ['log']),
   ('/system', 'system.html', None, getDynamicInfo, ['disk_free', 'mem_free', 'session', 'path'], getSystemInfo()),
   ('/gallery', 'gallery.html', None, gallery, ['var'])
 ]
