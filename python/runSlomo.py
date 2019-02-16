@@ -37,7 +37,7 @@ def getOpt(option):
   opt.firstTime = 1
   opt.notLast = 1
   if opt.sf < 2:
-    raise RuntimeError('Error: --sf/slomo factor has to be atleast 2')
+    raise RuntimeError('Error: --sf/slomo factor has to be at least 2')
   return opt
 
 def getBatchSize(option):

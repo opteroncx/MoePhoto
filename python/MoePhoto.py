@@ -1,6 +1,10 @@
 import sys
 import multiprocessing as mp
 
+if sys.platform[:3] == 'win':
+  from subprocess import Popen
+  Popen(['chcp', '65001'], shell=True).wait()
+
 def getMM():
   from mmap import mmap
   from defaultConfig import defaultConfig

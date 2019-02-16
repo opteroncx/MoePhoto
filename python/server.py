@@ -31,7 +31,7 @@ if not os.path.exists(outDir):
 with open('static/manifest.json') as manifest:
   assetMapping = json.load(manifest)
 vendorsJs = assetMapping['vendors.js']
-commonJs = assetMapping['common.js']
+commonJs = assetMapping['common.js'] if 'common.js' in assetMapping else None
 
 def acquireSession(request):
   if current.session:
@@ -98,7 +98,8 @@ def makeHandler(name, prepare, final, methods=['POST']):
 def renderPage(item, header=None, footer=None):
   other = item[5] if len(item) > 5 else {}
   other['vendorsJs'] = vendorsJs
-  other['commonJs'] = commonJs
+  if commonJs:
+    other['commonJs'] = commonJs
   template = item[1]
   func = item[3]
   if func:
@@ -162,31 +163,7 @@ def getDynamicInfo(_):
   mem_free = psutil.virtual_memory().free // 2**20
   return disk_free, mem_free, current.session, current.path
 
-about_updater = lambda *_: [codecs.open('./update_log.txt',encoding='utf-8').read()]
-support_doc ='<div class="col-md-3 col-xs-6 team-grids"><div class="thumbnail team-agileits">\
-  <img src="%s" class="img-responsive" alt="" /><div class="w3agile-caption ">\
-  <h4>%s</h4><div class="social-icon social-w3lsicon">\
-  <a href="%s" class="social-button drb1">\
-	<i class="fa fa-home"></i></a></div></div></div></div>'
-support_row_doc = '<div class="team-row-agileinfo">'
-def about_supporter():
-  info_doc = codecs.open('static/supporter.json',encoding='utf-8').read()
-  info_doc = json.loads(info_doc)
-  show_doc = support_row_doc
-  counter = 0
-  for k in info_doc.keys():
-    show_doc += support_doc%('static/savatar/'+k+'.jpg',k,info_doc[k])
-    counter += 1
-    if counter%4 ==0:
-      counter = 0
-      show_doc += '</div>'
-      show_doc += support_row_doc
-  return show_doc
-
-def about(_):
-  log = about_updater()
-  sdoc = about_supporter()
-  return log[0],sdoc
+about_updater = lambda *_: [codecs.open('./update_log.txt', encoding='utf-8').read()]
 
 header = codecs.open('./templates/1-header.html','r','utf-8').read()
 footer = codecs.open('./templates/1-footer.html','r','utf-8').read()

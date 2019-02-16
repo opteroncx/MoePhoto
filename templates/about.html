@@ -81,7 +81,7 @@
 				</div>
 				<div class="col-md-3 col-xs-6 team-grids">
 					<div class="thumbnail team-agileits">
-						<img src="https://avatars2.githubusercontent.com/u/1401674?s=460&v=4" class="img-responsive" alt="" />
+						<img src="https://avatars2.githubusercontent.com/u/1401674?s=460&v=4" class="img-responsive" alt="喵" />
 						<div class="w3agile-caption ">
 							<h4>lotress</h4>
 							<p>开发者</p>
@@ -103,9 +103,8 @@
 	<div class="team">
 		<div class="container">
 			<h3 class="agileits-title">赞助者</h3>
-			{% autoescape true %} {{sdoc| safe}} {% endautoescape %}
+			<div id="supporters"></div>
 			<div class="clearfix"> </div>
-
 		</div>
 	</div>
 	<!-- //about-supporter -->
@@ -114,8 +113,7 @@
 	<!-- //footer end here -->
 	<!-- js -->
 	<script src="{{vendorsJs}}"></script>
-	<script src="{{commonJs}}"></script>
-	<script src="static/js/app.js"></script>
+	<script src="static/js/about.js"></script>
 
 </body>
 

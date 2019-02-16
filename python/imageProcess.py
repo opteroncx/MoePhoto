@@ -16,7 +16,6 @@ cudnn.benchmark = True
 deviceCPU = torch.device('cpu')
 outDir = defaultConfig['outDir'][0]
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
-
 padImageReflect = torch.nn.ReflectionPad2d
 unpadImage = lambda padding: lambda im: im[:, padding:-padding, padding:-padding]
 cropIter = lambda length, padding, size:\
@@ -27,7 +26,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
   unpad = unpadImage(sc * padding)
   squeeze = 1 if (not hasattr(opt, 'C2B')) or opt.C2B else 0
   c = x.shape[0]
-  baseFlag = hasattr(opt, 'mode') and opt.mode == 'lite'
+  baseFlag = hasattr(opt, 'mode') and opt.mode == 'lite.old'
   if baseFlag:
     c = c >> 1
     base = padImageReflect(sc * padding)(x[c:].unsqueeze(squeeze))
@@ -187,7 +186,7 @@ def readFile(nodes=[]):
       raise RuntimeError('Unknown image format')
   return f
 
-def genGetModel(f):
+def genGetModel(f=lambda opt: opt.modelDef()):
   def getModel(opt):
     print('loading model {}'.format(opt.model))
     return f(opt)

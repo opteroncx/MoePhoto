@@ -10,7 +10,8 @@ module.exports = (env, argv) => {
     target: 'web',
     entry: {
       app: './src/js/app.js',
-      progress: './src/js/progress.js'
+      progress: './src/js/progress.js',
+      about: './src/js/about.js'
     },
     output: {
       filename: 'static/js/[name].js',
