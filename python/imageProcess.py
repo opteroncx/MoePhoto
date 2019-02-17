@@ -10,7 +10,9 @@ from PIL import Image
 from config import config
 from defaultConfig import defaultConfig
 from progress import Node, updateNode
+import torch.backends.cudnn as cudnn
 
+cudnn.benchmark = True
 deviceCPU = torch.device('cpu')
 outDir = defaultConfig['outDir'][0]
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))

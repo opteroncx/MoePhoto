@@ -1,3 +1,8 @@
+==========ver4.2============
+更换快速放大模型
+chcp方式支持非ASCII程序目录
+Ajax载入赞助者信息
+增加[memTest.py], [benchmark.py]
 ==========ver4.1============
 整合MoeNet_lite
 rebuild static
