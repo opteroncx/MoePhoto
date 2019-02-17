@@ -11,7 +11,7 @@ from imageProcess import genGetModel, initModel
 from config import config
 
 modelPath = './model/slomo/SuperSloMo.ckpt'
-ramCoef = 1
+ramCoef = [.9 / x for x in (6418.7, 1393., 1156.3)]
 #mean = [0.429, 0.431, 0.397]
 #std  = [1, 1, 1]
 #negMean = [-x for x in mean]
@@ -36,12 +36,13 @@ def getOpt(option):
   opt.sf = option['sf']
   opt.firstTime = 1
   opt.notLast = 1
+  opt.batchSize = 0
   if opt.sf < 2:
     raise RuntimeError('Error: --sf/slomo factor has to be at least 2')
   return opt
 
 def getBatchSize(option):
-  return max(1, 1 * ramCoef)
+  return max(1, int((config.calcFreeMem() / option['load']) * ramCoef[config.getRunType()]))
 
 def doSlomo(func, node):
   # Temporary fix for issue #7 https://github.com/avinashpaliwal/Super-SloMo/issues/7 -
@@ -57,6 +58,9 @@ def doSlomo(func, node):
     unpad = lambda im: im[:, :oriHeight, :oriWidth]
     flowBackWarp = getFlowBack(opt, width, height)
 
+    if not opt.batchSize:
+      opt.batchSize = getBatchSize({'load': width * height})
+      print('Slome batch size={}'.format(opt.batchSize))
     batchSize = len(data)
     sf = opt.sf
     tempOut = [0 for _ in range(batchSize * sf + 1)]

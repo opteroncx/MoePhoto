@@ -80,30 +80,33 @@ def interpolate(x):
   #t[x.shape[0]:] = resizeByTorch(x, t.shape[2], t.shape[1])
   return t
 
-def windowWrap(f, window=2, batchSize=1):
+def windowWrap(f, opt, window=2):
   cache = []
+  maxBatch = 1 << 7
   h = 0
-  getData = lambda arr: [arr[i:i + window] for i in range(len(arr) - window + 1)]
+  getData = lambda: [cache[i:i + window] for i in range(h - window + 1)]
   def init(r=False):
     nonlocal h, cache
-    if r:
-      cache = cache[1 - window:] + [0 for _ in range(batchSize)]
+    b = min(opt.batchSize, maxBatch) if opt.batchSize > 0 else maxBatch
+    if r and window > 1:
+      cache = cache[h - window + 1:h] + [0 for _ in range(b)]
       h = window - 1
     else:
-      cache = [0 for _ in range(window + batchSize - 1)]
+      cache = [0 for _ in range(window + b - 1)]
       h = 0
   init()
   def g(inp=None):
     nonlocal h
+    b = min(max(1, opt.batchSize), maxBatch)
     if type(inp) != type(None):
       cache[h] = inp
       h += 1
-      if h == len(cache):
-        data = getData(cache)
+      if h >= window + b - 1:
+        data = getData()
         init(True)
         return f(data)
     elif h >= window:
-      data = getData(cache[0:h])
+      data = getData()
       init()
       return f(data)
   return g
@@ -350,7 +353,7 @@ def genProcess(steps, root=True, outType=None):
         nodesAfter = []
       slomoOpt = opt['opt']
       slomo = funcs[-1](f, nodes[-1])
-      funcs[-1] = windowWrap(lambda data: slomo(data, slomoOpt), 2, runSlomo.getBatchSize(opt))
+      funcs[-1] = windowWrap(lambda data: slomo(data, slomoOpt), slomoOpt, 2)
       nodeAfter = Node({}, total=opt['sf'], learn=0)
       for node in nodesAfter:
         nodeAfter.append(node)
