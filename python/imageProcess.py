@@ -89,12 +89,11 @@ def windowWrap(f, opt, window=2):
   getData = lambda: [cache[i:i + window] for i in range(h - window + 1)]
   def init(r=False):
     nonlocal h, cache
-    b = min(opt.batchSize, maxBatch) if opt.batchSize > 0 else maxBatch
     if r and window > 1:
-      cache = cache[h - window + 1:h] + [0 for _ in range(b)]
+      cache = cache[h - window + 1:h] + [0 for _ in range(maxBatch)]
       h = window - 1
     else:
-      cache = [0 for _ in range(window + b - 1)]
+      cache = [0 for _ in range(window + maxBatch - 1)]
       h = 0
   init()
   def g(inp=None):
