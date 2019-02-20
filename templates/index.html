@@ -49,7 +49,7 @@
 									<a href="/batch">批量放大</a>
 								</li>
 								<li>
-									<a href="/video">视频放大</a>
+									<a href="/video">AI视频</a>
 								</li>
 								<li>
 									<a href="/ednoise">风格化</a>
@@ -181,7 +181,7 @@
 						<div id=downloader>
 							<br>
 							<a id='downImg' class="agile-icon btn btn-success btn-lg" href="#">
-								<i class="fa fa-floppy-o">&nbsp;保存</i>
+								保存
 							</a>
 						</div>
 					</div>
@@ -260,35 +260,7 @@
 		</div>
 	</div>
 	<!-- footer start here -->
-	<div class="footer-agile">
-		<div class="container">
-			<div class="footer-top-agileinfo">
-				<div class="social-icon">
-					<a href="http://may-workshop.com" class="social-button twit">
-						<i class="fa fa-home"></i>
-					</a>
-					<a href="http://blog.may-workshop.com" class="social-button gg1">
-						<i class="fa fa-book"></i>
-					</a>
-					<a href="http://hgalgame.com" class="social-button fb">
-						<i class="glyphicon glyphicon-header"></i>
-					</a>
-					<a href="https://github.com/opteroncx" class="social-button drb1">
-						<i class="fa fa-github"></i>
-					</a>
-				</div>
-				<div class="clearfix"> </div>
-				<br>
-				<p>Copyright &copy; 2018.May-workshop All rights reserved.
-					<a target="_blank" href="http://may-workshop.com">访问主站</a>
-					<br> 禁止滥用和用于非法途径
-					<br> 学术用途请标记引用
-					<a href="https://arxiv.org/abs/1801.10319">Link</a>
-				</p>
-				<div class="clearfix"> </div>
-			</div>
-		</div>
-	</div>
+	{% autoescape true %} {{footer| safe}} {% endautoescape %}
 	<!-- //footer end here -->
 	<!-- js -->
 	<script src="{{vendorsJs}}"></script>
