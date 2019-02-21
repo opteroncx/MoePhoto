@@ -40,12 +40,14 @@
 				<p> 可用工作硬盘空间:{{disk_free}} MB</p>
 				<p> Python版本:{{python}}</p>
 				<p> PyTorch版本:{{torch}}</p>
+				<p> CUDA版本:{{cuda}}</p>
+				<p> CuDNN版本:{{cudnn}}</p>
 				<ul>
 					{% for gpu in gpus %}
 					<li>
 						<p> 显卡型号:{{gpu['name']}}</p>
 						<p> 显卡CUDA能力:{{gpu['capability']}}</p>
-						<p> 处理器数量:{{gpu['total_memory']}}</p>
+						<p> 处理器数量:{{gpu['processor_count']}}</p>
 						<p> 总显存:{{gpu['total_memory']}} MB</p>
 						<p> 空余显存:<span class="freeGPUMemory"></span> MB</p>
 					</li>
