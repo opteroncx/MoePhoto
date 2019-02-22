@@ -10,9 +10,7 @@ from PIL import Image
 from config import config
 from defaultConfig import defaultConfig
 from progress import Node, updateNode
-import torch.backends.cudnn as cudnn
 
-cudnn.benchmark = True
 deviceCPU = torch.device('cpu')
 outDir = defaultConfig['outDir'][0]
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
@@ -63,24 +61,46 @@ def doCrop(opt, model, x, padding=1, sc=1):
 
   return tmp_image
 
-def resizeByPIL(x, width, height):
+PILResamples = {
+  'nearest': Image.NEAREST,
+  'bilinear': Image.BILINEAR,
+  'bicubic': Image.BICUBIC
+}
+def resizeByPIL(x, width, height, mode='bicubic'):
   if x.shape[0] == 1:
     x = x.squeeze(0)
-  y = Image.fromarray(toOutput8(toFloat(x))).resize((width, height), resample=Image.BICUBIC)
+  y = Image.fromarray(toOutput8(toFloat(x))).resize((width, height), resample=PILResamples[mode])
   y = np.array(y)
   if len(y.shape) == 2:
     y = y.reshape(*y.shape, 1)
   return to_tensor(y).to(dtype=x.dtype, device=x.device)
 
-resizeByTorch = lambda x, width, height: F.interpolate(x.unsqueeze(0), size=(height, width), mode='bilinear', align_corners=False).squeeze()
+resizeByTorch = lambda x, width, height, mode='bilinear':\
+  F.interpolate(x.unsqueeze(0), size=(height, width), mode=mode, align_corners=False).squeeze()
 
-def interpolate(x):
-  shape = [s << 1 for s in x.shape]
-  t = torch.zeros(shape, dtype=x.dtype, device=x.device)
-  t[:x.shape[0],:x.shape[1],:x.shape[2]] = x
-  t[x.shape[0]:] = resizeByPIL(x, t.shape[2], t.shape[1])
-  #t[x.shape[0]:] = resizeByTorch(x, t.shape[2], t.shape[1])
-  return t
+def resize(opt, out, pos=0, nodes=[]):
+  opt['update'] = True
+  if not 'method' in opt:
+    opt['method'] = 'bilinear'
+  c = h = w = 1
+  def f(im):
+    nonlocal c, h, w
+    if opt['update']:
+      h, w = tuple(im.shape[-2:])
+      oriLoad = h * w
+      h = round(h * opt['scaleH']) if 'scaleH' in opt else opt['height']
+      w = round(w * opt['scaleW']) if 'scaleW' in opt else opt['width']
+      newLoad = h * w
+      if len(nodes):
+        nodes[pos].load = im.nelement()
+        newLoad /= oriLoad
+        for n in nodes[pos + 1:]:
+          n.multipleLoad(newLoad)
+          updateNode(n)
+      if out['source']:
+        opt['update'] = False
+    return resizeByTorch(im, w, h, opt['method'])
+  return f
 
 def windowWrap(f, opt, window=2):
   cache = []
@@ -219,6 +239,11 @@ transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
 ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs))
 previewPath = defaultConfig['outDir'][0] + '/.preview.png'
 
+def toInt(o, keys):
+  for key in keys:
+    if key in o:
+      o[key] = int(o[key])
+
 def appendFuncs(f, node, funcs, wrap=True):
   g = node.bindFunc(f)
   funcs.append(NonNullWrap(g) if wrap else g)
@@ -283,6 +308,10 @@ def procDehaze(opt, out, *_):
   ns.append(appendFuncs(lambda im: dehaze.Dehaze(im, dehazeOpt), node, fs))
   return fs, ns, out
 
+def procResize(opt, out, nodes):
+  node = Node(dict(op='resize', mode=opt['method']), 1, name=opt['name'] if 'name' in opt else None)
+  return [node.bindFunc(resize(opt, out, len(nodes), nodes))], [node], out
+
 def procOutput(opt, out, *_):
   load = out['load']
   node0 = Node(dict(op='toFloat'), load)
@@ -312,7 +341,7 @@ procs = dict(
     procInput('file', 8, [context.getFile, readFile(nodes)], dict(bitDepth=8, channel=0, source=0))),
   buffer=(lambda opt, *_:
     procInput('buffer', opt['bitDepth'], [toNumPy(opt['bitDepth'])], dict(bitDepth=opt['bitDepth'], channel=1, source=1))),
-  DN=procDN, SR=procSR, output=procOutput, slomo=procSlomo, dehaze=procDehaze
+  DN=procDN, SR=procSR, output=procOutput, slomo=procSlomo, dehaze=procDehaze, resize=procResize
   )
 
 def genProcess(steps, root=True, outType=None):
@@ -322,17 +351,17 @@ def genProcess(steps, root=True, outType=None):
   rf = lambda im: reduce(apply, funcs, im)
   if root:
     for opt in filter((lambda opt: opt['op'] == 'SR'), steps):
-      opt['scale'] = int(opt['scale'])
+      toInt(opt, ['scale'])
       opt['opt'] = runSR.getOpt(opt['scale'], opt['model'], config.ensembleSR)
     for opt in filter((lambda opt: opt['op'] == 'resize'), steps):
-      opt['scale'] = int(opt['scale'])
+      toInt(opt, ['scaleW', 'scaleH', 'width', 'height'])
     for opt in filter((lambda opt: opt['op'] == 'DN'), steps):
       opt['opt'] = runDN.getOpt(opt['model'])
     for opt in filter((lambda opt: opt['op'] == 'dehaze'), steps):
       opt['opt'] = dehaze.getOpt()
     slomos = [*filter((lambda opt: opt['op'] == 'slomo'), steps)]
     for opt in slomos:
-      opt['sf'] = int(opt['sf'])
+      toInt(opt, ['sf'])
       opt['opt'] = runSlomo.getOpt(opt)
     if len(slomos):
       slomos[-1]['opt'].notLast = 0
