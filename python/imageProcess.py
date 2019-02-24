@@ -10,9 +10,11 @@ from PIL import Image
 from config import config
 from defaultConfig import defaultConfig
 from progress import Node, updateNode
+import logging
 
 deviceCPU = torch.device('cpu')
 outDir = defaultConfig['outDir'][0]
+log = logging.getLogger('Moe')
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
 padImageReflect = torch.nn.ReflectionPad2d
 unpadImage = lambda padding: lambda im: im[:, padding:-padding, padding:-padding]
@@ -210,13 +212,13 @@ def readFile(nodes=[]):
 
 def genGetModel(f=lambda opt: opt.modelDef()):
   def getModel(opt):
-    print('loading model {}'.format(opt.model))
+    log.info('loading model {}'.format(opt.model))
     return f(opt)
   return getModel
 
 def initModel(model, weights=None):
   if weights:
-    print('reloading weights')
+    log.info('reloading weights')
     model.load_state_dict(weights)
   for param in model.parameters():
     param.requires_grad_(False)

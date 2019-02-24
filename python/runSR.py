@@ -56,7 +56,5 @@ def getOpt(scale, mode, ensemble):
 
   opt.ramCoef = mode_switch[nmode][2][config.getRunType()]
   opt.cropsize = config.getConfig()[0]
-  if opt.cropsize:
-    print('当前SR切块大小：', opt.cropsize)
   opt.modelCached = initModel(getModel(opt), load(opt.model, map_location='cpu'))
   return opt

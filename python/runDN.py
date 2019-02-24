@@ -30,7 +30,5 @@ def getOpt(model):
 
   opt.ramCoef = mode_switch[model][2][config.getRunType()]
   opt.cropsize = config.getConfig()[1 if model[:4] == 'lite' else 2]
-  if opt.cropsize:
-    print('当前denoise切块大小：', opt.cropsize)
   opt.modelCached = initModel(getModel(opt), load(opt.model, map_location='cpu'))
   return opt

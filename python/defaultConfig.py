@@ -14,6 +14,7 @@ defaultConfig = {
   'ensembleSR': (0, '放大时自集成的扩增倍数， 0-7'),
   'outDir': ('download', '输出目录'),
   'uploadDir': ('upload', '上传目录'),
+  'logPath': ('.user/log.txt', '日志文件路径'),
   'sharedMemSize': (100 * 2 ** 20, '前后台共享的内存文件交换区字节大小，要能装下png格式的一张输入或输出图片'),
   'port': (2333, '监听端口')
 }
