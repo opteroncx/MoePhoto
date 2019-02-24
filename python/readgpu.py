@@ -26,7 +26,6 @@ def uninstall():
 
 getFreeMem = lambda device: pynvml.nvmlDeviceGetMemoryInfo(device).free  # pylint: disable=E0602
 getGPU = lambda: list(map(getFreeMem, devices))
-getName = lambda: list(map(getGPUName, devices))
 getPythonVersion = lambda: '.'.join(map(str, sys.version_info[:3]))
 getTorchVersion = lambda: torch.__version__
 getCudnnVersion = lambda v: '.'.join(map(str, (v // 1000, v // 100 % 10, v % 100)))
@@ -35,7 +34,7 @@ getGPUProperties = lambda: [getGPUProperty(i) for i in range(torch.cuda.device_c
 
 if __name__ == '__main__':
   init()
-  print(getName(), getGPU())
+  print(getGPU())
   print(getPythonVersion())
   print(getTorchVersion())
   print(getCudaVersion())
