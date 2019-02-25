@@ -245,11 +245,7 @@ def batchEnhance():
       break
     name = output_path + os.path.basename(image.filename)
     start = time.time()
-    sender.send({
-      'name': 'image_enhance',
-      'args': (current.writeFile(image), *opt),
-      'kwargs': { 'name': name, 'trace': False }
-    })
+    sender.send(('image_enhance', current.writeFile(image), *opt, { 'op': 'output', 'file': name, 'trace': False }))
     while not receiver.poll():
       idle()
     if receiver.poll():

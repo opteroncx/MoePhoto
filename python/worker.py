@@ -74,5 +74,5 @@ def worker(main, taskIn, taskOut, notifier, stopEvent):
   while True:
     task = taskIn.recv()
     stopEvent.clear()
-    result = routes[task['name']](*task['args'], **task['kwargs']) if type(task) == dict else routes[task[0]](*task[1:])
+    result = routes[task[0]](*task[1:])
     taskOut.send(result)
