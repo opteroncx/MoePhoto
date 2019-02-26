@@ -34,7 +34,7 @@ class LocalFormatter(logging.Formatter):
     time = super(LocalFormatter, self).formatTime(r)
     if r.levelno >= logging.WARNING:
       return '{}|{}|{:8}|{}:{}|{}'.format(
-        time, r.levelname, r.name, r.module, r.lineno, message)
+        time, r.name, r.levelname, r.module, r.lineno, message)
     else:
       return '{}|{}|{}'.format(time, r.name, message)
 

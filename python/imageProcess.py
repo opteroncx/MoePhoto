@@ -84,11 +84,11 @@ def resize(opt, out, pos=0, nodes=[]):
   opt['update'] = True
   if not 'method' in opt:
     opt['method'] = 'bilinear'
-  c = h = w = 1
+  h = w = 1
   def f(im):
-    nonlocal c, h, w
+    nonlocal h, w
     if opt['update']:
-      h, w = tuple(im.shape[-2:])
+      _, h, w = im.shape
       oriLoad = h * w
       h = round(h * opt['scaleH']) if 'scaleH' in opt else opt['height']
       w = round(w * opt['scaleW']) if 'scaleW' in opt else opt['width']
@@ -102,6 +102,26 @@ def resize(opt, out, pos=0, nodes=[]):
       if out['source']:
         opt['update'] = False
     return resizeByTorch(im, w, h, opt['method'])
+  return f
+
+def restrictSize(width, height=0, method='bilinear'):
+  if not height:
+    height = width
+  h = w = flag = 0
+  def f(im):
+    nonlocal h, w, flag
+    if not h:
+      _, oriHeight, oriWidth = im.shape
+      flag = oriHeight <= height and oriWidth <= width
+      scaleH = height / oriHeight
+      scaleW = width / oriWidth
+      if scaleH < scaleW:
+        w = round(oriWidth * scaleH)
+        h = height
+      else:
+        h = round(oriHeight * scaleW)
+        w = width
+    return im if flag else resizeByTorch(im, w, h, method)
   return f
 
 def windowWrap(f, opt, window=2):
@@ -257,9 +277,12 @@ import runSlomo
 import dehaze
 from worker import context
 
-fPreview = [toOutput8,
+fPreview = [
+  0,
+  toFloat,
+  toOutput8,
   (lambda im: im.astype(np.uint8)),
-  BGR2RGB,
+  0,
   lambda im: writeFile(im, context.shared, 'PNG'),
   lambda *_: context.root.trace(0, preview=previewPath, fileSize=context.shared.tell())]
 funcPreview = lambda im: reduce(applyNonNull, fPreview, im)
@@ -323,16 +346,17 @@ def procOutput(opt, out, *_):
   fs = [NonNullWrap(node0.bindFunc(toFloat)), NonNullWrap(fOutput)]
   ns = [node0, node1]
   if out['source']:
-    fs1 = [fOutput]
+    fPreview[0] = restrictSize(2048)
+    fs1 = [node0.bindFunc(toFloat), fOutput]
     def o(im):
       res = reduce(applyNonNull, fs1, im)
       funcPreview(im)
       return [res]
-    fs[1] = o
+    fs = [o]
     if out['channel']:
-      fPreview[2] = BGR2RGB
+      fPreview[4] = BGR2RGB
     else:
-      fPreview[2] = identity
+      fPreview[4] = identity
       ns.append(appendFuncs(BGR2RGB, Node(dict(op='Channel')), fs1, False))
       out['channel'] = 1
     ns.append(appendFuncs(toBuffer(bitDepthOut), Node(dict(op='toBuffer', bits=bitDepthOut), load), fs1, False))
