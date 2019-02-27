@@ -43,4 +43,33 @@ $(document).ready($ => {
   })
 })
 const getResource = path => [path, '?', (new Date()).getTime()].join('')
-export { getResource, getSession, newMessager }
+const texts = {
+  step: '步骤',
+  add: '点击添加...',
+  delete: '删除',
+  labelSplitter: '：',
+  pixel: '像素',
+  fps: '帧每秒',
+  noFileMsg: '缺少输入文件',
+  errorMsg: '出错啦',
+  idle: '空闲中',
+  finish: '完成啦',
+  running: '正在处理您的任务',
+  processing: '处理中',
+  stopping: '等待保存已处理部分',
+  onBusy: gone => '忙碌中' + (gone == null ? '' : `，已经过${gone}秒`),
+  timeFormatter: time => `，预计还需要${time.toFixed(2)}秒`
+}
+const appendText = key => text => text + texts[key]
+const [setLanguage, registryLanguageListener] = (_ => {
+  const listeners = []
+  return [language => {
+    for (let key of language)
+      key in texts && (texts[key] = language[key])
+    listeners.forEach(language)
+  },
+  listener => {
+    listener in listeners || listeners.push(listener)
+  }]
+})()
+export { getResource, getSession, newMessager, appendText, texts, setLanguage, registryLanguageListener }

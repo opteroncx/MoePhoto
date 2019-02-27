@@ -1,8 +1,8 @@
-import { getResource, getSession, newMessager } from './common.js'
+import { getResource, getSession, newMessager, texts } from './common.js'
 import $ from 'jquery'
 const reconnectPeriod = 5
 const setup = opt => {
-  var imgInp = $("#imgInp")
+  var options = $('#options')
   if (opt.inputImg && opt.inputImg.length) {
     const readURL = function () {
       if (this.files && this.files[0]) {
@@ -11,7 +11,7 @@ const setup = opt => {
         reader.readAsDataURL(this.files[0])
       }
     }
-    imgInp.change(readURL)
+    options.on('change', '.imgInp', readURL)
   }
   if (opt.dropZone && opt.dropZone.length) {
     var dropZone = opt.dropZone[0]
@@ -23,11 +23,10 @@ const setup = opt => {
     dropZone.addEventListener('drop', e => {
       e.stopPropagation()
       e.preventDefault()
-      imgInp[0].files = e.dataTransfer.files
+      options.find('.imgInp')[0].files = e.dataTransfer.files
     }, false)
   }
-  var downloader = $('#downloader'), loading = $('#FG'), runButton = $('#RunButton'),
-    imgUpload = document.querySelector("#imgUpload"), intervalId, inTaskFlag = 0
+  var downloader = $('#downloader'), loading = $('#FG'), runButton = $('#RunButton'), intervalId
   loading.hide()
   downloader.hide()
 
@@ -38,7 +37,13 @@ const setup = opt => {
         runButton.attr('disabled', false)
       } else {
         clearInterval(intervalId)
-        runButton.attr('disabled', true)
+        let result = event.data.result
+        if (result === 'Fail')
+          onError(0, 400, event.data.exception)
+        else if (result)
+          onSuccess(result)
+        else
+          runButton.attr('disabled', true)
       }
     }).on('error', event => {
       console.error(event)
@@ -60,11 +65,27 @@ const setup = opt => {
   const openMessager = _ => messager.open({ path: opt.path })
   openMessager()
 
+  const onSuccess = result => {
+    console.log(result)
+    clearInterval(intervalId)
+    loading.hide()
+    downloader.show()
+    runButton.attr('disabled', false)
+    opt.success && opt.success(result.result)
+  }
+
+  const onError = (xhr, status, error) => {
+    console.error(xhr, status, error)
+    clearInterval(intervalId)
+    loading.hide()
+    opt.error ? opt.error(texts.errorMsg) : alert(texts.errorMsg)
+  }
+
   if (opt.session) {
-    let noFileMsg = '缺少输入文件', errorMsg = '出错啦'
     runButton.bind('click', function () {
-      var fdata = new FormData(imgUpload)
-      if (!fdata.get('file').size) return opt.setMessage ? opt.setMessage(noFileMsg) : alert(noFileMsg)
+      var fdata = new FormData()
+      opt.beforeSend && opt.beforeSend(fdata)
+      if (!fdata.get('file').size) return opt.setMessage ? opt.setMessage(texts.noFileMsg) : alert(texts.noFileMsg)
       $.ajax({
         url: `${opt.path}?session=${opt.session}`,
         type: "POST",
@@ -78,22 +99,9 @@ const setup = opt => {
           loading.show()
           runButton.attr('disabled', true)
           intervalId = setInterval(openMessager, 200)
-          opt.beforeSend && opt.beforeSend(fdata)
         },
-        success: result => {
-          console.log(result)
-          clearInterval(intervalId)
-          loading.hide()
-          downloader.show()
-          runButton.attr('disabled', false)
-          opt.success && opt.success(result.result)
-        },
-        error: (xhr, status, error) => {
-          console.error(xhr, status, error)
-          clearInterval(intervalId)
-          loading.hide()
-          opt.error ? opt.error(errorMsg) : alert(errorMsg)
-        }
+        success: onSuccess,
+        error: onError
       })
     })
   } else {
@@ -102,6 +110,9 @@ const setup = opt => {
   }
   return messager
 }
-const app = { getSession, getResource, setup }
-window.app = app
+const app = { getSession, getResource, setup, texts }
+if (window.app)
+  Object.assign(window.app, app)
+else
+  window.app = app
 export default app

@@ -58,6 +58,7 @@ def enhance(f):
       code = 400
     finally:
       clean()
+    onProgress(context.root, res)
     return (json.dumps(res, ensure_ascii=False), code)
   return g
 
