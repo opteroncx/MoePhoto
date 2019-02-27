@@ -3,11 +3,11 @@ const doc = window.document
 const defaultOpt = {
   cache: false
 }
-const throwError = e => setTimeout(() => {throw e}, 0)
+const throwError = e => setTimeout(() => { throw e }, 0)
 const formatData = data => data && typeof data === 'string' ? JSON.parse(data) : data
 export const newMessager = (url, session, opt = {}) => {
   var m = { url, session, xhr: null, status: 0 }, listeners = {},
-  opt = Object.assign({}, defaultOpt, opt)
+    opt = Object.assign({}, defaultOpt, opt)
   const getOpt = data => {
     var res = Object.assign({}, opt)
     if (data && typeof data === 'object') {
@@ -23,7 +23,7 @@ export const newMessager = (url, session, opt = {}) => {
   const pend = res => {
     if (m.status) {
       m.xhr = $.ajax(getOpt())
-      .then((data => m.fire({ type: 'message', data: formatData(data) })), onError)
+        .then((data => m.fire({ type: 'message', data: formatData(data) })), onError)
     } else m.xhr = null
     return res
   }
@@ -69,7 +69,7 @@ export const newMessager = (url, session, opt = {}) => {
     if (!m.status) {
       m.status = 1
       m.xhr = $.ajax(getOpt(data))
-      .then((data => m.fire({ type: 'open', data: formatData(data) })), onError)
+        .then((data => m.fire({ type: 'open', data: formatData(data) })), onError)
     }
     return m.xhr
   }
@@ -81,5 +81,7 @@ export const getSession = _ => {
   let start = cookie.indexOf('session=') + 8
   let end = cookie.indexOf(';', start)
   if (end < 0) end = cookie.length
-  return unescape(cookie.substring(start, end))
+  let res = unescape(cookie.substring(start, end));
+  (+res) || console.error(`No session found in cookie ${cookie}`)
+  return res
 }

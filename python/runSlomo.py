@@ -3,6 +3,7 @@ super slomo
 code refered from https://github.com/avinashpaliwal/Super-SloMo.git
 '''
 # pylint: disable=E1101
+import logging
 import torch
 from torch.nn import ReflectionPad2d
 #from torchvision.transforms import Normalize
@@ -10,6 +11,7 @@ from slomo import UNet, backWarp
 from imageProcess import genGetModel, initModel
 from config import config
 
+log = logging.getLogger('Moe')
 modelPath = './model/slomo/SuperSloMo.ckpt'
 ramCoef = [.9 / x for x in (6418.7, 1393., 1156.3)]
 #mean = [0.429, 0.431, 0.397]
@@ -60,7 +62,7 @@ def doSlomo(func, node):
 
     if not opt.batchSize:
       opt.batchSize = getBatchSize({'load': width * height})
-      print('Slome batch size={}'.format(opt.batchSize))
+      log.info('Slomo batch size={}'.format(opt.batchSize))
     batchSize = len(data)
     sf = opt.sf
     tempOut = [0 for _ in range(batchSize * sf + 1)]

@@ -4,7 +4,7 @@ import json
 import codecs
 import re
 import psutil
-from flask import Flask, render_template, request, jsonify, send_from_directory, make_response, Response
+from flask import Flask, render_template, request, jsonify, send_from_directory, make_response, Response, send_file
 from gevent import pywsgi, idle, spawn
 from defaultConfig import defaultConfig
 
@@ -25,6 +25,7 @@ busy = lambda: (jsonify(result='Busy', eta=current.eta), 503)
 cwd = os.getcwd()
 outDir = defaultConfig['outDir'][0]
 uploadDir = defaultConfig['uploadDir'][0]
+logPath = os.path.abspath(defaultConfig['logPath'][0])
 downDir = os.path.join(app.root_path, outDir)
 if not os.path.exists(outDir):
   os.mkdir(outDir)
@@ -196,6 +197,7 @@ identity = lambda x: x
 readOpt = lambda req: json.loads(req.values['steps'])
 controlPoint('/stop', stopCurrent, lambda: E403, E404)
 controlPoint('/msg', onConnect, busy, OK, checkMsgMatch)
+app.route('/log', endpoint='log')(lambda: send_file(logPath, add_etags=False))
 app.route('/favicon.ico', endpoint='favicon')(lambda: send_from_directory(app.root_path, 'logo3.ico'))
 app.route("/{}/.preview.png".format(outDir), endpoint='preview')(lambda: Response(current.getPreview(), mimetype='image/png'))
 sendFromDownDir = lambda filename: send_from_directory(downDir, filename, as_attachment=True)
@@ -243,11 +245,7 @@ def batchEnhance():
       break
     name = output_path + os.path.basename(image.filename)
     start = time.time()
-    sender.send({
-      'name': 'image_enhance',
-      'args': (current.writeFile(image), *opt),
-      'kwargs': { 'name': name, 'trace': False }
-    })
+    sender.send(('image_enhance', current.writeFile(image), *opt, { 'op': 'output', 'file': name, 'trace': False }))
     while not receiver.poll():
       idle()
     if receiver.poll():

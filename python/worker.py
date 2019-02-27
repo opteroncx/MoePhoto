@@ -1,11 +1,22 @@
 import json
 from io import BytesIO
-from traceback import print_exc
+from traceback import format_exc
 from progress import setCallback, initialETA
+from defaultConfig import defaultConfig
+from logger import initLogging
 
 def context(): pass
 context.root = None
 context.getFile = lambda size: BytesIO(context.sharedView[:size])
+log = initLogging(defaultConfig['logPath'][0]).getLogger('Moe')
+
+def filterOpt(item):
+  if type(item) == dict and 'opt' in item:
+    res = item.copy()
+    del res['opt']
+    return res
+  else:
+    return item
 
 def begin(root, nodes=[], setAllCallback=True):
   context.root = root
@@ -36,16 +47,18 @@ def onProgress(node, kwargs={}):
 def enhance(f):
   def g(*args, **kwargs):
     try:
-      result = f(*args, **kwargs)
+      res = { 'result': f(*args, **kwargs) }
       code = 200
-    except Exception as e:
-      print('错误内容=='+str(e))
-      print_exc()
-      result = 'Fail'
+    except:
+      log.exception([f.__name__] + [filterOpt(arg) for arg in args])
+      res = {
+        'result': 'Fail',
+        'exception': format_exc()
+      }
       code = 400
     finally:
       clean()
-    return (json.dumps({'result': result}, ensure_ascii=False), code)
+    return (json.dumps(res, ensure_ascii=False), code)
   return g
 
 def worker(main, taskIn, taskOut, notifier, stopEvent):
@@ -61,5 +74,5 @@ def worker(main, taskIn, taskOut, notifier, stopEvent):
   while True:
     task = taskIn.recv()
     stopEvent.clear()
-    result = routes[task['name']](*task['args'], **task['kwargs']) if type(task) == dict else routes[task[0]](*task[1:])
+    result = routes[task[0]](*task[1:])
     taskOut.send(result)

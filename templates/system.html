@@ -59,6 +59,10 @@
 				{% endif %}
 			</div>
 			<div class="clearfix"> </div>
+			<div class="col-md-12 stats-agileinfo agileits-w3layouts">
+				<hr>
+				<a id="logButton" class="btn btn-primary btn-lg" href="/log">获取后台日志</a>
+			</div>
 		</div>
 	</div>
 	<!-- //about -->
@@ -78,7 +82,7 @@
 	<script src="static/js/progress.js"></script>
 	<script>
 		$(document).ready(_ => {
-			var session = window.app.getSession(), GPUfrees = $('.freeGPUMemory')
+			var session = window.app.getSession(), GPUfrees = $('.freeGPUMemory'), logButton = $('#logButton')
 			const path = '/systemInfo'
 			const progress = window.app.setup({
 				session,
@@ -105,6 +109,24 @@
 						progress.final('出错啦')
 					}
 				}
+			})
+			logButton.attr('href', '#')
+			logButton.click(_ => {
+				logButton.attr('disabled', true)
+				$.get('/log')
+					.then(data => {
+						data = data.split('\n').filter(line => line.length)
+							.map(JSON.parse).map(ev => {
+								ev.time = new Date(ev.time)
+								return ev
+							})
+						if (data.length) {
+							progress.final('日志已写入浏览器控制台，请按<kbd>F12</kbd>查看')
+							data.forEach(console.log.bind(console))
+						} else progress.final('没有新的日志')
+					})
+					.catch(console.error.bind(console))
+					.then(_ => logButton.attr('disabled', false))
 			})
 		})
 	</script>

@@ -3,6 +3,7 @@ import subprocess as sp
 import re
 import sys
 import threading
+import logging
 from queue import Queue, Empty
 from gevent import spawn_later
 from config import config
@@ -11,6 +12,7 @@ from progress import Node, initialETA
 from worker import context, begin
 from defaultConfig import defaultConfig
 
+log = logging.getLogger('Moe')
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
 qOut = Queue(64)
 stepVideo = [dict(op='buffer', bitDepth=16)]
@@ -40,19 +42,19 @@ def getVideoInfo(videoPath):
           height = int(videoInfo[1])
           frameRate = float(videoInfo[2])
         except:
-          print(line)
+          log.error(line)
           raise RuntimeError('Video info not found')
       if re.match('frame=', line):
         try:
           totalFrames = int(re.search('frame=[\\s]*([\\d]+) ', line).groups()[0])
         except:
-          print(line)
+          log.error(line)
 
     pipeIn.stderr.flush()
     pipeIn.stderr.close()
   finally:
     pipeIn.terminate()
-  print('Info of video {}: {}x{}@{}fps, {} frames'.format(videoPath, width, height, frameRate, totalFrames))
+  log.info('Info of video {}: {}x{}@{}fps, {} frames'.format(videoPath, width, height, frameRate, totalFrames))
   return width, height, frameRate, totalFrames
 
 def enqueueOutput(out, queue, t):
@@ -207,6 +209,6 @@ def SR_vid(video, *steps):
     try:
       os.remove(video)
     except:
-      print('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(video))
+      log.warning('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(video))
   readSubprocess(qOut)
   return outputPath, i

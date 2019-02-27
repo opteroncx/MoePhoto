@@ -61,7 +61,7 @@ const setup = opt => {
   openMessager()
 
   if (opt.session) {
-    const noFileMsg = '缺少输入文件', errorMsg = '出错啦'
+    let noFileMsg = '缺少输入文件', errorMsg = '出错啦'
     runButton.bind('click', function () {
       var fdata = new FormData(imgUpload)
       if (!fdata.get('file').size) return opt.setMessage ? opt.setMessage(noFileMsg) : alert(noFileMsg)
@@ -96,6 +96,9 @@ const setup = opt => {
         }
       })
     })
+  } else {
+    let errorMsg = 'Session invailid, please try clear browser data and refresh this page.'
+    opt.error ? opt.error(errorMsg) : alert(errorMsg)
   }
   return messager
 }
