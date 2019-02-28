@@ -65,7 +65,7 @@ if __name__ == '__main__':
   port = defaultConfig['port'][0]
   if len(sys.argv) > 1:
     if '-g' in sys.argv:
-      host = ''
+      host = '0.0.0.0'
     run(host, port)
   else:
     from webbrowser import open as startBrowser
