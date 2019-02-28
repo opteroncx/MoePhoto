@@ -1,3 +1,9 @@
+==========ver4.4.2============
+集成4倍快速放大模型
+系统信息页面增加获取日志功能，worker进程日志同时写入.user/log.txt
+后台支持缩放功能，使用PyTorch的Bilinear interpolate
+增加备用的nvml.dll
+统一后台任务接口
 ==========ver4.3.1============
 slomo现在自动设置batchSize
 系统信息增加cuda和cudnn版本
