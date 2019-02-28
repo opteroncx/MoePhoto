@@ -1,4 +1,4 @@
-import { getResource, getSession, newMessager, texts } from './common.js'
+import { newMessager, texts } from './common.js'
 import $ from 'jquery'
 const reconnectPeriod = 5
 const setup = opt => {
@@ -110,9 +110,5 @@ const setup = opt => {
   }
   return messager
 }
-const app = { getSession, getResource, setup, texts }
-if (window.app)
-  Object.assign(window.app, app)
-else
-  window.app = app
-export default app
+
+export { setup, texts }

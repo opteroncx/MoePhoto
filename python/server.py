@@ -233,19 +233,21 @@ def batchEnhance():
     os.makedirs(output_path)
   opt = readOpt(request)
   total = len(fileList)
-  print(total)
+  print('batch total: {}'.format(total))
   current.notifier.send({
     'eta': total,
     'gone': 0,
     'total': total
   })
+  opt[-1]['trace'] = False
   for image in fileList:
     if current.stopFlag.is_set():
       result = 'Interrupted'
       break
     name = output_path + os.path.basename(image.filename)
     start = time.time()
-    sender.send(('image_enhance', current.writeFile(image), *opt, { 'op': 'output', 'file': name, 'trace': False }))
+    opt[-1]['file'] = name
+    sender.send(('image_enhance', current.writeFile(image), *opt))
     while not receiver.poll():
       idle()
     if receiver.poll():

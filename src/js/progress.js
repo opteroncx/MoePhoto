@@ -1,6 +1,6 @@
 import $ from 'jquery'
 import { getResource, getSession, texts } from './common.js'
-import app from './app.js'
+import { setup } from './app.js'
 const bindProgress = $ele => {
   var intervalId = 0, remain = 0, bar = $ele.find('.progress-bar'),
     msgBox = $ele.find('.message'), timeBox = $ele.find('.time'), progress
@@ -72,8 +72,7 @@ const bindMessager = ($ele, messager) => {
   }
   return progress
 }
-let _setup = app.setup
-const setup = opt => {
+const setupProgress = opt => {
   var stopButton = $('#StopButton').hide(), runButton = $('#RunButton'), total = 0
   const setPreview = opt.outputImg ? (_ => {
     let idle = true
@@ -98,7 +97,7 @@ const setup = opt => {
     data.total ? total = data.total : 0
     data.gone ? progress.setMessage(opt.onProgress(data.gone, total, data)) : 0
   }
-  const messager = _setup(opt)
+  const messager = setup(opt)
   messager.on('message', onMessage).on('open', onMessage)
   const progress = bindMessager(opt.progress, messager)
   opt.onErrorMsg = data => progress.setMessage(texts.onBusy(data.gone, total, data))
@@ -137,9 +136,9 @@ const setup = opt => {
   })
   return progress
 }
-const exportApp = { getSession, getResource, setup }
+const exportApp = { getSession, getResource, setup: setupProgress }
 if (window.app)
   Object.assign(window.app, exportApp)
 else
   window.app = exportApp
-export default exportApp
+export { setupProgress as setup }

@@ -9,7 +9,6 @@ import $ from 'jquery'
 window.$ = $
 import 'bootstrap'
 import { jarallax } from 'jarallax'
-import './SmoothScroll.min.js'
 import './jquery.totemticker.js'
 import './move-top.min.js'
 import './easing.js'
@@ -58,7 +57,14 @@ const texts = {
   processing: '处理中',
   stopping: '等待保存已处理部分',
   onBusy: gone => '忙碌中' + (gone == null ? '' : `，已经过${gone}秒`),
-  timeFormatter: time => `，预计还需要${time.toFixed(2)}秒`
+  timeFormatter: time => `，预计还需要${time.toFixed(2)}秒`,
+  batchSucc: result => [
+    result[0] === 'Success' ? texts.finish : '中途被打断了',
+    `，处理了${result[1]}张图片`,
+    result[2] ? `，然而有${result[2]}张失败了` : '',
+    `，请<a href="/gallery?dir=${result[3]}">查看这里</a>`
+  ].join(''),
+  batchRunning: (gone, total) => `处理中，共${total}张，已处理${gone}张`
 }
 const appendText = key => text => text + texts[key]
 const [setLanguage, registryLanguageListener] = (_ => {

@@ -58,45 +58,8 @@
 				<i class="fa fa-cogs" aria-hidden="true"></i> 属性设置
 			</div>
 			<div class="stats-agileinfo agileits-w3layouts">
-				<form id="imgUpload" enctype="multipart/form-data">
-					<br>
-					<div class="col-md-12 settings">
-						<input name="file" type="file" class="inputfile inputfile-1" style='width: 0.1px;height: 0.1px;opacity: 0 !important;overflow: hidden;position: absolute;
-						z-index: -1;' id="file" webkitdirectory directory />
-						<label for="file">
-							<span></span>
-							<strong>
-								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="17" viewBox="0 0 20 17">
-									<path
-										d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z" />
-								</svg> 选择文件夹&hellip;</strong>
-						</label>
-						<br>
-					</div>
-					<div class="col-md-6 settings">
-						<hr> 放大倍数&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="scale" type="radio" id="scale" value="1" checked>不放大 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="scale" type="radio" id="scale" value="2" checked>2X &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="scale" type="radio" id="scale" value="3">3X &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="scale" type="radio" id="scale" value="4">4X
-						<hr> 超分模型&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="mode" type="radio" id='mode' value="a" checked>动漫 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="mode" type="radio" id='mode' value="p">照片 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="mode" type="radio" id='mode' value="lite">快速 （仅2X,4X放大）<br>
-						<input name="mode" type="radio" id='mode' value="gan">GAN （仅适用于RGB图像，仅4X放大）
-					</div>
-					<div class="col-md-6 settings">
-						<hr> 是否降噪&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="denoise" type="radio" id='denoise' value="no" checked>不降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="denoise" type="radio" id='denoise' value="lite5">弱 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="denoise" type="radio" id='denoise' value="lite10">中 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="denoise" type="radio" id='denoise' value="lite15">强 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<hr> 降噪顺序&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="dn_seq" type="radio" id='dn_seq' value="before" checked>先降噪
-						&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<input name="dn_seq" type="radio" id='dn_seq' value="after">后降噪 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-					</div>
-				</form>
+				<div id="steps" class="col-sm-4 col-md-4 settings"></div>
+				<div id="options" class="col-sm-8 col-md-8 settings"></div>
 				<div class="clearfix"></div>
 				<div class="col-md-12">
 					<hr>
@@ -125,32 +88,15 @@
 	<!-- js -->
 	<script src="{{vendorsJs}}"></script>
 	<script src="{{commonJs}}"></script>
-	<script src="static/js/progress.js"></script>
+	<script src="static/js/main.js"></script>
 	<script>
-		$(document).ready(_ => window.app.setup({
-			onProgress: (gone, total) => `处理中，共${total}张，已处理${gone}张`,
-			beforeSend: data => {
-				let steps = [], dn_seq = data.get('dn_seq'), model = data.get('denoise'), scale = data.get('scale')
-				if (dn_seq === 'before' && model !== 'no') steps.push({ op: 'DN', model })
-				if (scale > 1) steps.push({ op: 'SR', model: data.get('mode'), scale })
-				if (dn_seq === 'after' && model !== 'no') steps.push({ op: 'DN', model })
-				data.delete('dn_seq')
-				data.delete('denoise')
-				data.delete('scale')
-				data.delete('mode')
-				data.set('steps', JSON.stringify(steps))
-			},
-			success: (result, progress) => {
-				progress.final([
-					result[0] === 'Success' ? '完成啦' : '中途被打断了',
-					`，处理了${result[1]}张图片`,
-					result[2] ? `，然而有${result[2]}张失败了` : '',
-					`，请<a href="/gallery?dir=${result[3]}">查看这里</a>`
-				].join(''))
-			},
+		const app = window.app
+		$(document).ready(_ => app.setup({
+			onProgress: app.texts.batchRunning,
+			success: (result, progress) => progress.final(app.texts.batchSucc(result)),
 			path: '/batch_enhance',
-			progress: $('#progress'),
-			outputImg: $('#outputImg')
+			outputImg: $('#outputImg'),
+			features: ['inputBatch', 'output', 'SR', 'DN', 'dehaze', 'ednoise', 'resize']
 		}))
 	</script>
 </body>
