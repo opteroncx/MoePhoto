@@ -40,8 +40,8 @@ const setup = opt => {
         let result = event.data.result
         if (result === 'Fail')
           onError(0, 400, event.data.exception)
-        else if (result)
-          onSuccess(result)
+        else if (result != null)
+          onSuccess(event.data)
         else
           runButton.attr('disabled', true)
       }
@@ -78,30 +78,25 @@ const setup = opt => {
     console.error(xhr, status, error)
     clearInterval(intervalId)
     loading.hide()
-    opt.error ? opt.error(texts.errorMsg) : alert(texts.errorMsg)
+    opt.error ? opt.error(texts.errorMsg, xhr) : alert(texts.errorMsg)
   }
 
   if (opt.session) {
-    runButton.bind('click', function () {
+    runButton.bind('click', _ => {
       var fdata = new FormData()
       opt.beforeSend && opt.beforeSend(fdata)
-      if (!fdata.get('file').size) return opt.setMessage ? opt.setMessage(texts.noFileMsg) : alert(texts.noFileMsg)
-      $.ajax({
+      if (!(opt.noCheckFile || fdata.get('file').size)) return opt.setMessage ? opt.setMessage(texts.noFileMsg) : alert(texts.noFileMsg)
+      $.post({
         url: `${opt.path}?session=${opt.session}`,
-        type: "POST",
         data: fdata,
-        cache: false,
         contentType: false,
         processData: false,
-        async: true,
-        dataType: 'json',
         beforeSend: _ => {
           loading.show()
           runButton.attr('disabled', true)
           intervalId = setInterval(openMessager, 200)
-        },
-        success: onSuccess,
-        error: onError
+          openMessager()
+        }
       })
     })
   } else {

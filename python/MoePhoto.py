@@ -30,6 +30,7 @@ def main():
       flag.wait(1)
       flag.clear()
       node.trace()
+    node.trace(0, result=duration)
     return duration
 
   def imageEnhance(size, *args):
@@ -42,11 +43,10 @@ def main():
     return begin(imNode, nodes, True if trace else -1).bindFunc(process)(size, name=name)
 
   return getMM(), {
-    'lock': lock,
+    'lockInterface': lock,
     'image_enhance': enhance(imageEnhance),
+    'batch': enhance(imageEnhance, False),
     'video_enhance': enhance(SR_vid),
-    'ednoise_enhance': enhance(imageEnhance),
-    'image_dehaze': enhance(imageEnhance),
     'systemInfo': enhance(config.system)
   }
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
   mp.Process(target=worker, args=(main, taskInReceiver, taskOutSender, notifier, stopEvent), daemon=True).start()
   from server import runserver
   from defaultConfig import defaultConfig
-  run = runserver(taskInSender, taskOutReceiver, noter, stopEvent, notifier, getMM())
+  run = runserver(taskInSender, taskOutReceiver, noter, stopEvent, getMM())
   host = '127.0.0.1'
   port = defaultConfig['port'][0]
   if len(sys.argv) > 1:

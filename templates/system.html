@@ -79,57 +79,7 @@
 	<!-- js -->
 	<script src="{{vendorsJs}}"></script>
 	<script src="{{commonJs}}"></script>
-	<script src="static/js/progress.js"></script>
-	<script>
-		$(document).ready(_ => {
-			var session = window.app.getSession(), GPUfrees = $('.freeGPUMemory'), logButton = $('#logButton')
-			const path = '/systemInfo'
-			const progress = window.app.setup({
-				session,
-				progress: $('#progress'),
-				path
-			})
-			session && $.ajax({
-				url: path,
-				data: { session },
-				cache: false,
-				dataType: 'json',
-				beforeSend: _ => progress.begin('正在处理您的任务'),
-				success: res => {
-					freeMems = res.result
-					progress.final('空闲中')
-					GPUfrees.each((i, elem) => elem.innerHTML = freeMems[i])
-				},
-				error: (xhr, status, error) => {
-					let busy = xhr ? xhr.responseJSON ? xhr.responseJSON.eta == null ? 0 : 1 : 0 : 0
-					if (busy) {
-						progress.setStatus(+xhr.responseJSON.eta)
-					} else {
-						console.error(xhr, status, error)
-						progress.final('出错啦')
-					}
-				}
-			})
-			logButton.attr('href', '#')
-			logButton.click(_ => {
-				logButton.attr('disabled', true)
-				$.get('/log')
-					.then(data => {
-						data = data.split('\n').filter(line => line.length)
-							.map(JSON.parse).map(ev => {
-								ev.time = new Date(ev.time)
-								return ev
-							})
-						if (data.length) {
-							progress.final('日志已写入浏览器控制台，请按<kbd>F12</kbd>查看')
-							data.forEach(console.log.bind(console))
-						} else progress.final('没有新的日志')
-					})
-					.catch(console.error.bind(console))
-					.then(_ => logButton.attr('disabled', false))
-			})
-		})
-	</script>
+	<script src="static/js/system.js"></script>
 	<!-- //js -->
 </body>
 

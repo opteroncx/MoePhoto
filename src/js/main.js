@@ -23,12 +23,14 @@ const scaleModelMapping = {
 }
 var getResizeView = (by, scale, size) =>
   by === 'scale' ? scale + '倍' : appendText('pixel')(size)
+const setFile = opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : '请选择' })
+const submitFile = (opt, data) => opt.file && opt.file[0] && data.set('file', opt.file[0]) && void 0
 const panels = {
   input: {
     text: '输入',
     description: '选择一张你需要放大的图片，开始体验吧！运行完毕请点击保存',
     position: 0,
-    submit: (opt, data) => opt.file && opt.file[0] && data.set('file', opt.file[0]) && void 0,
+    submit: submitFile,
     view: opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : '请选择' }),
     args: {
       file: {
@@ -43,14 +45,14 @@ const panels = {
     text: '输入',
     description: '选择一段需要放大的视频！运行完毕请点击保存',
     position: 0,
-    submit: (opt, data) => opt.file && opt.file[0] && data.set('file', opt.file[0]) && void 0,
-    view: opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : '请选择' }),
+    submit: submitFile,
+    view: setFile,
     args: {
       file: {
         type: 'file',
         name: 'file',
         text: '视频',
-        classes: ['inputfile-6'],
+        classes: ['inputfile-6', 'imgInp'],
         notes: [
           '视频会复制一份上传，存放在程序的upload目录下'
         ]

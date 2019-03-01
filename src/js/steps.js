@@ -197,14 +197,13 @@ const context = (steps => {
   const compareOp = (a, b) => a.position - b.position
   const pushNewStep = panel => steps.push(newStep(panel))
   const setFeatures = features => {
-    var arr = ['index'].concat(features)
-    addibleFeatures = features.filter(name => panels[name].draggable)
-    let ps = arr.map(name => panels[name]),
+    addibleFeatures = features.filter(name => panels[name].draggable && name !== 'index')
+    let ps = features.map(name => panels[name]),
       tops = ps.filter(panel => panel.position >= 0).sort(compareOp),
       bottoms = ps.filter(panel => panel.position < 0).sort(compareOp)
     tops.forEach(pushNewStep)
     index = steps.length
-    steps.push(indexStep)
+    features.includes('index') && steps.push(indexStep)
     bottoms.forEach(pushNewStep)
     let listeners = panels.index.listeners
     addibleFeatures.forEach(name => listeners.click.push({
@@ -225,6 +224,7 @@ const context = (steps => {
   const refreshSteps = target => {
     target && (pos = target)
     index = steps.indexOf(indexStep)
+    index < 0 && (index = steps.length)
     refreshPanel(0)
     $('#steps').html(steps.map(getStepNIndicatorHTML(pos)).join(''))
   }

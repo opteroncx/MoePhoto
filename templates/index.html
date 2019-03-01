@@ -52,12 +52,6 @@
 									<a href="/video">AI视频</a>
 								</li>
 								<li>
-									<a href="/ednoise">风格化</a>
-								</li>
-								<li>
-									<a href="/dehaze">去雾</a>
-								</li>
-								<li>
 									<a href="/gallery">相册</a>
 								</li>
 								<li>
@@ -118,7 +112,7 @@
 	<div class="welcome">
 		<div class="container">
 			<div class="welcome-agileinfo">
-				<div class="col-xs-4 col-sm-4 welcome-w3lsgrids">
+				<div class="col-xs-6 col-sm-6 welcome-w3lsgrids">
 					<div class="w3lwelcome-img effect-ruby">
 						<a href="/batch">
 							<img src="static/images/img2.jpg" alt=" " class="img-responsive" />
@@ -129,24 +123,13 @@
 						</a>
 					</div>
 				</div>
-				<div class="col-xs-4 col-sm-4 welcome-w3lsgrids">
+				<div class="col-xs-6 col-sm-6 welcome-w3lsgrids">
 					<div class="w3lwelcome-img effect-ruby">
 						<a href="/video">
 							<img src="static/images/img1.jpg" alt=" " class="img-responsive" />
 							<div class="agile-caption">
 								<h3>视频放大</h3>
 								<p>对视频进行超分处理</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<div class="col-xs-4 col-sm-4 welcome-w3lsgrids">
-					<div class="w3lwelcome-img effect-ruby">
-						<a href="/ednoise">
-							<img src="static/images/img3.jpg" alt=" " class="img-responsive" />
-							<div class="agile-caption">
-								<h3>风格化（强力降噪）</h3>
-								<p>强力降噪，画面涂抹感比较强，可以拿来做照片转gal背景</p>
 							</div>
 						</a>
 					</div>
@@ -229,12 +212,11 @@
 	<script src="{{commonJs}}"></script>
 	<script src="static/js/main.js"></script>
 	<script>
-		$(document).ready(function () {
+		const app = window.app, path = '/image_enhance'
+		$(document).ready(_ => {
 			const outputImg = $('#outputImg'), downImg = $('#downImg')
-			const path = '/image_enhance'
 			const onProgress = _ => app.texts.processing
-			const app = window.app
-			const progress = app.setup({
+			app.setup({
 				onProgress,
 				success: (result, progress) => {
 					progress.final(app.texts.finish)
@@ -245,7 +227,7 @@
 				path,
 				inputImg: $('#inputImg'),
 				dropZone: $('#drop_zone'),
-				features: ['input', 'output', 'SR', 'DN', 'dehaze', 'ednoise', 'resize']
+				features: ['index', 'input', 'output', 'SR', 'DN', 'dehaze', 'ednoise', 'resize']
 			})
 		})
 	</script>

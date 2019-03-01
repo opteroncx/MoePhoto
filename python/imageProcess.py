@@ -14,6 +14,7 @@ import logging
 
 deviceCPU = torch.device('cpu')
 outDir = defaultConfig['outDir'][0]
+previewFormat = defaultConfig['videoPreview'][0]
 log = logging.getLogger('Moe')
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
 padImageReflect = torch.nn.ReflectionPad2d
@@ -259,7 +260,7 @@ combine = lambda *fs: lambda x: reduce(apply, fs, x)
 trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, flip), combine(transpose, flip, transpose), combine(flip2, transpose)]
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
 ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs))
-previewPath = defaultConfig['outDir'][0] + '/.preview.png'
+previewPath = defaultConfig['outDir'][0] + '/.preview.{}'.format(previewFormat if previewFormat else '')
 
 def toInt(o, keys):
   for key in keys:
@@ -283,7 +284,7 @@ fPreview = [
   toOutput8,
   (lambda im: im.astype(np.uint8)),
   0,
-  lambda im: writeFile(im, context.shared, 'PNG'),
+  lambda im: writeFile(im, context.shared, previewFormat),
   lambda *_: context.root.trace(0, preview=previewPath, fileSize=context.shared.tell())]
 funcPreview = lambda im: reduce(applyNonNull, fPreview, im)
 
@@ -335,7 +336,7 @@ def procDehaze(opt, out, *_):
 
 def procResize(opt, out, nodes):
   node = Node(dict(op='resize', mode=opt['method']), 1, name=opt['name'] if 'name' in opt else None)
-  return [node.bindFunc(resize(opt, out, len(nodes), nodes))], [node], out
+  return [node.bindFunc(NonNullWrap(resize(opt, out, len(nodes), nodes)))], [node], out
 
 def procOutput(opt, out, *_):
   load = out['load']
@@ -348,10 +349,13 @@ def procOutput(opt, out, *_):
   if out['source']:
     fPreview[0] = restrictSize(2048)
     fs1 = [node0.bindFunc(toFloat), fOutput]
-    def o(im):
-      res = reduce(applyNonNull, fs1, im)
-      funcPreview(im)
-      return [res]
+    if previewFormat:
+      def o(im):
+        res = reduce(applyNonNull, fs1, im)
+        funcPreview(im)
+        return [res]
+    else:
+      o = lambda im: [reduce(applyNonNull, fs1, im)]
     fs = [o]
     if out['channel']:
       fPreview[4] = BGR2RGB
@@ -380,7 +384,11 @@ def genProcess(steps, root=True, outType=None):
       toInt(opt, ['scale'])
       opt['opt'] = runSR.getOpt(opt['scale'], opt['model'], config.ensembleSR)
     for opt in filter((lambda opt: opt['op'] == 'resize'), steps):
-      toInt(opt, ['scaleW', 'scaleH', 'width', 'height'])
+      toInt(opt, ['width', 'height'])
+      if 'scaleW' in opt:
+        opt['scaleW'] = float(opt['scaleW'])
+      if 'scaleH' in opt:
+        opt['scaleH'] = float(opt['scaleH'])
     for opt in filter((lambda opt: opt['op'] == 'DN'), steps):
       opt['opt'] = runDN.getOpt(opt['model'])
     for opt in filter((lambda opt: opt['op'] == 'dehaze'), steps):

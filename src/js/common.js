@@ -42,6 +42,8 @@ $(document).ready($ => {
   })
 })
 const getResource = path => [path, '?', (new Date()).getTime()].join('')
+const processingMsg = '处理中'
+const genOnProgress = (unit, msg = processingMsg) => (gone, total) => `${msg}，共${total}${unit}，已处理${gone}${unit}`
 const texts = {
   step: '步骤',
   add: '点击添加...',
@@ -49,13 +51,17 @@ const texts = {
   labelSplitter: '：',
   pixel: '像素',
   fps: '帧每秒',
+  second: '秒',
   noFileMsg: '缺少输入文件',
   errorMsg: '出错啦',
   idle: '空闲中',
   finish: '完成啦',
   running: '正在处理您的任务',
-  processing: '处理中',
+  processing: processingMsg,
   stopping: '等待保存已处理部分',
+  logWritten: '日志已写入浏览器控制台，请按<kbd>F12</kbd>查看',
+  noMoreLog: '没有新的日志',
+  needRefresh: '请在空闲后刷新',
   onBusy: gone => '忙碌中' + (gone == null ? '' : `，已经过${gone}秒`),
   timeFormatter: time => `，预计还需要${time.toFixed(2)}秒`,
   batchSucc: result => [
@@ -64,7 +70,10 @@ const texts = {
     result[2] ? `，然而有${result[2]}张失败了` : '',
     `，请<a href="/gallery?dir=${result[3]}">查看这里</a>`
   ].join(''),
-  batchRunning: (gone, total) => `处理中，共${total}张，已处理${gone}张`
+  videoSucc: result => `完成啦，处理到第${result[1]}帧`,
+  batchRunning: genOnProgress('张'),
+  videoRunning: genOnProgress('帧'),
+  lockRunning: genOnProgress('秒', '锁定中')
 }
 const appendText = key => text => text + texts[key]
 const [setLanguage, registryLanguageListener] = (_ => {

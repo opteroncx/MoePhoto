@@ -110,16 +110,17 @@ const setupProgress = opt => {
     progress.begin(texts.running)
     beforeSend && beforeSend(data)
   }
-  let success = opt.success
+  let success = opt.success, error = opt.error
   opt.success = result => {
     runButton.show()
     stopButton.hide()
     success && success(result, progress)
   }
-  opt.error = msg => {
+  opt.error = (msg, xhr) => {
     progress.final(msg)
     runButton.show()
     stopButton.hide()
+    error && error(xhr)
   }
   stopButton.click(_ => {
     $.ajax({
@@ -136,9 +137,5 @@ const setupProgress = opt => {
   })
   return progress
 }
-const exportApp = { getSession, getResource, setup: setupProgress }
-if (window.app)
-  Object.assign(window.app, exportApp)
-else
-  window.app = exportApp
+
 export { setupProgress as setup }

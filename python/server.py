@@ -7,6 +7,7 @@ import psutil
 from flask import Flask, render_template, request, jsonify, send_from_directory, make_response, Response, send_file
 from gevent import pywsgi, idle, spawn
 from defaultConfig import defaultConfig
+from FIFOcache import Cache
 
 staticMaxAge = 86400
 app = Flask(__name__, root_path='.')
@@ -18,6 +19,9 @@ current.session = None
 current.path = None
 current.eta = 0
 current.fileSize = 0
+current.result = 0
+results = {}
+current.getResult = lambda key: results.pop(key, OK)
 E403 = ('Not authorized.', 403)
 E404 = ('Not Found', 404)
 OK = ('', 200)
@@ -26,6 +30,7 @@ cwd = os.getcwd()
 outDir = defaultConfig['outDir'][0]
 uploadDir = defaultConfig['uploadDir'][0]
 logPath = os.path.abspath(defaultConfig['logPath'][0])
+previewFormat = defaultConfig['videoPreview'][0]
 downDir = os.path.join(app.root_path, outDir)
 if not os.path.exists(outDir):
   os.mkdir(outDir)
@@ -44,7 +49,7 @@ def acquireSession(request):
   current.eta = 10
   return False if current.session else E403
 
-def controlPoint(path, fMatch, fUnmatch, resNoCurrent, check=lambda *_: True):
+def controlPoint(path, fMatch, fUnmatch, fNoCurrent, check=lambda *_: True):
   def f():
     try:
       session = request.values['session']
@@ -55,7 +60,7 @@ def controlPoint(path, fMatch, fUnmatch, resNoCurrent, check=lambda *_: True):
     if current.session:
       return spawn(fMatch).get() if current.session == session and check(request) else fUnmatch()
     else:
-      return resNoCurrent
+      return fNoCurrent(session)
   app.route(path, methods=['GET', 'POST'], endpoint=path)(f)
 
 def stopCurrent():
@@ -70,12 +75,15 @@ def checkMsgMatch(request):
   return path == current.path
 
 def onConnect():
-  while current.session and not noter.poll():
+  while current.session and not (current.result or noter.poll()):
     idle()
-  if current.session and noter.poll():
+  if current.result or noter.poll():
+    res = current.result
+    current.result = 0
     while noter.poll():
       res = noter.recv()
-    current.eta = res['eta']
+    if 'eta' in res:
+      current.eta = res['eta']
     if 'fileSize' in res:
       current.fileSize = res['fileSize']
       del res['fileSize']
@@ -91,9 +99,9 @@ def makeHandler(name, prepare, final, methods=['POST']):
     sender.send((name, *prepare(request)))
     while not receiver.poll():
       idle()
-    result = receiver.recv()
-    current.session = None
-    return final(result)
+    result = final(receiver.recv())
+    current.putResult(result)
+    return OK
   app.route('/' + name, methods=methods, endpoint=name)(f)
 
 def renderPage(item, header=None, footer=None):
@@ -176,12 +184,11 @@ routes = [
   ('/', 'index.html', '主页', None),
   ('/video', 'video.html', 'AI视频', None),
   ('/batch', 'batch.html', '批量放大', None),
-  ('/ednoise', 'ednoise.html', '风格化', None),
-  ('/dehaze', 'dehaze.html', '去雾', None),
   ('/document', 'document.html', None, None),
   ('/about', 'about.html', None, about_updater, ['log']),
   ('/system', 'system.html', None, getDynamicInfo, ['disk_free', 'mem_free', 'session', 'path'], getSystemInfo()),
-  ('/gallery', 'gallery.html', None, gallery, ['var'])
+  ('/gallery', 'gallery.html', None, gallery, ['var']),
+  ('/lock', 'lock.html', None, None)
 ]
 
 for item in routes:
@@ -195,20 +202,20 @@ for item in routes:
 
 identity = lambda x: x
 readOpt = lambda req: json.loads(req.values['steps'])
-controlPoint('/stop', stopCurrent, lambda: E403, E404)
-controlPoint('/msg', onConnect, busy, OK, checkMsgMatch)
+controlPoint('/stop', stopCurrent, lambda: E403, lambda *_: E404)
+controlPoint('/msg', onConnect, busy, current.getResult, checkMsgMatch)
 app.route('/log', endpoint='log')(lambda: send_file(logPath, add_etags=False))
 app.route('/favicon.ico', endpoint='favicon')(lambda: send_from_directory(app.root_path, 'logo3.ico'))
-app.route("/{}/.preview.png".format(outDir), endpoint='preview')(lambda: Response(current.getPreview(), mimetype='image/png'))
+if previewFormat:
+  app.route("/{}/.preview.{}".format(outDir, previewFormat), endpoint='preview')(
+    lambda: Response(current.getPreview(), mimetype='image/{}'.format(previewFormat)))
 sendFromDownDir = lambda filename: send_from_directory(downDir, filename, as_attachment=True)
 app.route("/{}/<path:filename>".format(outDir), endpoint='download')(sendFromDownDir)
-lockFinal = lambda result: (jsonify(result='Interrupted', remain=result), 499) if result > 0 else OK
-makeHandler('lock', (lambda req: [int(req.values['duration'])]), lockFinal, ['GET', 'POST'])
+lockFinal = lambda result: (jsonify(result='Interrupted', remain=result), 200) if result > 0 else OK
+makeHandler('lockInterface', (lambda req: [int(float(readOpt(req)[0]['duration']))]), lockFinal, ['GET', 'POST'])
 makeHandler('systemInfo', (lambda _: []), identity, ['GET', 'POST'])
 imageEnhancePrep = lambda req: (current.writeFile(req.files['file']), *readOpt(req))
 makeHandler('image_enhance', imageEnhancePrep, identity)
-makeHandler('ednoise_enhance', imageEnhancePrep, identity)
-makeHandler('image_dehaze', lambda req: (current.writeFile(req.files['file']), {'op': 'dehaze'}), identity)
 
 def videoEnhancePrep(req):
   vidfile = req.files['file']
@@ -234,11 +241,11 @@ def batchEnhance():
   opt = readOpt(request)
   total = len(fileList)
   print('batch total: {}'.format(total))
-  current.notifier.send({
+  current.result = {
     'eta': total,
     'gone': 0,
     'total': total
-  })
+  }
   opt[-1]['trace'] = False
   for image in fileList:
     if current.stopFlag.is_set():
@@ -247,31 +254,29 @@ def batchEnhance():
     name = output_path + os.path.basename(image.filename)
     start = time.time()
     opt[-1]['file'] = name
-    sender.send(('image_enhance', current.writeFile(image), *opt))
+    sender.send(('batch', current.writeFile(image), *opt))
     while not receiver.poll():
       idle()
-    if receiver.poll():
-      output = receiver.recv()
-      count += 1
-      note = {
-        'eta': (total - count) * (time.time() - start),
-        'gone': count,
-        'total': total
-      }
-      if output[1] == 200:
-        note['preview'] = name
-      else:
-        fail += 1
-      current.notifier.send(note)
-  current.session = None
-  return json.dumps({'result': (result, count, fail, output_path)}, ensure_ascii=False)
+    output = receiver.recv()
+    count += 1
+    note = {
+      'eta': (total - count) * (time.time() - start),
+      'gone': count,
+      'total': total
+    }
+    if output[1] == 200:
+      note['preview'] = name
+    else:
+      fail += 1
+    current.result = note
+  current.putResult({'result': (result, count, fail, output_path)})
+  return OK
 
-def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, notifier, mm):
+def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm):
   global sender, receiver, noter
   sender = taskInSender
   receiver = taskOutReceiver
   noter = noteReceiver
-  current.notifier = notifier
   current.stopFlag = stopEvent
   def preview():
     mm.seek(0)
@@ -282,6 +287,16 @@ def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, notifier, 
     mm.seek(0)
     return file._file.readinto(mm)
   current.writeFile = writeFile
+  def putResult(res):
+    key = str(current.session)
+    if not (type(res) == tuple and len(res) == 2):
+      res = (json.dumps(res, ensure_ascii=False), 200)
+    results[key] = res
+    resultsIndices.put(key)
+    current.session = None
+  current.putResult = putResult
+  resultsIndices = Cache(defaultConfig['maxResultsKept'][0], defaultConfig['resultKept'][0],
+    lambda key: results.pop(key, None))
   def f(host, port):
     app.debug = False
     app.config['SERVER_NAME'] = None
