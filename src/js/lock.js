@@ -29,6 +29,7 @@ $(document).ready(_ => {
     beforeSend: submit,
     path,
     noCheckFile: 1,
+    success: _ => progress.final(''),
     error: (_, xhr) => {
       let busy = xhr ? xhr.responseJSON ? xhr.responseJSON.eta == null ? 0 : 1 : 0 : 0
       if (busy) {

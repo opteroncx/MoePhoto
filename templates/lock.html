@@ -5,7 +5,7 @@
   <title>MoePhoto Lock</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<script type="application/x-javascript">
+  <script type="application/x-javascript">
 		addEventListener("load", function () {
 			setTimeout(hideURLbar, 0);
 		}, false);
@@ -17,11 +17,11 @@
 </head>
 
 <body>
-	<!-- banner -->
-	{% autoescape true %} {{header| safe}} {% endautoescape %}
-	<!-- //banner -->
-	<!-- Stats -->
-	<div class="news-w3layouts">
+  <!-- banner -->
+  {% autoescape true %} {{header| safe}} {% endautoescape %}
+  <!-- //banner -->
+  <!-- Stats -->
+  <div class="news-w3layouts">
     <div class="container">
       <hr>
       <div class="stats-agileinfo agileits-w3layouts">
@@ -43,18 +43,19 @@
   </div>
   <!-- //Stats -->
   <div class="container" id="progress">
-    <p><span class="message"></span><span class="time"></span></p>
+    <p><span class="message"></span></p>
+    <p><span class="status"></span><span class="time"></span></p>
     <meter class="progress-bar" value=0 max=100></meter>
     <div class="col-md-12">
       <br>
     </div>
   </div>
-	<!-- footer start here -->
-	{% autoescape true %} {{footer| safe}} {% endautoescape %}
-	<!-- //footer end here -->
-	<script src="{{vendorsJs}}"></script>
-	<script src="{{commonJs}}"></script>
-	<script src="static/js/lock.js"></script>
+  <!-- footer start here -->
+  {% autoescape true %} {{footer| safe}} {% endautoescape %}
+  <!-- //footer end here -->
+  <script src="{{vendorsJs}}"></script>
+  <script src="{{commonJs}}"></script>
+  <script src="static/js/lock.js"></script>
 </body>
 
 </html>

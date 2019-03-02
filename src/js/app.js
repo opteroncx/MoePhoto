@@ -26,27 +26,31 @@ const setup = opt => {
       options.find('.imgInp')[0].files = e.dataTransfer.files
     }, false)
   }
-  var downloader = $('#downloader'), loading = $('#FG'), runButton = $('#RunButton'), intervalId
+  var downloader = $('#downloader'), loading = $('#FG'), runButton = $('#RunButton'), intervalId, running = 0
   loading.hide()
   downloader.hide()
 
   const messager = newMessager('/msg', opt.session)
-    .on('message', event => {
-      if (!event.data) {
-        messager.abort()
-        runButton.attr('disabled', false)
-      } else {
-        clearInterval(intervalId)
-        let result = event.data.result
-        if (result === 'Fail')
-          onError(0, 400, event.data.exception)
-        else if (result != null)
-          onSuccess(event.data)
-        else
-          runButton.attr('disabled', true)
-      }
-    }).on('error', event => {
+  const onMessage = event => {
+    if (!event.data) {
+      messager.abort()
+      running && openMessager() && (running = 0)
+      runButton.attr('disabled', false)
+    } else {
+      clearInterval(intervalId)
+      let result = event.data.result
+      if (result === 'Fail')
+        onError(0, 400, event.data.exception)
+      else if (result != null)
+        onSuccess(event.data)
+      else
+        running || ((running = 1) && runButton.attr('disabled', true))
+    }
+  }
+  messager.on('message', onMessage).on('open', onMessage)
+    .on('error', event => {
       console.error(event)
+      running = 0
       clearInterval(intervalId)
       runButton.attr('disabled', true)
       let eta = 0
@@ -67,6 +71,7 @@ const setup = opt => {
 
   const onSuccess = result => {
     console.log(result)
+    running = 0
     clearInterval(intervalId)
     loading.hide()
     downloader.show()
@@ -76,9 +81,18 @@ const setup = opt => {
 
   const onError = (xhr, status, error) => {
     console.error(xhr, status, error)
+    running = 0
     clearInterval(intervalId)
     loading.hide()
     opt.error ? opt.error(texts.errorMsg, xhr) : alert(texts.errorMsg)
+  }
+
+  const beforeSend = messager.beforeSend = _ => {
+    running = 1
+    loading.show()
+    intervalId = setInterval(openMessager, 200)
+    openMessager()
+    return messager
   }
 
   if (opt.session) {
@@ -91,12 +105,7 @@ const setup = opt => {
         data: fdata,
         contentType: false,
         processData: false,
-        beforeSend: _ => {
-          loading.show()
-          runButton.attr('disabled', true)
-          intervalId = setInterval(openMessager, 200)
-          openMessager()
-        }
+        beforeSend: _ => beforeSend() && runButton.attr('disabled', true)
       })
     })
   } else {

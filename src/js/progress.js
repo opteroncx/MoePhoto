@@ -2,7 +2,7 @@ import $ from 'jquery'
 import { getResource, getSession, texts } from './common.js'
 import { setup } from './app.js'
 const bindProgress = $ele => {
-  var intervalId = 0, remain = 0, bar = $ele.find('.progress-bar'),
+  var intervalId = 0, remain = 0, bar = $ele.find('.progress-bar'), statusBox = $ele.find('.status'),
     msgBox = $ele.find('.message'), timeBox = $ele.find('.time'), progress
   const elapse = _ => {
     bar[0].value += 1
@@ -27,34 +27,29 @@ const bindProgress = $ele => {
     return progress
   }
   const setMessage = data => {
-    if (typeof data === 'string') {
+    if (typeof data === 'string')
       msgBox.html(data)
-    } else if (data && data.result) {
-      msgBox.html(data.result)
-    }
     return progress
   }
-  const setStatus = eta => {
+  const setStatus = str => statusBox.html(str) && progress
+  const setTime = eta => {
     intervalId || show()
     bar[0].max = eta + +bar[0].value
     remain = eta
     timeBox.text(texts.timeFormatter(remain))
     return progress
   }
-  return progress = { show, hide, setMessage, setStatus }
+  return progress = { show, hide, setMessage, setStatus, setTime }
 }
 const bindMessager = ($ele, messager) => {
   const progress = bindProgress($ele)
   const onMessage = event => {
     if (!event.data) {
-      progress.hide().setMessage(texts.idle)
+      progress.hide().setStatus(texts.idle)
       progress.status || messager.abort()
     } else {
       let data = event.data
-      if (data) {
-        progress.setMessage(data)
-        if (data.eta) progress.setStatus(+data.eta)
-      }
+      data && data.eta && progress.setTime(+data.eta)
     }
   }
   messager.on('message', onMessage)
@@ -70,6 +65,7 @@ const bindMessager = ($ele, messager) => {
     progress.status = 1
     return progress.show().setMessage(msg)
   }
+  progress.beforeSend = messager.beforeSend
   return progress
 }
 const setupProgress = opt => {
@@ -95,13 +91,13 @@ const setupProgress = opt => {
     }
     data.preview ? setPreview(getResource(data.preview)) : 0
     data.total ? total = data.total : 0
-    data.gone ? progress.setMessage(opt.onProgress(data.gone, total, data)) : 0
+    data.gone ? progress.setStatus(opt.onProgress(data.gone, total, data)) : 0
   }
   const messager = setup(opt)
   messager.on('message', onMessage).on('open', onMessage)
   const progress = bindMessager(opt.progress, messager)
-  opt.onErrorMsg = data => progress.setMessage(texts.onBusy(data.gone, total, data))
-  opt.setStatus = progress.setStatus
+  opt.onErrorMsg = data => progress.setStatus(texts.onBusy(data.gone, total, data))
+  opt.setStatus = progress.setTime
   opt.setMessage = progress.setMessage
   let beforeSend = opt.beforeSend
   opt.beforeSend = data => {

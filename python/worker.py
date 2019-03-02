@@ -44,7 +44,7 @@ def onProgress(node, kwargs={}):
     res['stageTotal'] = node.total
   context.notifier.send(res)
 
-def enhance(f, sendResult=True):
+def enhance(f):
   def g(*args, **kwargs):
     try:
       res = { 'result': f(*args, **kwargs) }
@@ -58,9 +58,7 @@ def enhance(f, sendResult=True):
       code = 400
     finally:
       clean()
-    if sendResult:
-      onProgress(context.root, res)
-    return (json.dumps(res, ensure_ascii=False), code)
+    return (json.dumps(res, ensure_ascii=False, separators=(',', ':')), code)
   return g
 
 def worker(main, taskIn, taskOut, notifier, stopEvent):

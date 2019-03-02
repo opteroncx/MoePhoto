@@ -19,12 +19,10 @@ current.session = None
 current.path = None
 current.eta = 0
 current.fileSize = 0
-current.result = 0
-results = {}
-current.getResult = lambda key: results.pop(key, OK)
 E403 = ('Not authorized.', 403)
 E404 = ('Not Found', 404)
 OK = ('', 200)
+cache = Cache(defaultConfig['maxResultsKept'][0], OK, lambda *args: print('abandoned', *args))
 busy = lambda: (jsonify(result='Busy', eta=current.eta), 503)
 cwd = os.getcwd()
 outDir = defaultConfig['outDir'][0]
@@ -38,6 +36,8 @@ with open('static/manifest.json') as manifest:
   assetMapping = json.load(manifest)
 vendorsJs = assetMapping['vendors.js']
 commonJs = assetMapping['common.js'] if 'common.js' in assetMapping else None
+getKey = lambda session, request: request.values['path'] + str(session) if 'path' in request.values else ''
+toResponse = lambda obj: (json.dumps(obj, ensure_ascii=False, separators=(',',':')), 200)
 
 def acquireSession(request):
   if current.session:
@@ -46,6 +46,7 @@ def acquireSession(request):
     noter.recv()
   current.session = request.values['session']
   current.path = request.path
+  current.key = current.path + str(current.session)
   current.eta = 10
   return False if current.session else E403
 
@@ -60,7 +61,7 @@ def controlPoint(path, fMatch, fUnmatch, fNoCurrent, check=lambda *_: True):
     if current.session:
       return spawn(fMatch).get() if current.session == session and check(request) else fUnmatch()
     else:
-      return fNoCurrent(session)
+      return fNoCurrent(session, request)
   app.route(path, methods=['GET', 'POST'], endpoint=path)(f)
 
 def stopCurrent():
@@ -75,21 +76,29 @@ def checkMsgMatch(request):
   return path == current.path
 
 def onConnect():
-  while current.session and not (current.result or noter.poll()):
+  while current.key and not (noter.poll() or cache.peek(current.key)):
     idle()
-  if current.result or noter.poll():
-    res = current.result
-    current.result = 0
-    while noter.poll():
-      res = noter.recv()
+  res = None
+  while current.key and noter.poll():
+    res = noter.recv()
+  if res:
     if 'eta' in res:
       current.eta = res['eta']
     if 'fileSize' in res:
       current.fileSize = res['fileSize']
       del res['fileSize']
-    return (json.dumps(res, ensure_ascii=False), 200)
+    return toResponse(res)
+  if cache.peek(current.key):
+    res = cache.pop(current.key)
+    return res
   else:
     return OK
+
+def endSession(result=None):
+  cache.put(current.key, result)
+  current.key = ''
+  current.session = None
+  return OK
 
 def makeHandler(name, prepare, final, methods=['POST']):
   def f():
@@ -99,9 +108,7 @@ def makeHandler(name, prepare, final, methods=['POST']):
     sender.send((name, *prepare(request)))
     while not receiver.poll():
       idle()
-    result = final(receiver.recv())
-    current.putResult(result)
-    return OK
+    return endSession(final(receiver.recv()))
   app.route('/' + name, methods=methods, endpoint=name)(f)
 
 def renderPage(item, header=None, footer=None):
@@ -202,8 +209,9 @@ for item in routes:
 
 identity = lambda x: x
 readOpt = lambda req: json.loads(req.values['steps'])
+onRequestCache = lambda session, request: cache.pop(getKey(session, request))
 controlPoint('/stop', stopCurrent, lambda: E403, lambda *_: E404)
-controlPoint('/msg', onConnect, busy, current.getResult, checkMsgMatch)
+controlPoint('/msg', onConnect, busy, onRequestCache, checkMsgMatch)
 app.route('/log', endpoint='log')(lambda: send_file(logPath, add_etags=False))
 app.route('/favicon.ico', endpoint='favicon')(lambda: send_from_directory(app.root_path, 'logo3.ico'))
 if previewFormat:
@@ -211,7 +219,7 @@ if previewFormat:
     lambda: Response(current.getPreview(), mimetype='image/{}'.format(previewFormat)))
 sendFromDownDir = lambda filename: send_from_directory(downDir, filename, as_attachment=True)
 app.route("/{}/<path:filename>".format(outDir), endpoint='download')(sendFromDownDir)
-lockFinal = lambda result: (jsonify(result='Interrupted', remain=result), 200) if result > 0 else OK
+lockFinal = lambda result: (jsonify(result='Interrupted', remain=result), 200) if result > 0 else (jsonify(result='Idle'), 200)
 makeHandler('lockInterface', (lambda req: [int(float(readOpt(req)[0]['duration']))]), lockFinal, ['GET', 'POST'])
 makeHandler('systemInfo', (lambda _: []), identity, ['GET', 'POST'])
 imageEnhancePrep = lambda req: (current.writeFile(req.files['file']), *readOpt(req))
@@ -268,9 +276,8 @@ def batchEnhance():
       note['preview'] = name
     else:
       fail += 1
-    current.result = note
-  current.putResult({'result': (result, count, fail, output_path)})
-  return OK
+    cache.put(current.key, toResponse(note))
+  return endSession(toResponse({'result': (result, count, fail, output_path)}))
 
 def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm):
   global sender, receiver, noter
@@ -287,16 +294,6 @@ def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm):
     mm.seek(0)
     return file._file.readinto(mm)
   current.writeFile = writeFile
-  def putResult(res):
-    key = str(current.session)
-    if not (type(res) == tuple and len(res) == 2):
-      res = (json.dumps(res, ensure_ascii=False), 200)
-    results[key] = res
-    resultsIndices.put(key)
-    current.session = None
-  current.putResult = putResult
-  resultsIndices = Cache(defaultConfig['maxResultsKept'][0], defaultConfig['resultKept'][0],
-    lambda key: results.pop(key, None))
   def f(host, port):
     app.debug = False
     app.config['SERVER_NAME'] = None

@@ -30,7 +30,6 @@ def main():
       flag.wait(1)
       flag.clear()
       node.trace()
-    node.trace(0, result=duration)
     return duration
 
   def imageEnhance(size, *args):
@@ -45,7 +44,7 @@ def main():
   return getMM(), {
     'lockInterface': lock,
     'image_enhance': enhance(imageEnhance),
-    'batch': enhance(imageEnhance, False),
+    'batch': enhance(imageEnhance),
     'video_enhance': enhance(SR_vid),
     'systemInfo': enhance(config.system)
   }

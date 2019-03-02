@@ -10,16 +10,13 @@ $(document).ready(_ => {
     session,
     progress: $('#progress'),
     path,
-    success: freeMems => {
-      progress.final(texts.idle)
-      GPUfrees.each((i, elem) => elem.innerHTML = freeMems[i])
-    }
+    success: freeMems => progress.final('') && GPUfrees.each((i, elem) => elem.innerHTML = freeMems[i])
   })
   session && $.ajax({
     url: path,
     data: { session },
     cache: false,
-    beforeSend: _ => progress.begin(texts.running),
+    beforeSend: _ => progress.begin(texts.running).beforeSend(),
     error: (xhr, status, error) => {
       let busy = xhr ? xhr.responseJSON ? xhr.responseJSON.eta == null ? 0 : 1 : 0 : 0
       if (busy) {
