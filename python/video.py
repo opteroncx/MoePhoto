@@ -105,26 +105,17 @@ def prepare(video, steps):
     width = optDecode['width']
   if 'height' in optDecode:
     height = optDecode['height']
-  scaleW = scaleH = 1
   outWidth, outHeight = (width, height)
   for opt in filter((lambda opt: opt['op'] == 'SR' or opt['op'] == 'resize'), procSteps):
     if opt['op'] == 'SR':
-      scaleW *= opt['scale']
-      scaleH *= opt['scale']
-    else:
-      if 'scaleW' in opt:
-        scaleW = opt['scaleW']
-      else:
-        scaleW = 1
-        outWidth = opt['width']
-      if 'scaleH' in opt:
-        scaleH = opt['scaleH']
-      else:
-        scaleH = 1
-        outHeight = opt['height']
+      outWidth *= opt['scale']
+      outHeight *= opt['scale']
+    else: # resize
+      outWidth = round(outWidth * opt['scaleW']) if 'scaleW' in opt else opt['width']
+      outHeight = round(outHeight * opt['scaleH']) if 'scaleH' in opt else opt['height']
   if start < 0:
     start = 0
-  if start and len(slomos):
+  if start and len(slomos): # should generate intermediate frames between start-1 and start
     start -= 1
     for opt in slomos:
       opt['opt'].firstTime = 0
@@ -157,7 +148,7 @@ def prepare(video, steps):
     '-y',
     '-f', 'rawvideo',
     '-pix_fmt', pix_fmt,
-    '-s', '{}x{}'.format(outWidth * scaleW, outHeight * scaleH),
+    '-s', '{}x{}'.format(outWidth, outHeight),
     '-r', str(frameRate),
     '-i', '-',
     '-i', video,

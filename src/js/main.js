@@ -152,7 +152,8 @@ const panels = {
         values: [
           { value: 'scale', binds: ['scaleW'] },
           { value: 'pixel', binds: ['width'], checked: 1 }
-        ]
+        ],
+        notes: ['按比例缩放图像长宽的小数部分四舍五入为整数']
       },
       scaleW: {
         type: 'number',
