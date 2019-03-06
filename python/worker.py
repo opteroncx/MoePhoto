@@ -36,7 +36,7 @@ def onProgress(node, kwargs={}):
     'eta': context.root.eta,
     'gone': context.root.gone,
     'total': context.root.total
-  }
+  } if context.root else {}
   res.update(kwargs)
   if hasattr(node, 'name'):
     res['stage'] = node.name
@@ -58,7 +58,7 @@ def enhance(f):
       code = 400
     finally:
       clean()
-    return (json.dumps(res, ensure_ascii=False), code)
+    return (json.dumps(res, ensure_ascii=False, separators=(',', ':')), code)
   return g
 
 def worker(main, taskIn, taskOut, notifier, stopEvent):

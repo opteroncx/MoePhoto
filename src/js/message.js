@@ -21,10 +21,9 @@ export const newMessager = (url, session, opt = {}) => {
   }
   const onError = (xhr, _, error) => m.fire({ type: 'error', data: formatData(xhr.responseJSON), error })
   const pend = res => {
-    if (m.status) {
-      m.xhr = $.ajax(getOpt())
-        .then((data => m.fire({ type: 'message', data: formatData(data) })), onError)
-    } else m.xhr = null
+    m.status ? m.xhr = $.ajax(getOpt())
+      .then((data => m.fire({ type: 'message', data: formatData(data) })), onError)
+      : m.xhr = null
     return res
   }
   m.on = (type, listener) => {

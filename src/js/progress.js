@@ -1,15 +1,14 @@
 import $ from 'jquery'
-import { getResource, getSession } from './common.js'
-import app from './app.js'
+import { getResource, getSession, texts } from './common.js'
+import { setup } from './app.js'
 const bindProgress = $ele => {
-  var intervalId = 0, remain = 0, bar = $ele.find('.progress-bar'),
+  var intervalId = 0, remain = 0, bar = $ele.find('.progress-bar'), statusBox = $ele.find('.status'),
     msgBox = $ele.find('.message'), timeBox = $ele.find('.time'), progress
-  const timeFormatter = time => `，预计还需要${time.toFixed(2)}秒`
   const elapse = _ => {
     bar[0].value += 1
     remain -= 1
     if (remain < 1) remain = 1
-    timeBox.text(timeFormatter(remain))
+    timeBox.text(texts.timeFormatter(remain))
   }
   const show = _ => {
     intervalId && clearInterval(intervalId)
@@ -28,34 +27,29 @@ const bindProgress = $ele => {
     return progress
   }
   const setMessage = data => {
-    if (typeof data === 'string') {
+    if (typeof data === 'string')
       msgBox.html(data)
-    } else if (data && data.result) {
-      msgBox.html(data.result)
-    }
     return progress
   }
-  const setStatus = eta => {
+  const setStatus = str => statusBox.html(str) && progress
+  const setTime = eta => {
     intervalId || show()
     bar[0].max = eta + +bar[0].value
     remain = eta
-    timeBox.text(timeFormatter(remain))
+    timeBox.text(texts.timeFormatter(remain))
     return progress
   }
-  return progress = { show, hide, setMessage, setStatus }
+  return progress = { show, hide, setMessage, setStatus, setTime }
 }
 const bindMessager = ($ele, messager) => {
   const progress = bindProgress($ele)
   const onMessage = event => {
     if (!event.data) {
-      progress.hide().setMessage('空闲中')
+      progress.hide().setStatus(texts.idle)
       progress.status || messager.abort()
     } else {
       let data = event.data
-      if (data) {
-        progress.setMessage(data)
-        if (data.eta) progress.setStatus(+data.eta)
-      }
+      data && data.eta && progress.setTime(+data.eta)
     }
   }
   messager.on('message', onMessage)
@@ -71,9 +65,10 @@ const bindMessager = ($ele, messager) => {
     progress.status = 1
     return progress.show().setMessage(msg)
   }
+  progress.beforeSend = messager.beforeSend
   return progress
 }
-const setup = opt => {
+const setupProgress = opt => {
   var stopButton = $('#StopButton').hide(), runButton = $('#RunButton'), total = 0
   const setPreview = opt.outputImg ? (_ => {
     let idle = true
@@ -86,8 +81,7 @@ const setup = opt => {
     }
   })() : _ => _
   if (!opt.session) opt.session = getSession()
-  const onErrorMsg = gone => '忙碌中' + (gone == null ? '' : `，已经过${gone}秒`)
-  if (!opt.onProgress) opt.onProgress = onErrorMsg
+  if (!opt.onProgress) opt.onProgress = texts.onBusy
   const onMessage = e => {
     if (!e.data) return
     let data = e.data
@@ -97,47 +91,47 @@ const setup = opt => {
     }
     data.preview ? setPreview(getResource(data.preview)) : 0
     data.total ? total = data.total : 0
-    data.gone ? progress.setMessage(opt.onProgress(data.gone, total, data)) : 0
+    data.gone ? progress.setStatus(opt.onProgress(data.gone, total, data)) : 0
   }
-  const messager = app.setup(opt)
+  const messager = setup(opt)
   messager.on('message', onMessage).on('open', onMessage)
   const progress = bindMessager(opt.progress, messager)
-  opt.onErrorMsg = data => progress.setMessage(onErrorMsg(data.gone, total, data))
-  opt.setStatus = progress.setStatus
+  opt.onErrorMsg = data => progress.setStatus(texts.onBusy(data.gone, total, data))
+  opt.setStatus = progress.setTime
   opt.setMessage = progress.setMessage
   let beforeSend = opt.beforeSend
   opt.beforeSend = data => {
     runButton.hide()
     stopButton.attr('disabled', false).show()
-    progress.begin('正在处理您的任务')
+    progress.begin(texts.running)
     beforeSend && beforeSend(data)
   }
-  let success = opt.success
+  let success = opt.success, error = opt.error
   opt.success = result => {
     runButton.show()
     stopButton.hide()
     success && success(result, progress)
   }
-  opt.error = msg => {
+  opt.error = (msg, xhr) => {
     progress.final(msg)
     runButton.show()
     stopButton.hide()
+    error && error(xhr)
   }
   stopButton.click(_ => {
     $.ajax({
       url: `/stop?session=${opt.session}`,
       beforeSend: _ => {
         stopButton.attr('disabled', true)
-        progress.hide().setMessage('等待保存已处理部分')
+        progress.hide().setMessage(texts.stopping)
       },
       error: (xhr, status, error) => {
         console.error(xhr, status, error)
-        progress.final('出错啦')
+        progress.final(texts.errorMsg)
       }
     })
   })
   return progress
 }
-const exportApp = { getSession, getResource, setup }
-window.app = exportApp
-export default exportApp
+
+export { setupProgress as setup }

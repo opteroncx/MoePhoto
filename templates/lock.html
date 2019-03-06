@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>MoePhoto Lock</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <script type="application/x-javascript">
+		addEventListener("load", function () {
+			setTimeout(hideURLbar, 0);
+		}, false);
+
+		function hideURLbar() {
+			window.scrollTo(0, 1);
+		}
+	</script>
+</head>
+
+<body>
+  <!-- banner -->
+  {% autoescape true %} {{header| safe}} {% endautoescape %}
+  <!-- //banner -->
+  <!-- Stats -->
+  <div class="news-w3layouts">
+    <div class="container">
+      <hr>
+      <div class="stats-agileinfo agileits-w3layouts">
+        <div id="steps" class="col-sm-4 col-md-4 settings"></div>
+        <div id="options" class="col-sm-8 col-md-8 settings"></div>
+        <div class="clearfix"></div>
+        <div class="col-md-12">
+          <hr>
+          <button id="RunButton" type="button" class="btn btn-primary btn-lg">锁定</button>
+          <button id="StopButton" type="button" class="btn btn-warning btn-lg">解锁</button>
+        </div>
+        <div class="col-md-12">
+          <br>
+          <br>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- //Stats -->
+  <div class="container" id="progress">
+    <p><span class="message"></span></p>
+    <p><span class="status"></span><span class="time"></span></p>
+    <meter class="progress-bar" value=0 max=100></meter>
+    <div class="col-md-12">
+      <br>
+    </div>
+  </div>
+  <!-- footer start here -->
+  {% autoescape true %} {{footer| safe}} {% endautoescape %}
+  <!-- //footer end here -->
+  <script src="{{vendorsJs}}"></script>
+  <script src="{{commonJs}}"></script>
+  <script src="static/js/lock.js"></script>
+</body>
+
+</html>

@@ -9,9 +9,11 @@ module.exports = (env, argv) => {
     mode: 'production',
     target: 'web',
     entry: {
-      app: './src/js/app.js',
-      progress: './src/js/progress.js',
-      about: './src/js/about.js'
+      system: './src/js/system.js',
+      lock: './src/js/lock.js',
+      about: './src/js/about.js',
+      page: './src/js/common.js',
+      main: './src/js/main.js'
     },
     output: {
       filename: 'static/js/[name].js',
