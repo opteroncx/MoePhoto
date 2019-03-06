@@ -24,6 +24,8 @@ ifiles = [
         './pyc/mt_download.pyc',
         './pyc/slomo.pyc',
         './pyc/runSlomo.pyc',
+        './pyc/MoeNet_lite2.pyc',
+        './pyc/logger.pyc',
         './templates',
         './static',
         './model',
@@ -49,7 +51,7 @@ efiles = ['./model/__pycache__',
         ]
 
 build_exe_options = {
-        'packages': ['tkinter', 'scipy', 'asyncio', 'numpy', 'torch', 'gevent','flask','torchvision'], 
+        'packages': ['tkinter', 'asyncio', 'numpy', 'torch', 'gevent','flask','torchvision','logging'], 
         'includes': ['numpy.core._methods','jinja2','jinja2.ext','asyncio.compat'],
         'include_files': ifiles,
         'bin_excludes': efiles}
