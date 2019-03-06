@@ -26,6 +26,7 @@ ifiles = [
         './pyc/runSlomo.pyc',
         './pyc/MoeNet_lite2.pyc',
         './pyc/logger.pyc',
+        './pyc/FIFOcache.pyc',
         './templates',
         './static',
         './model',
