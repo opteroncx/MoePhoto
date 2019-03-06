@@ -91,7 +91,8 @@ const setupProgress = opt => {
     }
     data.preview ? setPreview(getResource(data.preview)) : 0
     data.total ? total = data.total : 0
-    data.gone ? progress.setStatus(opt.onProgress(data.gone, total, data)) : 0
+    data.gone ? progress.setStatus(opt.onProgress(data.gone, total, data))
+      : data.eta ? progress.setStatus(texts.onBusy(null)) : 0
   }
   const messager = setup(opt)
   messager.on('message', onMessage).on('open', onMessage)

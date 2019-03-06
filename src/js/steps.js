@@ -35,7 +35,7 @@ const addPanel = (panelName, panel) => {
     let arg = panel.args[argName]
     let selector = `input[name=${argName}]`, bindFlag = 0
     arg.name = argName
-    if (optionType[arg.type])
+    if (optionType[arg.type]) {
       arg.values.forEach(v => {
         v.name = argName
         v.type = arg.type
@@ -43,6 +43,8 @@ const addPanel = (panelName, panel) => {
         bindFlag |= !!v.binds
         v.checked ? panel.initOpt[argName] = v.value : 0
       })
+      arg.dataType || arg.values.some(v => typeof v.value !== 'number') || (arg.dataType = 'number')
+    }
     else
       panel.initOpt[argName] = arg.value
     let changeOpt = arg.type === 'checkbox' ? (ev, opt) => {
@@ -141,12 +143,12 @@ const getDraggable = step => step.panel.draggable ? ' draggable' : ''
 const getDelete = step => step.panel.draggable ? `<a href="#" class="delete">${texts.delete}</a>` : ''
 const getStepOpt = step => {
   var panel = step.panel, opt = Object.assign({}, step.opt), args = panel.args, res = []
-  for (let key in opt) args[key].type === 'number' && (opt[key] = +opt[key])
   if (panel.view) {
     opt = panel.view(opt)
   } else for (let key in opt)
     if (optionType[args[key].type]) {
-      let f = args[key].type === 'radio' ? item => item.value === opt[key] : item => opt[key][item.value]
+      let f = args[key].type === 'radio' ? item => item.value.toString() === opt[key].toString()
+        : item => opt[key][item.value.toString()]
       opt[key] = args[key].values.filter(f).map(item => item.text).join(',')
     }
   for (let key in opt) res.push(getValueLabel((_, opt) => texts.labelSplitter + opt[key])(args[key], opt))
@@ -274,7 +276,7 @@ const submit = data => data.set('steps', JSON.stringify(steps
     if (panel.submit) {
       for (let key in panel.args) {
         let arg = panel.args[key]
-        if (arg.type === 'number' && opt[key] != null)
+        if ((arg.type === 'number' || arg.dataType === 'number') && opt[key] != null)
           opt[key] = +opt[key]
       }
       opt = panel.submit(opt, data)

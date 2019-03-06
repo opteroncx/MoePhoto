@@ -1,15 +1,13 @@
 import sys
 import multiprocessing as mp
+from mmap import mmap
+from defaultConfig import defaultConfig
+sharedMemSize = defaultConfig['sharedMemSize'][0]
+mm = mmap(-1, sharedMemSize, tagname='SharedMemory') if sys.platform[:3] == 'win' else mmap(-1, sharedMemSize)
 
 if sys.platform[:3] == 'win':
   from subprocess import Popen
   Popen(['chcp', '65001'], shell=True).wait()
-
-def getMM():
-  from mmap import mmap
-  from defaultConfig import defaultConfig
-  sharedMemSize = defaultConfig['sharedMemSize'][0]
-  return mmap(-1, sharedMemSize, tagname='SharedMemory') if sys.platform[:3] == 'win' else mmap(-1, sharedMemSize)
 
 def main():
   from progress import Node
@@ -41,7 +39,7 @@ def main():
     process, nodes = genProcess(stepFile + list(args))
     return begin(imNode, nodes, True if trace else -1).bindFunc(process)(size, name=name)
 
-  return getMM(), {
+  return mm, {
     'lockInterface': lock,
     'image_enhance': enhance(imageEnhance),
     'batch': enhance(imageEnhance),
@@ -59,7 +57,7 @@ if __name__ == '__main__':
   mp.Process(target=worker, args=(main, taskInReceiver, taskOutSender, notifier, stopEvent), daemon=True).start()
   from server import runserver
   from defaultConfig import defaultConfig
-  run = runserver(taskInSender, taskOutReceiver, noter, stopEvent, getMM())
+  run = runserver(taskInSender, taskOutReceiver, noter, stopEvent, mm)
   host = '127.0.0.1'
   port = defaultConfig['port'][0]
   if len(sys.argv) > 1:
