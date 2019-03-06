@@ -6,7 +6,7 @@ const ManifestPlugin = require('webpack-manifest-plugin')
 
 module.exports = (env, argv) => {
   return {
-    mode: 'production',
+    mode: 'development',//'production',
     target: 'web',
     entry: {
       system: './src/js/system.js',

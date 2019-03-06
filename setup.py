@@ -36,7 +36,8 @@ ifiles = [
         './libiomp5md.pdb',
         './libiompstubs5md.dll',
         './update_log.txt',
-        './site-packages'
+        './site-packages',
+        './server.bat'
         ]
 
 # exclude files
