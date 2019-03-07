@@ -68,7 +68,7 @@ exe = Executable(script='./python/MoePhoto.py', base = base, icon='logo3.ico')
 
 
 setup(  name = 'MoePhoto',
-        version = '4.0',
+        version = '4.5.5',
         description = 'May-workshop',
         options = {'build_exe': build_exe_options},
         executables = [exe])
