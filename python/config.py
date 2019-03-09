@@ -1,12 +1,13 @@
 # pylint: disable=E1101
 import time
 import os
-from warnings import warn
+import logging
 import psutil
 import torch
 import readgpu
 from defaultConfig import defaultConfig
 process = psutil.Process(os.getpid())
+log = logging.getLogger('Moe')
 
 def transform(self):
   def f(key):
@@ -25,9 +26,10 @@ class Config():
     self.cuda &= Config.cudaAvailable()
     try:
       readgpu.init()
-    except: pass
+    except Exception as e:
+      log.warning(e)
     if self.cuda and self.deviceId >= torch.cuda.device_count():
-      warn(RuntimeWarning('GPU #{} not available, using GPU #0 instead'.format(self.deviceId)))
+      log.warning(RuntimeWarning('GPU #{} not available, using GPU #0 instead'.format(self.deviceId)))
       self.deviceId = 0
 
   def getConfig(self):
