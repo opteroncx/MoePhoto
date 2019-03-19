@@ -23,7 +23,9 @@ const setup = opt => {
     dropZone.addEventListener('drop', e => {
       e.stopPropagation()
       e.preventDefault()
-      options.find('.imgInp')[0].files = e.dataTransfer.files
+      let imgInp = options.find('.imgInp')
+      imgInp[0].files = e.dataTransfer.files
+      imgInp.trigger('change')
     }, false)
   }
   var downloader = $('#downloader'), loading = $('#FG'), runButton = $('#RunButton'), intervalId, running = 0
