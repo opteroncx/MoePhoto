@@ -5,12 +5,11 @@ import sys
 import threading
 import logging
 from queue import Queue, Empty
-from gevent import spawn_later
+from gevent import spawn_later, idle
 from config import config
 from imageProcess import genProcess, clean, writeFile, BGR2RGB
 from progress import Node, initialETA
 from worker import context, begin
-from defaultConfig import defaultConfig
 
 log = logging.getLogger('Moe')
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
@@ -89,7 +88,7 @@ def prepare(video, steps):
   decodec = optDecode['codec'] if 'codec' in optDecode else config.defaultDecodec  # pylint: disable=E1101
   optRange = steps[1]
   start = int(optRange['start']) if 'start' in optRange else 0
-  outDir = defaultConfig['outDir'][0]
+  outDir = config.outDir  # pylint: disable=E1101
   procSteps = stepVideo + list(steps[2:-1])
   process, nodes = genProcess(procSteps)
   root = begin(Node({'op': 'video', 'encodec': encodec}, 1, 2, 0), nodes, False)
@@ -190,6 +189,7 @@ def SR_vid(video, *steps):
       if i >= start:
         p(raw_image)
       i += 1
+      idle()
     p()
 
     pipeOut.communicate()

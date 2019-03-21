@@ -1,5 +1,5 @@
 import $ from 'jquery'
-import { texts, registryLanguageListener } from './common.js'
+import { texts, registryLanguageListener, VERSION } from './common.js'
 
 const panels = {
   index: {
@@ -33,14 +33,15 @@ const addPanel = (panelName, panel) => {
   eventTypes.forEach(type => listeners[type] = [])
   for (let argName in panel.args) {
     let arg = panel.args[argName]
-    let selector = `input[name=${argName}]`, bindFlag = 0
+    let selector = `input[name=${argName}]`
     arg.name = argName
+    arg.bindFlag = 0
     if (optionType[arg.type]) {
       arg.values.forEach(v => {
         v.name = argName
         v.type = arg.type
         v.binds = v.binds && v.binds.map(bindChild(panel))
-        bindFlag |= !!v.binds
+        arg.bindFlag |= !!v.binds
         v.checked ? panel.initOpt[argName] = v.value : 0
       })
       arg.dataType || arg.values.some(v => typeof v.value !== 'number') || (arg.dataType = 'number')
@@ -56,7 +57,7 @@ const addPanel = (panelName, panel) => {
     arg.change = (ev, opt) => {
       changeOpt(ev, opt)
       context.refreshCurrentStep()
-      return _c(ev, opt) || bindFlag
+      return _c(ev, opt) || arg.bindFlag
     }
     eventTypes.filter(type => arg[type]).forEach(type => listeners[type].push({
       selector,
@@ -174,9 +175,9 @@ for (let panelName in panels) addPanel(panelName, panels[panelName])
 const indexStep = { panel: panels.index }
 const steps = []
 
-const newStep = panel => ({ panel, opt: Object.assign({}, panel.initOpt) })
+const newStep = (panel, option) => ({ panel, opt: Object.assign({}, panel.initOpt, option) })
 const context = (steps => {
-  var pos = 0, index, addibleFeatures
+  var pos = 0, index, addibleFeatures, tops, bottoms
   const getOpt = _ => steps[pos].opt
   const getCorrectedPos = p => p > index ? p - 1 : p
   const addStep = panelName => {
@@ -201,8 +202,8 @@ const context = (steps => {
   const setFeatures = features => {
     addibleFeatures = features.filter(name => panels[name].draggable && name !== 'index')
     let ps = features.map(name => panels[name]),
-      tops = ps.filter(panel => panel.position >= 0).sort(compareOp),
-      bottoms = ps.filter(panel => panel.position < 0).sort(compareOp)
+    tops = ps.filter(panel => panel.position >= 0).sort(compareOp),
+    bottoms = ps.filter(panel => panel.position < 0).sort(compareOp)
     tops.forEach(pushNewStep)
     index = steps.length
     features.includes('index') && steps.push(indexStep)
@@ -212,6 +213,31 @@ const context = (steps => {
       selector: `a.btn[name=${name}]`,
       f: _ => addStep(name)
     }))
+    refreshSteps()
+  }
+  const loadStep = (panel, opt, target) => {
+    let op = panel.op ? panel.op : panel.name
+    if (opt && opt.op === op) {
+      delete opt.op
+      panel.load == null || (opt = panel.load(opt))
+      target.push(newStep(panel, opt))
+      return 1
+    } else {
+      target.push(newStep(panel))
+      return 0
+    }
+  }
+  const loadOptions = options => {
+    steps.splice(0, steps.length)
+    var j = 0, k = options.length - 1, bottomSteps = []
+    for (let i = 0; i < tops.length; i++)
+      j += loadStep(tops[i], options[j], steps)
+    steps.push(indexStep)
+    for (let i = bottoms.length; i--; k -= loadStep(bottoms[i], options[k], bottomSteps));
+    for (; j <= k; j++)
+      loadStep(panels[options[j].op], options[j], steps)
+    for (let i = 0; i < bottomSteps.length; i++)
+      steps.push(bottomSteps[i])
     refreshSteps()
   }
   const getFeatures = _ => addibleFeatures
@@ -232,7 +258,7 @@ const context = (steps => {
   }
   return {
     getOpt, getFeatures, getCorrectedPos, setFeatures, selectStep,
-    refreshPanel, removeStep, refreshSteps, refreshCurrentStep
+    refreshPanel, removeStep, refreshSteps, refreshCurrentStep, loadOptions
   }
 })(steps)
 
@@ -269,7 +295,7 @@ const initListeners = _ => {
   }).on('mouseout', 'a.btn', _ => $('#description').html(''))
 }
 
-const submit = data => data.set('steps', JSON.stringify(steps
+const serializeSteps = (toFile, data = new Map()) => steps
   .filter(step => step !== indexStep)
   .map(step => {
     let opt = Object.assign({}, step.opt), panel = step.panel
@@ -281,8 +307,13 @@ const submit = data => data.set('steps', JSON.stringify(steps
       }
       opt = panel.submit(opt, data)
     }
-    opt && (opt.op = panel.op ? panel.op : panel.name)
+    opt && (opt.op = toFile == null && panel.op ? panel.op : panel.name)
     return opt
-  }).filter(opt => !!opt)))
+  }).filter(opt => !!opt)
 
-export { addPanel, initListeners, submit, context }
+const submit = data => data.set('steps', JSON.stringify(serializeSteps(null, data)))
+const saveSteps = (path, space = 2) => JSON.stringify({
+  path, steps: serializeSteps(space), version: VERSION
+}, null, space)
+
+export { addPanel, initListeners, submit, saveSteps, context }

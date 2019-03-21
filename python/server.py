@@ -6,9 +6,16 @@ import re
 import psutil
 from flask import Flask, render_template, request, jsonify, send_from_directory, make_response, Response, send_file
 from gevent import pywsgi, idle, spawn
-from defaultConfig import defaultConfig
+from userConfig import setConfig
 from FIFOcache import Cache
+from preset import preset
 
+VERSION = '4.6'
+config = {}
+try:
+  setConfig(config, VERSION)
+except Exception as e:
+  print(e)
 staticMaxAge = 86400
 app = Flask(__name__, root_path='.')
 app.config['SERVER_NAME'] = '.'
@@ -22,13 +29,13 @@ current.fileSize = 0
 E403 = ('Not authorized.', 403)
 E404 = ('Not Found', 404)
 OK = ('', 200)
-cache = Cache(defaultConfig['maxResultsKept'][0], OK, lambda *args: print('abandoned', *args))
+cache = Cache(config['maxResultsKept'], OK, lambda *args: print('abandoned', *args))
 busy = lambda: (jsonify(result='Busy', eta=current.eta), 503)
 cwd = os.getcwd()
-outDir = defaultConfig['outDir'][0]
-uploadDir = defaultConfig['uploadDir'][0]
-logPath = os.path.abspath(defaultConfig['logPath'][0])
-previewFormat = defaultConfig['videoPreview'][0]
+outDir = config['outDir']
+uploadDir = config['uploadDir']
+logPath = os.path.abspath(config['logPath'])
+previewFormat = config['videoPreview']
 downDir = os.path.join(app.root_path, outDir)
 if not os.path.exists(outDir):
   os.mkdir(outDir)
@@ -52,10 +59,9 @@ def acquireSession(request):
 
 def controlPoint(path, fMatch, fUnmatch, fNoCurrent, check=lambda *_: True):
   def f():
-    try:
-      session = request.values['session']
-    except:
+    if not 'session' in request.values:
       return E403
+    session = request.values['session']
     if not session:
       return E403
     if current.session:
@@ -224,6 +230,7 @@ makeHandler('lockInterface', (lambda req: [int(float(readOpt(req)[0]['duration']
 makeHandler('systemInfo', (lambda _: []), identity, ['GET', 'POST'])
 imageEnhancePrep = lambda req: (current.writeFile(req.files['file']), *readOpt(req))
 makeHandler('image_enhance', imageEnhancePrep, identity)
+app.route('/preset', methods=['GET', 'POST'], endpoint='preset')(preset)
 
 def videoEnhancePrep(req):
   vidfile = req.files['file']

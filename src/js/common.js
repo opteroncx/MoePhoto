@@ -1,3 +1,4 @@
+const VERSION = '4.6'
 import('bootstrap/dist/css/bootstrap.min.css')
 import('../css/style.css')
 import('../css/font-awesome.css')
@@ -15,6 +16,18 @@ import './easing.js'
 import './numscroller-1.0.js'
 import './custom-file-input.js'
 import { getSession, newMessager } from './message.js'
+const compareVersion = (a, b) => {
+  a = a.split('.')
+  b = b.split('.')
+  var i = 0
+  while (i < a.length && i < b.length) {
+    let n0 = +a[i], n1 = +b[i]
+    let res = n0 < n1 ? -1 : n0 > n1 ? 1 : 0
+    if (res) return res
+  }
+  let res = a.length < b.length ? -1 : a.length > b.length ? 1 : 0
+  return res
+}
 jarallax($('.jarallax'), {
   speed: 0.5,
   imgWidth: 1366,
@@ -87,4 +100,5 @@ const [setLanguage, registryLanguageListener] = (_ => {
     listener in listeners || listeners.push(listener)
   }]
 })()
-export { getResource, getSession, newMessager, appendText, texts, setLanguage, registryLanguageListener }
+export { getResource, getSession, newMessager, appendText, texts
+  , setLanguage, registryLanguageListener, VERSION, compareVersion }

@@ -131,6 +131,11 @@ const panels = {
       opt.byH === 'scale' ? res.scaleH = opt.scaleH : res.height = opt.height
       return res
     },
+    load: opt => {
+      opt.byW = opt.scaleW != null ? 'scale' : 'pixel'
+      opt.byH = opt.scaleH != null ? 'scale' : 'pixel'
+      return opt
+    },
     view: opt => {
       let res = { method: panels.resize.args.method.values.find(item => item.value === opt.method).text }
       res.byW = getResizeView(opt.byW, opt.scaleW, opt.width)
@@ -242,7 +247,7 @@ const panels = {
         value: '',
         classes: ['input-text'],
         notes: [
-          '颜色格式固定为bgr48，请不要在这里设置',
+          '请不要在这里设置颜色格式',
           '注意无论下一步的开始于设定为多少，解码都是从视频头开始的'
         ]
       },
@@ -304,12 +309,11 @@ const panels = {
       codec: {
         type: 'text',
         text: '编码参数',
-        value: 'libx264 -crf 18 -profile:v high -level 51 -tune grain -aq-strength 1.0 -bf 8 -refs 12 -subq 11 -me_method umh -me_range 24 -sc_threshold 40 -rc-lookahead 80 -partitions all -direct-pred auto -mixed-refs 1 -coder ac -cmp chroma -aq-mode 2 -g 700 -keyint_min 1 -psy 1 -psy-rd 0.8:0.15 -weightb 1 -weightp 2 -mbtree 1 -threads 0 -pix_fmt yuv420p',
+        value: 'libx264 -crf 17 -bf 10 -refs 12 -coder ac -cmp chroma -profile:v high -level 51 -g 720 -keyint_min 20 -psy 1 -weightb 1 -weightp 2 -mbtree 1 -threads 0 -pix_fmt yuv420p',
         classes: ['input-text'],
         notes: [
-          '传入ffmpeg的编码参数设定，默认设定兼容性较好但是压缩率和速度一般',
+          '传入ffmpeg的编码参数设定，默认设定兼容性最好但是效率一般',
           '一定要以编码器名开头，也一定要指定输出颜色格式（-pix_fmt <格式名>）',
-          '显卡在GTX 1050以上的用户可以尝试nvenc或hevc-nvenc编码器',
           '输出视频以mkv格式封装，因为这啥都能装，有许多免费工具能够无损转换封装格式，我们就不做这事了'
         ]
       },

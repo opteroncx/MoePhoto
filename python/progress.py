@@ -1,7 +1,12 @@
 import time
+import json
+from os.path import exists
 from functools import partial
+from gevent import spawn
 
 ops = {}
+loadedOps = {}
+needSave = False
 
 def recurse(f):
   def r(node):
@@ -21,12 +26,48 @@ setNodeCallback = lambda node, callback, any: node.setCallback(callback) if any 
 setCallback = lambda node, callback, all=False: recurse(lambda node: setNodeCallback(node, callback, all))(node)
 getOpKey = lambda op: hash(frozenset(op.items()))
 NullFunc = lambda *args: None
+loadOps = lambda path: spawn(loadInternal, path).start()
 
-def newOp(updater=slideAverage(.5)):
+def saveInternal(path):
+  with open(path, 'w') as fp:
+    json.dump(serializeOps(), fp, ensure_ascii=False, indent=2)
+
+def serializeOps():
+  res = []
+  for key in ops:
+    op = ops[key]
+    res.append(dict(op=op.op, weight=op.weight, samples=op.samples))
+  return res
+
+def saveOps(path=None):
+  global needSave
+  if path and needSave:
+    spawn(saveInternal, path).start()
+    needSave = False
+  return serializeOps()
+
+def loadInternal(path):
+  if not exists(path):
+    return
+  with open(path, 'r') as fp:
+    res = json.load(fp)
+  for op in res:
+    loadedOps[getOpKey(op['op'])] = (op['weight'], op['samples'])
+
+def newOp(define={}, updater=slideAverage(.5)):
   def op():pass
-  op.weight = 1
-  op.samples = 0
+  key = getOpKey(define)
+  op.op = define
+  if key in loadedOps:
+    op.weight = loadedOps[key][0]
+    op.samples = loadedOps[key][1]
+  else:
+    op.weight = 1
+    op.samples = 0
   def f(sample):
+    global needSave
+    if not op.samples:
+      needSave = True
     op.samples += 1
     op.weight = updater(op, sample) if op.samples > 1 else sample
   op.update = f
@@ -72,7 +113,7 @@ class Node():
     if name:
       self.name = name
     if not key in ops:
-      ops[key] = newOp()
+      ops[key] = newOp(op)
     else:
       if not learn or ops[key].samples >= learn:
         self.learn = False
@@ -101,6 +142,7 @@ class Node():
     return self
 
   def trace(self, progress=1, **kwargs):
+    global needSave
     self.gone += progress
     if self.learn and progress > 0:
       mark = time.perf_counter()
@@ -108,6 +150,7 @@ class Node():
       ops[self.op].update(delta / self.load / progress)
       if ops[self.op].samples >= self.learn:
         self.learn = False
+        needSave = True
       self.mark = mark
     if progress > 0:
       updateNode(self)

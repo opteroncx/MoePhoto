@@ -1,13 +1,15 @@
 # pylint: disable=E1101
 import time
 import os
+import json
 import logging
 import psutil
 import torch
 import readgpu
-from defaultConfig import defaultConfig
+from userConfig import setConfig
 process = psutil.Process(os.getpid())
 log = logging.getLogger('Moe')
+VERSION = '4.6'
 
 def transform(self):
   def f(key):
@@ -21,8 +23,10 @@ def transform(self):
 class Config():
   def __init__(self):
     self.deviceId = 0
-    for key in defaultConfig:
-      self.__dict__[key] = defaultConfig[key][0]
+    try:
+      setConfig(self.__dict__, VERSION)
+    except Exception as e:
+      log.warning(e)
     self.cuda &= Config.cudaAvailable()
     try:
       readgpu.init()
