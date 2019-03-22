@@ -1,7 +1,7 @@
 # MoePhoto
 MoePhoto Image Toolbox萌图工具箱  
-一个基于深度学习的AI图像/视频修复软件
-A deep learning based AI Image/Video resotration software
+一个基于深度学习的AI图像/视频修复软件 
+A deep learning based AI Image/Video resotration software 
 感兴趣的加QQ群320785467讨论  
 ![image](https://github.com/opteroncx/MoePhoto/blob/master/images/example1s.png)
 ### 基本功能[Image/Video]
@@ -12,13 +12,13 @@ A deep learning based AI Image/Video resotration software
 * 高帧率和慢动作 High FPS and Slow motion
 ### 硬件需求
 > CPU模式 (CPU mode)  
-系统内存大于4GB
-RAM > 4GB
-> GPU模式 (GPU mode)
+系统内存大于4GB 
+RAM > 4GB 
+> GPU模式 (GPU mode) 
 仅支持NVIDIA显卡  
 显存不小于2GB 
-Only support NVIDIA cards
-VRAM should > 2GB
+Only support NVIDIA cards 
+VRAM should > 2GB 
 ### 安装 (Installation)
 > 下载并安装文件 (Download prebuild files)  
 下载地址 [百度云](http://pan.baidu.com/s/1W5DQTepe6jT6TGu4QFAPXg) 密码：k4s1  
