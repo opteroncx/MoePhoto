@@ -54,7 +54,7 @@ def preset():
       return savePreset(path)(data), 200
     else:
       if name:
-        res = cache[name] if name in cache else loadPreset(path)(name + '.json', True)
+        res = cache[name][1] if name in cache else loadPreset(path)(name + '.json', True)
         if res:
           return res, 200
         else:

@@ -1,5 +1,5 @@
 import $ from 'jquery'
-import { texts, registryLanguageListener, VERSION } from './common.js'
+import { texts, registryLanguageListener } from './common.js'
 
 const panels = {
   index: {
@@ -33,8 +33,8 @@ const addPanel = (panelName, panel) => {
   eventTypes.forEach(type => listeners[type] = [])
   for (let argName in panel.args) {
     let arg = panel.args[argName]
-    let selector = `input[name=${argName}]`
-    arg.name = argName
+    arg.name || (arg.name = argName)
+    let selector = `input[name=${arg.name}]`
     arg.bindFlag = 0
     if (optionType[arg.type]) {
       arg.values.forEach(v => {
@@ -81,6 +81,10 @@ const getChecked = next => (item, opt) => (isChecked(opt)(item) ? ' checked' : '
 const getInputTag = (next, getValue = item => item.value) => (item, opt) =>
   `<input type="${item.type}" name="${item.name}" value="${getValue(item, opt)}"
     ${getClassAttr(item.classes)}${next(item, opt)}>`
+const getSelectTag = next => (item, opt) =>
+  `<select id="${item.name}" name="${item.name}" ${getClassAttr(item.classes)}${next(item, opt)}></select>`
+const getTextAreaTag = next => (item, opt) =>
+  `<textarea id="${item.name}" name="${item.name}" ${getClassAttr(item.classes)}${next(item, opt)}></textarea>`
 const getInputView = next => (item, opt) => item.view ? item.view(next(item, opt)) : next(item, opt)
 const getInputText = getInputView(getInputTag(getDisabled(getAttributes(endPoint)), getValue))
 const getBindHTML = (parent, opt) => item => {
@@ -94,13 +98,18 @@ const getInputCheckBinds = next => (item, opt) => next(item, opt) +
   (item.binds ? item.binds.map(getBindHTML(item, opt)).join('') : '')
 const getInputCheckOption = reduceApply(endPoint, getAttributes, getDisabled, getChecked,
   getInputTag, getInputView, getOptionLabel, getInputCheckBinds)
+const getListElement = (item, opt) => {
+  var listId = `list-${item.name}`, attr = `list="${listId}"`
+  item.attributes ? item.attributes.push(attr) : (item.attributes = [attr])
+  return getInputText(item, opt) + `<datalist id="${listId}"></datalist>`
+}
 const getNoteHTML = text => `<li>${text}</li>`
 const getNotes = item =>
   item.notes && item.notes.length ?
     ['<ul class="visible-md visible-lg description">', ...item.notes.map(getNoteHTML), '</ul>'].join('') : ''
 const getArgHTML = (item, opt, hr = true) =>
   (hr ? '<hr>' : '') +
-  `<span class="argName${hr ? ' col-sm-2' : ''}">${item.text}</span>` +
+  `<label class="argName${hr ? ' col-sm-2' : ''}" for="${item.name}">${item.text}</label>` +
   elementTypeMapping[item.type](item, opt) +
   getNotes(item, opt)
 const getCheckedItem = (item, opt) => item.values.filter(isChecked(opt))
@@ -114,7 +123,11 @@ const elementTypeMapping = {
   checkbox: getInputCheck,
   number: getInputText,
   text: getInputText,
-  file: getInputText
+  file: getInputText,
+  button: getInputText,
+  textarea: getInputView(getTextAreaTag(getDisabled(getAttributes(endPoint)))),
+  select: getInputView(getSelectTag(getDisabled(getAttributes(endPoint)))),
+  list: getListElement
 }
 const getArgsHTML = (args, opt) => {
   var res = []
@@ -202,8 +215,8 @@ const context = (steps => {
   const setFeatures = features => {
     addibleFeatures = features.filter(name => panels[name].draggable && name !== 'index')
     let ps = features.map(name => panels[name]),
-    tops = ps.filter(panel => panel.position >= 0).sort(compareOp),
-    bottoms = ps.filter(panel => panel.position < 0).sort(compareOp)
+      tops = ps.filter(panel => panel.position >= 0).sort(compareOp),
+      bottoms = ps.filter(panel => panel.position < 0).sort(compareOp)
     tops.forEach(pushNewStep)
     index = steps.length
     features.includes('index') && steps.push(indexStep)
@@ -312,8 +325,5 @@ const serializeSteps = (toFile, data = new Map()) => steps
   }).filter(opt => !!opt)
 
 const submit = data => data.set('steps', JSON.stringify(serializeSteps(null, data)))
-const saveSteps = (path, space = 2) => JSON.stringify({
-  path, steps: serializeSteps(space), version: VERSION
-}, null, space)
 
-export { addPanel, initListeners, submit, saveSteps, context }
+export { addPanel, initListeners, submit, serializeSteps, context }

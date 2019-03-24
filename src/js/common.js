@@ -60,6 +60,7 @@ const genOnProgress = (unit, msg = processingMsg) => (gone, total) => `${msg}，
 const texts = {
   step: '步骤',
   add: '点击添加...',
+  fetching: '正在获取',
   delete: '删除',
   labelSplitter: '：',
   pixel: '像素',
@@ -100,5 +101,7 @@ const [setLanguage, registryLanguageListener] = (_ => {
     listener in listeners || listeners.push(listener)
   }]
 })()
-export { getResource, getSession, newMessager, appendText, texts
-  , setLanguage, registryLanguageListener, VERSION, compareVersion }
+export {
+  getResource, getSession, newMessager, appendText, texts
+  , setLanguage, registryLanguageListener, VERSION, compareVersion
+}
