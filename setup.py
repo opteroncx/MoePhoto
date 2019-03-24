@@ -10,7 +10,6 @@ ifiles = [
         './pyc/models.pyc',
         './pyc/dehaze.pyc',
         './pyc/config.pyc',
-        './pyc/defaultConfig.pyc',
         './pyc/imageProcess.pyc',
         './pyc/progress.pyc',
         './pyc/readgpu.pyc',
@@ -37,7 +36,8 @@ ifiles = [
         './libiompstubs5md.dll',
         './update_log.txt',
         './site-packages',
-        './server.bat'
+        './server.bat',
+        './python/defaultConfig.py'
         ]
 
 # exclude files
