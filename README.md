@@ -1,4 +1,7 @@
 # MoePhoto
+[![Badge](https://img.shields.io/badge/version-4.5.5-brightgreen.svg)](https://github.com/opteroncx/MoePhoto/blob/master/update_log.txt)
+[![Badge](https://img.shields.io/badge/link-may--workshop-blue.svg)](http://may-workshop.com/?page_id=373)
+[![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 MoePhoto Image Toolbox萌图工具箱  
 一个基于深度学习的AI图像/视频修复软件 
 A deep learning based AI Image/Video resotration software 
