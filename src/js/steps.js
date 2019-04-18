@@ -9,6 +9,7 @@ const panels = {
 }
 
 const isType = type => x => type === typeof x
+const None = () => void 0
 const setSubText = target => (item, key) =>
   isType('object')(target[key]) && (isType('object')(item) || isType('string')(item))
     ? setPanelTexts(target[key], item) : target[key] = item
@@ -20,12 +21,15 @@ const setPanelTexts = (target, t) => {
 registryLanguageListener(lang => setPanelTexts(panels, lang))
 
 const eventTypes = ['change', 'click', 'focus', 'blur', 'hover']
+const tags = { select: 'select', textarea: 'textarea' }
 const optionType = { radio: 1, checkbox: 1 }
-const bindChild = panel => child => {
+const bindChild = (panel, checked) => child => {
   child = panel.args[child]
   child.slave = true
+  child.disabled = !checked
   return child
 }
+const setBinds = (binds, value) => binds && binds.forEach(child => child.disabled = value)
 const addPanel = (panelName, panel) => {
   panel.name = panelName
   panel.initOpt = {}
@@ -34,34 +38,45 @@ const addPanel = (panelName, panel) => {
   for (let argName in panel.args) {
     let arg = panel.args[argName]
     arg.name || (arg.name = argName)
-    let selector = `input[name=${arg.name}]`
+    let selector = `${tags[arg.type] ? tags[arg.type] : 'input'}[name=${arg.name}]`
     arg.bindFlag = 0
     if (optionType[arg.type]) {
       arg.values.forEach(v => {
         v.name = argName
         v.type = arg.type
-        v.binds = v.binds && v.binds.map(bindChild(panel))
+        v.binds = v.binds && v.binds.map(bindChild(panel, v.checked))
         arg.bindFlag |= !!v.binds
         v.checked ? panel.initOpt[argName] = v.value : 0
       })
       arg.dataType || arg.values.some(v => typeof v.value !== 'number') || (arg.dataType = 'number')
     }
     else
-      panel.initOpt[argName] = arg.value
-    let changeOpt = arg.type === 'checkbox' ? (ev, opt) => {
+      arg.ignore || (panel.initOpt[argName] = arg.value)
+    arg.bindFlag |= !!arg.binds
+    arg.binds = arg.binds && arg.binds.map(bindChild(panel))
+    let changeOpt = arg.ignore ? None : arg.type === 'checkbox' ? (ev, opt) => {
       opt[argName] || (opt[argName] = {})
       opt[argName][ev.target.value] = ev.target.checked
     } : arg.type === 'file' ? (ev, opt) => opt[argName] = ev.target.files
         : (ev, opt) => opt[argName] = ev.target.value,
-      _c = arg.change ? arg.change.bind(arg) : _ => 0
+      _c = arg.change ? arg.change.bind(arg) : _ => 0,
+      changeBinds = arg.type === 'checkbox' ? ev =>
+        setBinds(arg.values.find(v => v.value === ev.target.value).binds, !ev.target.checked)
+        : arg.type === 'radio' ? ev =>
+          arg.values.forEach(v => setBinds(v.binds, v.value !== ev.target.value))
+          : None
     arg.change = (ev, opt) => {
       changeOpt(ev, opt)
+      changeBinds(ev)
       context.refreshCurrentStep()
       return _c(ev, opt) || arg.bindFlag
     }
     eventTypes.filter(type => arg[type]).forEach(type => listeners[type].push({
       selector,
-      f: ev => arg[type](ev, context.getOpt()) && context.refreshPanel()
+      f: ev => {
+        Promise.resolve(arg[type](ev, context.getOpt()))
+          .then(flag => flag && context.refreshPanel())
+      }
     }))
   }
   panel.listeners = listeners
@@ -70,7 +85,7 @@ const addPanel = (panelName, panel) => {
 
 const reduceApply = (...arr) => arr.reduce((pre, cur) => cur(pre))
 const endPoint = _ => ''
-const getAttributes = next => (item, opt) => (item.attributes ? item.attributes.join(' ') : '') + next(item, opt)
+const getAttributes = next => (item, opt) => (item.attributes ? ' ' + item.attributes.join(' ') : '') + next(item, opt)
 const getValue = (item, opt) => opt[item.name] != null ? opt[item.name] : item.value
 const getClassAttr = classes => classes && classes.length ? ` class="${classes.join(' ')}"` : ''
 const getValueLabel = next => (item, opt) => item.text ? `<span class="opValue">${item.text}${next(item, opt)}</span>` : ''
@@ -78,40 +93,42 @@ const getOptionLabel = next => (item, opt) => next(item, opt) + (item.text ? `<s
 const getDisabled = next => (item, opt) => (item.disabled ? ' disabled' : '') + next(item, opt)
 const isChecked = opt => item => (!opt[item.name] && item.checked) || opt[item.name] === item.value || opt[item.name][item.value]
 const getChecked = next => (item, opt) => (isChecked(opt)(item) ? ' checked' : '') + next(item, opt)
+const getOptions = item =>
+  item.options ? item.options.map(o => `<option value="${o.value}"${getDisabled(endPoint)(o)}>${o.value}</option>`).join('') : ''
 const getInputTag = (next, getValue = item => item.value) => (item, opt) =>
   `<input type="${item.type}" name="${item.name}" value="${getValue(item, opt)}"
     ${getClassAttr(item.classes)}${next(item, opt)}>`
+const getFileTag = next => (item, opt) =>
+  `<input type="file" name="${item.name}" ${getClassAttr(item.classes)}${next(item, opt)}>`
 const getSelectTag = next => (item, opt) =>
-  `<select id="${item.name}" name="${item.name}" ${getClassAttr(item.classes)}${next(item, opt)}></select>`
-const getTextAreaTag = next => (item, opt) =>
-  `<textarea id="${item.name}" name="${item.name}" ${getClassAttr(item.classes)}${next(item, opt)}></textarea>`
+  `<select id="${item.name}" name="${item.name}" ${getClassAttr(item.classes)}${next(item, opt)}>${getOptions(item)}</select>`
+const getTextAreaTag = (next, getValue = item => item.value) => (item, opt) =>
+  `<textarea id="${item.name}" name="${item.name}" ${getClassAttr(item.classes)}${next(item, opt)}>${getValue(item, opt)}</textarea>`
 const getInputView = next => (item, opt) => item.view ? item.view(next(item, opt)) : next(item, opt)
 const getInputText = getInputView(getInputTag(getDisabled(getAttributes(endPoint)), getValue))
-const getBindHTML = (parent, opt) => item => {
-  var _d = item.disabled, res
-  item.disabled = !isChecked(opt)(parent)
-  res = getArgHTML(item, opt, false)
-  item.disabled = _d
-  return res
-}
-const getInputCheckBinds = next => (item, opt) => next(item, opt) +
-  (item.binds ? item.binds.map(getBindHTML(item, opt)).join('') : '')
+const getBindHTML = opt => item => getArgHTML(item, opt, false)
+const getInputBinds = next => (item, opt) => next(item, opt) +
+  (item.binds ? item.binds.map(getBindHTML(opt)).join('') : '')
 const getInputCheckOption = reduceApply(endPoint, getAttributes, getDisabled, getChecked,
-  getInputTag, getInputView, getOptionLabel, getInputCheckBinds)
+  getInputTag, getInputView, getOptionLabel, getInputBinds)
 const getListElement = (item, opt) => {
   var listId = `list-${item.name}`, attr = `list="${listId}"`
   item.attributes ? item.attributes.push(attr) : (item.attributes = [attr])
-  return getInputText(item, opt) + `<datalist id="${listId}"></datalist>`
+  return [getInputText(item, opt)
+    , `<datalist id="${listId}">`
+    , getOptions(item)
+    , '</datalist>'
+    , getInputBinds(endPoint)(item, opt)].join('')
 }
 const getNoteHTML = text => `<li>${text}</li>`
 const getNotes = item =>
   item.notes && item.notes.length ?
     ['<ul class="visible-md visible-lg description">', ...item.notes.map(getNoteHTML), '</ul>'].join('') : ''
 const getArgHTML = (item, opt, hr = true) =>
-  (hr ? '<hr>' : '') +
-  `<label class="argName${hr ? ' col-sm-2' : ''}" for="${item.name}">${item.text}</label>` +
-  elementTypeMapping[item.type](item, opt) +
-  getNotes(item, opt)
+  [(hr ? '<hr>' : ''),
+  `<label class="${hr ? 'argName col-sm-2' : 'opValue'}" for="${item.name}">${item.text}</label>`,
+  elementTypeMapping[item.type](item, opt),
+  hr ? getNotes(item, opt) : ''].join('')
 const getCheckedItem = (item, opt) => item.values.filter(isChecked(opt))
 const flatArray = arrs => arrs.reduce((res, arr) => res.concat(arr))
 const getInputCheck = (item, opt) =>
@@ -123,10 +140,10 @@ const elementTypeMapping = {
   checkbox: getInputCheck,
   number: getInputText,
   text: getInputText,
-  file: getInputText,
+  file: getInputView(getFileTag(getDisabled(getAttributes(endPoint)))),
   button: getInputText,
   textarea: getInputView(getTextAreaTag(getDisabled(getAttributes(endPoint)))),
-  select: getInputView(getSelectTag(getDisabled(getAttributes(endPoint)))),
+  select: getInputBinds(getInputView(getSelectTag(getDisabled(getAttributes(endPoint))))),
   list: getListElement
 }
 const getArgsHTML = (args, opt) => {
@@ -214,9 +231,9 @@ const context = (steps => {
   const pushNewStep = panel => steps.push(newStep(panel))
   const setFeatures = features => {
     addibleFeatures = features.filter(name => panels[name].draggable && name !== 'index')
-    let ps = features.map(name => panels[name]),
-      tops = ps.filter(panel => panel.position >= 0).sort(compareOp),
-      bottoms = ps.filter(panel => panel.position < 0).sort(compareOp)
+    let ps = features.map(name => panels[name])
+    bottoms = ps.filter(panel => panel.position < 0).sort(compareOp)
+    tops = ps.filter(panel => panel.position >= 0).sort(compareOp)
     tops.forEach(pushNewStep)
     index = steps.length
     features.includes('index') && steps.push(indexStep)
@@ -228,36 +245,38 @@ const context = (steps => {
     }))
     refreshSteps()
   }
-  const loadStep = (panel, opt, target) => {
-    let op = panel.op ? panel.op : panel.name
-    if (opt && opt.op === op) {
-      delete opt.op
-      panel.load == null || (opt = panel.load(opt))
-      target.push(newStep(panel, opt))
-      return 1
-    } else {
-      target.push(newStep(panel))
-      return 0
-    }
+  const loadStep = (panel, opt, target, file) => {
+    let name = panel.op ? panel.op : panel.name
+      , flag = opt && opt.op === name ? 1 : 0
+    flag || (opt = {})
+    file && (opt.file = file)
+    delete opt.op
+    target.push(newStep(panel, panel.load ? panel.load(opt) : opt))
+    return flag
   }
   const loadOptions = options => {
+    let files = steps.filter(step => step.panel.position != null)
+      .map(step => step.opt ? step.opt.file : void 0)
     steps.splice(0, steps.length)
     var j = 0, k = options.length - 1, bottomSteps = []
     for (let i = 0; i < tops.length; i++)
-      j += loadStep(tops[i], options[j], steps)
-    steps.push(indexStep)
-    for (let i = bottoms.length; i--; k -= loadStep(bottoms[i], options[k], bottomSteps));
+      j += loadStep(tops[i], options[j], steps, files[i])
+    files.splice(0, tops.length)
+    for (let i = bottoms.length; i--; k -= loadStep(bottoms[i], options[k], bottomSteps, files[i]));
     for (; j <= k; j++)
       loadStep(panels[options[j].op], options[j], steps)
+    steps.push(indexStep)
     for (let i = 0; i < bottomSteps.length; i++)
       steps.push(bottomSteps[i])
     refreshSteps()
   }
   const getFeatures = _ => addibleFeatures
   const refreshPanel = (refreshStep = 1) => {
-    var step = steps[pos], panel = step.panel,
-      listeners = panel.listeners
-    $('#options').html(getPanelView(panel === panels.index ? getIndexHTML : getPanelInnerView(getArgsHTML))(panel, step.opt, pos))
+    var step = steps[pos], panel = step.panel, opt = step.opt, args = panel.args
+      , listeners = panel.listeners, options = $('#options')
+    options.html(getPanelView(panel === panels.index ? getIndexHTML : getPanelInnerView(getArgsHTML))(panel, opt, pos))
+    for (let argName in args)
+      args[argName].type === 'file' && (options.find(`input[name=${argName}]`).get(0).files = opt[argName])
     refreshStep && context.refreshCurrentStep()
     eventTypes.forEach(type => listeners[type].forEach(o => $(o.selector).on(type, o.f)))
   }
@@ -326,4 +345,4 @@ const serializeSteps = (toFile, data = new Map()) => steps
 
 const submit = data => data.set('steps', JSON.stringify(serializeSteps(null, data)))
 
-export { addPanel, initListeners, submit, serializeSteps, context }
+export { addPanel, initListeners, submit, serializeSteps, context, getOptions }

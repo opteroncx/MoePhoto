@@ -176,8 +176,7 @@ const panels = {
         values: [
           { value: 'scale', binds: ['scaleW'] },
           { value: 'pixel', binds: ['width'], checked: 1 }
-        ],
-        notes: ['按比例缩放图像长宽的小数部分四舍五入为整数']
+        ]
       },
       scaleW: {
         type: 'number',
@@ -200,7 +199,8 @@ const panels = {
         values: [
           { value: 'scale', binds: ['scaleH'] },
           { value: 'pixel', binds: ['height'], checked: 1 }
-        ]
+        ],
+        notes: ['按比例缩放图像长宽的小数部分四舍五入为整数']
       },
       scaleH: {
         type: 'number',
@@ -383,10 +383,10 @@ const panels = {
   }
 }
 
-for (let key in panels) addPanel(key, panels[key])
 const setupMain = opt => {
   opt.progress = $('#progress')
   opt.beforeSend = submit
+  for (let key of opt.features) if (key !== 'index') addPanel(key, panels[key])
   setup(opt)
   initListeners()
   context.setFeatures(opt.features)

@@ -68,6 +68,7 @@ const texts = {
   second: '秒',
   noFileMsg: '缺少输入文件',
   errorMsg: '出错啦',
+  empty: '暂时没有',
   idle: '空闲中',
   finish: '完成啦',
   running: '正在处理您的任务',

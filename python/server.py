@@ -41,7 +41,7 @@ if not os.path.exists(outDir):
   os.mkdir(outDir)
 with open('static/manifest.json') as manifest:
   assetMapping = json.load(manifest)
-vendorsJs = assetMapping['vendors.js']
+vendorsJs = assetMapping['vendors.js'] if 'vendors.js' in assetMapping else None
 commonJs = assetMapping['common.js'] if 'common.js' in assetMapping else None
 getKey = lambda session, request: request.values['path'] + str(session) if 'path' in request.values else ''
 toResponse = lambda obj: (json.dumps(obj, ensure_ascii=False, separators=(',',':')), 200)
@@ -119,7 +119,8 @@ def makeHandler(name, prepare, final, methods=['POST']):
 
 def renderPage(item, header=None, footer=None):
   other = item[5] if len(item) > 5 else {}
-  other['vendorsJs'] = vendorsJs
+  if vendorsJs:
+    other['vendorsJs'] = vendorsJs
   if commonJs:
     other['commonJs'] = commonJs
   template = item[1]
