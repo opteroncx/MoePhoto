@@ -2,7 +2,9 @@ import $ from 'jquery'
 import { appendText, texts, getResource } from './common.js'
 import { addPanel, initListeners, submit, context } from './steps.js'
 import { setup } from './progress.js'
+import { genPresetArgs, presetNotesEditor } from './preset.js'
 
+const None = () => void 0
 const setAll = (arr, key) => values => arr.map((o, i) => o[key] = values[i])
 const copyTruly = obj => {
   let res = {}
@@ -25,6 +27,8 @@ var getResizeView = (by, scale, size) =>
   by === 'scale' ? scale + '倍' : appendText('pixel')(size)
 const setFile = opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : '请选择' })
 const submitFile = (opt, data) => opt.file && opt.file[0] && data.set('file', opt.file[0]) && void 0
+const [loadImagePreset, saveImagePreset, applyImagePresetButton, saveImagePresetButton] = genPresetArgs('image')
+const [loadVideoPreset, saveVideoPreset, applyVideoPresetButton, saveVideoPresetButton] = genPresetArgs('video')
 const panels = {
   input: {
     text: '输入',
@@ -37,8 +41,11 @@ const panels = {
         type: 'file',
         name: 'file',
         text: '图片',
-        classes: ['inputfile-6', 'imgInp']
-      }
+        classes: ['inputfile-6', 'imgInp'],
+        attributes: ['required', 'accept="image/*"']
+      },
+      preset: loadImagePreset,
+      apply: applyImagePresetButton
     }
   },
   inputVideo: {
@@ -53,10 +60,13 @@ const panels = {
         name: 'file',
         text: '视频',
         classes: ['inputfile-6', 'imgInp'],
+        attributes: ['required', 'accept="video/*,application/octet-stream"'],
         notes: [
           '视频会复制一份上传，存放在程序的upload目录下'
         ]
-      }
+      },
+      preset: loadVideoPreset,
+      apply: applyVideoPresetButton
     }
   },
   inputBatch: {
@@ -71,14 +81,23 @@ const panels = {
         name: 'file',
         text: '文件',
         classes: ['inputfile-6'],
-        attributes: ['webkitdirectory', 'directory']
-      }
+        attributes: ['required', 'webkitdirectory', 'directory']
+      },
+      preset: loadImagePreset,
+      apply: applyImagePresetButton
     }
   },
   output: {
     text: '输出',
-    description: '只是占个位置',
-    position: -1
+    description: '保存预置',
+    position: -1,
+    submit: None,
+    view: () => '',
+    args: {
+      preset: saveImagePreset,
+      notes: presetNotesEditor,
+      savePreset: saveImagePresetButton
+    }
   },
   SR: {
     text: '超分辨率',
@@ -131,6 +150,11 @@ const panels = {
       opt.byH === 'scale' ? res.scaleH = opt.scaleH : res.height = opt.height
       return res
     },
+    load: opt => {
+      opt.byW = opt.scaleW != null ? 'scale' : 'pixel'
+      opt.byH = opt.scaleH != null ? 'scale' : 'pixel'
+      return opt
+    },
     view: opt => {
       let res = { method: panels.resize.args.method.values.find(item => item.value === opt.method).text }
       res.byW = getResizeView(opt.byW, opt.scaleW, opt.width)
@@ -152,21 +176,22 @@ const panels = {
         values: [
           { value: 'scale', binds: ['scaleW'] },
           { value: 'pixel', binds: ['width'], checked: 1 }
-        ],
-        notes: ['按比例缩放图像长宽的小数部分四舍五入为整数']
+        ]
       },
       scaleW: {
         type: 'number',
         text: '缩放比例',
         value: 1,
-        classes: ['input-number']
+        classes: ['input-number'],
+        attributes: ['min="0"', 'step="0.1"']
       },
       width: {
         type: 'number',
         text: '大小',
         value: 1920,
         view: appendText('pixel'),
-        classes: ['input-number']
+        classes: ['input-number'],
+        attributes: ['min="1"', 'step="10"']
       },
       byH: {
         type: 'radio',
@@ -174,20 +199,23 @@ const panels = {
         values: [
           { value: 'scale', binds: ['scaleH'] },
           { value: 'pixel', binds: ['height'], checked: 1 }
-        ]
+        ],
+        notes: ['按比例缩放图像长宽的小数部分四舍五入为整数']
       },
       scaleH: {
         type: 'number',
         text: '缩放比例',
         value: 1,
-        classes: ['input-number']
+        classes: ['input-number'],
+        attributes: ['min="0"', 'step="0.1"']
       },
       height: {
         type: 'number',
         text: '大小',
         value: 1080,
         view: appendText('pixel'),
-        classes: ['input-number']
+        classes: ['input-number'],
+        attributes: ['min="1"', 'step="10"']
       }
     }
   },
@@ -241,8 +269,9 @@ const panels = {
         text: '解码参数',
         value: '',
         classes: ['input-text'],
+        attributes: ['spellcheck="false"'],
         notes: [
-          '颜色格式固定为bgr48，请不要在这里设置',
+          '请不要在这里设置颜色格式',
           '注意无论下一步的开始于设定为多少，解码都是从视频头开始的'
         ]
       },
@@ -251,7 +280,8 @@ const panels = {
         text: '覆盖输入宽度',
         value: 0,
         view: appendText('pixel'),
-        classes: ['input-number']
+        classes: ['input-number'],
+        attributes: ['min="1"', 'step="10"']
       },
       height: {
         type: 'number',
@@ -259,6 +289,7 @@ const panels = {
         value: 0,
         view: appendText('pixel'),
         classes: ['input-number'],
+        attributes: ['min="1"', 'step="10"'],
         notes: ['我们从输入视频文件里获取画面大小信息，如果这里的解码处理改变了画面大小，请设置上面的两个覆盖值从而告诉后面的处理过程，否则就不要动它们啦']
       }
     }
@@ -276,6 +307,7 @@ const panels = {
         value: 0,
         view: html => `第${html}帧`,
         classes: ['input-number'],
+        attributes: ['min="0"'],
         notes: [
           '处理范围指的是经过上一步解码处理后的第几帧到第几帧，首帧为第0帧',
           '如果想继续上次中止掉的视频处理，上次完成到第几帧这次这里就填多少，其他配置保持一致，最后的多个输出可以用其他工具直接无损拼接',
@@ -288,6 +320,7 @@ const panels = {
         value: 0,
         view: html => `第${html}帧`,
         classes: ['input-number'],
+        attributes: ['min="0"'],
         notes: [
           '输出不包括上述编号的帧，即输出帧数为结束减开始，若该值小于等于开始则忽略并处理到视频结尾'
         ]
@@ -304,12 +337,12 @@ const panels = {
       codec: {
         type: 'text',
         text: '编码参数',
-        value: 'libx264 -crf 18 -profile:v high -level 51 -tune grain -aq-strength 1.0 -bf 8 -refs 12 -subq 11 -me_method umh -me_range 24 -sc_threshold 40 -rc-lookahead 80 -partitions all -direct-pred auto -mixed-refs 1 -coder ac -cmp chroma -aq-mode 2 -g 700 -keyint_min 1 -psy 1 -psy-rd 0.8:0.15 -weightb 1 -weightp 2 -mbtree 1 -threads 0 -pix_fmt yuv420p',
+        value: 'libx264 -crf 17 -bf 10 -refs 12 -coder ac -cmp chroma -profile:v high -level 51 -g 720 -keyint_min 20 -psy 1 -weightb 1 -weightp 2 -mbtree 1 -threads 0 -pix_fmt yuv420p',
         classes: ['input-text'],
+        attributes: ['spellcheck="false"'],
         notes: [
-          '传入ffmpeg的编码参数设定，默认设定兼容性较好但是压缩率和速度一般',
+          '传入ffmpeg的编码参数设定，默认设定兼容性最好但是效率一般',
           '一定要以编码器名开头，也一定要指定输出颜色格式（-pix_fmt <格式名>）',
-          '显卡在GTX 1050以上的用户可以尝试nvenc或hevc-nvenc编码器',
           '输出视频以mkv格式封装，因为这啥都能装，有许多免费工具能够无损转换封装格式，我们就不做这事了'
         ]
       },
@@ -319,11 +352,15 @@ const panels = {
         value: 0,
         view: appendText('fps'),
         classes: ['input-number'],
+        attributes: ['min="1"'],
         notes: [
           '默认的输出帧率就是输入乘上插帧倍数，这样保持时间长度与输入一致，如果您想要看慢动作什么的可以在这里设定',
           '注意我们只处理视频画面部分，设置了这个之后声音字幕什么的通常就对不上了'
         ]
-      }
+      },
+      preset: saveVideoPreset,
+      notes: presetNotesEditor,
+      savePreset: saveVideoPresetButton
     }
   },
   slomo: {
@@ -336,6 +373,7 @@ const panels = {
         text: '倍数',
         value: 1,
         classes: ['input-number'],
+        attributes: ['min="1"'],
         notes: [
           '输出帧数是输入的多少倍，必须是正整数',
           '为了方便精确地拼接输出视频，若之前的视频处理开始于设定大于0且这里设置了大于1的倍数，那么开始帧之前的那一帧会被用作参考帧，输出的头几帧将会是它与开始帧之间的插入帧，但这一参考帧本身将不会被输出'
@@ -345,10 +383,10 @@ const panels = {
   }
 }
 
-for (let key in panels) addPanel(key, panels[key])
 const setupMain = opt => {
   opt.progress = $('#progress')
   opt.beforeSend = submit
+  for (let key of opt.features) if (key !== 'index') addPanel(key, panels[key])
   setup(opt)
   initListeners()
   context.setFeatures(opt.features)

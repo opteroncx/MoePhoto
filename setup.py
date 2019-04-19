@@ -1,6 +1,7 @@
 import sys
 from cx_Freeze import setup, Executable
 import os
+import json
 os.environ['TCL_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tcl8.6'
 os.environ['TK_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tk8.6'
 # Dependencies are automatically detected, but it might need fine tuning.
@@ -26,6 +27,8 @@ ifiles = [
         './pyc/MoeNet_lite2.pyc',
         './pyc/logger.pyc',
         './pyc/FIFOcache.pyc',
+        './pyc/preset.pyc',
+        './pyc/userConfig.pyc',
         './templates',
         './static',
         './model',
@@ -36,8 +39,7 @@ ifiles = [
         './libiompstubs5md.dll',
         './update_log.txt',
         './site-packages',
-        './server.bat',
-        './python/defaultConfig.py'
+        './server.bat'
         ]
 
 # exclude files
@@ -53,7 +55,7 @@ efiles = ['./model/__pycache__',
         ]
 
 build_exe_options = {
-        'packages': ['tkinter', 'asyncio', 'numpy', 'torch', 'gevent','flask','torchvision','logging'], 
+        'packages': ['tkinter', 'asyncio', 'numpy', 'torch', 'gevent','flask','torchvision','logging'],
         'includes': ['numpy.core._methods','jinja2','jinja2.ext','asyncio.compat'],
         'include_files': ifiles,
         'bin_excludes': efiles}
@@ -66,9 +68,11 @@ base = None
 exe = Executable(script='./python/MoePhoto.py', base = base, icon='logo3.ico')
 
 
+with open('package.json') as manifest:
+  version = json.load(manifest)['version']
 
 setup(  name = 'MoePhoto',
-        version = '4.5.5',
+        version = version,
         description = 'May-workshop',
         options = {'build_exe': build_exe_options},
         executables = [exe])

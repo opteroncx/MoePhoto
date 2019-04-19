@@ -2817,12 +2817,14 @@ html {
     padding-left: 2em;
 }
 #options .opValue {
-    padding-left: .5em;
-    padding-right: 1em;
+    padding: 0 .5em;
+    font-weight: 400
 }
 #options .argName {
-    padding-left: .5em;
-    padding-right: 0;
+    padding: 0 .5em
+}
+#options input[type=radio], input[type=checkbox] {
+    margin-left: .5em
 }
 .step .configs {
     white-space: nowrap;
@@ -2862,6 +2864,9 @@ input[type="file"] {
     position: relative;
     min-height: 12px;
     padding-left: 5px
+}
+.input-short {
+    width: 10em
 }
 #steps .drag-indicator {
     width: 100%;

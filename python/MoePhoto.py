@@ -55,17 +55,15 @@ if __name__ == '__main__':
   noter, notifier = mp.Pipe(False)
   stopEvent = mp.Event()
   mp.Process(target=worker, args=(main, taskInReceiver, taskOutSender, notifier, stopEvent), daemon=True).start()
-  from server import runserver
-  from defaultConfig import defaultConfig
+  from server import runserver, config
   run = runserver(taskInSender, taskOutReceiver, noter, stopEvent, mm)
   host = '127.0.0.1'
-  port = defaultConfig['port'][0]
+  port = config['port']
   if len(sys.argv) > 1:
     if '-g' in sys.argv:
       host = '0.0.0.0'
-    run(host, port)
   else:
     from webbrowser import open as startBrowser
     from gevent import spawn_later
     spawn_later(1, startBrowser, 'http://127.0.0.1:{}'.format(port))
-    run(host, port)
+  run(host, port)

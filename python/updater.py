@@ -10,6 +10,7 @@ import json
 from moe_utils import compile_pyc
 from moe_utils import copyfile
 from mt_download import download_file
+from userConfig import compareVersion
 releases = 'http://www.may-workshop.com/moephoto/version.html'
 ufile = 'http://www.may-workshop.com/moephoto/files/'
 
@@ -55,21 +56,6 @@ def getVersion(releases=releases):
     f = requests.get(releases)
     fv = f.text
     return fv[8:]
-
-def compareVersion(a, b):
-    for v0, v1 in zip(a.split('.'), b.split('.')):
-        n0 = int(v0)
-        n1 = int(v1)
-        if n0 < n1:
-            return -1
-        elif n0 > n1:
-            return 1
-    if len(a) < len(b):
-        return -1
-    elif len(a) > len(b):
-        return 1
-    else:
-        return 0
 
 def update():
     # make temp dir

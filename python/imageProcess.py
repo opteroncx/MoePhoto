@@ -8,13 +8,12 @@ from torchvision.transforms.functional import to_tensor
 import numpy as np
 from PIL import Image
 from config import config
-from defaultConfig import defaultConfig
 from progress import Node, updateNode
 import logging
 
 deviceCPU = torch.device('cpu')
-outDir = defaultConfig['outDir'][0]
-previewFormat = defaultConfig['videoPreview'][0]
+outDir = config.outDir
+previewFormat = config.videoPreview
 log = logging.getLogger('Moe')
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
 padImageReflect = torch.nn.ReflectionPad2d
@@ -260,7 +259,7 @@ combine = lambda *fs: lambda x: reduce(apply, fs, x)
 trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, flip), combine(transpose, flip, transpose), combine(flip2, transpose)]
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
 ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs))
-previewPath = defaultConfig['outDir'][0] + '/.preview.{}'.format(previewFormat if previewFormat else '')
+previewPath = config.outDir + '/.preview.{}'.format(previewFormat if previewFormat else '')
 
 def toInt(o, keys):
   for key in keys:
