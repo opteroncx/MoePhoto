@@ -1,6 +1,7 @@
 import json
 from os.path import exists
 from defaultConfig import defaultConfig
+VERSION = '4.6'
 version = defaultConfig['version'][0]
 configPath = '.user/config.json'
 

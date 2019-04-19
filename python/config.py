@@ -6,10 +6,9 @@ import logging
 import psutil
 import torch
 import readgpu
-from userConfig import setConfig
+from userConfig import setConfig, VERSION
 process = psutil.Process(os.getpid())
 log = logging.getLogger('Moe')
-VERSION = '4.6'
 
 def transform(self):
   def f(key):

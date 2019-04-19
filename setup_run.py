@@ -2,6 +2,7 @@ import os
 from python import moe_utils
 
 # recompile files
+os.system('npm run build')
 moe_utils.compile_pyc()
 os.system('python setup.py build')
 print('### fix scipy ####')

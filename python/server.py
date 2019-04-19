@@ -6,11 +6,10 @@ import re
 import psutil
 from flask import Flask, render_template, request, jsonify, send_from_directory, make_response, Response, send_file
 from gevent import pywsgi, idle, spawn
-from userConfig import setConfig
+from userConfig import setConfig, VERSION
 from FIFOcache import Cache
 from preset import preset
 
-VERSION = '4.6'
 config = {}
 try:
   setConfig(config, VERSION)
