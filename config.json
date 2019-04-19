@@ -1,0 +1,79 @@
+{
+  "version": "4.6",
+  "crop_sr": [
+    "auto",
+    "超分切块大小，'auto'为自动适应，否则应填个正整数"
+  ],
+  "crop_dn": [
+    "auto",
+    "降噪切块大小，'auto'为自动适应，否则应填个正整数"
+  ],
+  "crop_dns": [
+    "auto",
+    "强力降噪切块大小，'auto'为自动适应，否则应填个正整数"
+  ],
+  "videoName": [
+    "out_{timestamp}.mkv",
+    "视频输出文件名，{timestamp}为任务开始时间"
+  ],
+  "maxMemoryUsage": [
+    0,
+    "最大使用的内存，单位MB"
+  ],
+  "maxGraphicMemoryUsage": [
+    0,
+    "最大使用的显存，单位MB"
+  ],
+  "cuda": [
+    true,
+    "使用显卡CUDA计算"
+  ],
+  "fp16": [
+    true,
+    "使用半精度浮点数计算，仅限显卡处理"
+  ],
+  "deviceId": [
+    0,
+    "使用的显卡序号"
+  ],
+  "defaultDecodec": [
+    "",
+    "默认视频解码选项，反正界面上可以设置"
+  ],
+  "defaultEncodec": [
+    "libx264 -pix_fmt yuv420p",
+    "默认视频编码选项，反正界面上可以设置"
+  ],
+  "ensembleSR": [
+    0,
+    "超分自集成次数，0-7，设为几时间就增加几倍，自集成略微提高超分效果"
+  ],
+  "outDir": [
+    "download",
+    "处理后输出的结果都放在这下面"
+  ],
+  "uploadDir": [
+    "upload",
+    "处理中的视频在此复制暂存一份"
+  ],
+  "logPath": [
+    ".user/log.txt",
+    "后台日志保存在此"
+  ],
+  "opsPath": [
+    ".user/ops.json",
+    "处理时间估计参数保存在此"
+  ],
+  "videoPreview": [
+    "jpeg",
+    "视频处理的预览图格式，空字符串为关闭预览"
+  ],
+  "maxResultsKept": [
+    1024,
+    "最大缓存处理结果数量，每个任务存个会话和文件路径而已，不会很大"
+  ],
+  "port": [
+    2333,
+    "监听端口"
+  ]
+}
