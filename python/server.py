@@ -261,7 +261,7 @@ def batchEnhance():
     'gone': 0,
     'total': total
   }
-  opt[-1]['trace'] = False
+  opt.append(dict(trace=False, op='output'))
   for image in fileList:
     if current.stopFlag.is_set():
       result = 'Interrupted'
