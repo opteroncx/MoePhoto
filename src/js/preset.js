@@ -55,13 +55,13 @@ const genPresetArgs = (path, presetSelectName = 'preset', presetListName = 'pres
       fillEmptyOption(loadPresetArg, texts.fetching + '...')
       fillHtml(loadPresetArg, ele)
       return fetchNames(loadPresetArg)
-      .then(() => {
-        names.length || fillEmptyOption(loadPresetArg)
-        fillHtml(loadPresetArg, ele)
-        ele.selectedIndex = -1
-      })
-      .catch(() => fillHtml(loadPresetArg, ele))
-      .finally(None)
+        .then(() => {
+          names.length || fillEmptyOption(loadPresetArg)
+          fillHtml(loadPresetArg, ele)
+          ele.selectedIndex = -1
+        })
+        .catch(() => fillHtml(loadPresetArg, ele))
+        .finally(None)
     },
     change: () => {
       let name = getByName(presetSelectName).value, t
@@ -86,12 +86,9 @@ const genPresetArgs = (path, presetSelectName = 'preset', presetListName = 'pres
       if (fetching) return
       let input = getByName(presetListName)
       return fetchNames(savePresetArg)
-      .then(() => fillHtml(savePresetArg, ele))
-      .then(() => {
-        console.log(ele)
-      })
-      .catch(e => input.value = e)
-      .finally(None)
+        .then(() => fillHtml(savePresetArg, ele))
+        .catch(e => input.value = e)
+        .finally(None)
     },
     change: () => {
       let name = getByName(presetListName).value, t
@@ -141,7 +138,7 @@ const genPresetArgs = (path, presetSelectName = 'preset', presetListName = 'pres
         method: 'POST',
         body: data
       }).catch(console.error.bind(console))
-      .finally(() => ev.target.value = savePresetButton.value)
+        .finally(() => ev.target.value = savePresetButton.value)
     },
     disabled: true
   }
