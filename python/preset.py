@@ -60,7 +60,10 @@ def preset():
         else:
           return '', 404
       else:
-        return json.dumps([*filter(None, map(loadPreset(path), os.listdir(path)))]
-          , ensure_ascii=False, separators=(',', ':')), 200
+        if os.path.exists(path):
+          return json.dumps([*filter(None, map(loadPreset(path), os.listdir(path)))]
+            , ensure_ascii=False, separators=(',', ':')), 200
+        else:
+          return '[]', 200
   except:
     return '', 400
