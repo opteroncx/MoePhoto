@@ -29,7 +29,7 @@ ifiles = [
         './pyc/FIFOcache.pyc',
         './pyc/preset.pyc',
         './pyc/userConfig.pyc',
-        './pyc/defaultConfig.pyc'
+        './pyc/defaultConfig.pyc',
         './templates',
         './static',
         './model',
