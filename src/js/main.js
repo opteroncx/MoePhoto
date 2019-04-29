@@ -14,14 +14,15 @@ const copyTruly = obj => {
 var SRScaleValues = [
   { value: 2, text: '2倍', checked: 1 },
   { value: 3, text: '3倍' },
-  { value: 4, text: '4倍' }
+  { value: 4, text: '4倍' },
+  { value: 8, text: '8倍', disabled: 1 }
 ]
 const setScaleDisabled = setAll(SRScaleValues, 'disabled')
 const scaleModelMapping = {
-  a: [0, 0, 0],
-  p: [0, 0, 0],
-  lite: [0, 1, 0],
-  gan: [1, 1, 0]
+  a: [0, 0, 0, 1],
+  p: [0, 0, 0, 1],
+  lite: [0, 1, 0, 0],
+  gan: [1, 1, 0, 1]
 }
 var getResizeView = (by, scale, size) =>
   by === 'scale' ? scale + '倍' : appendText('pixel')(size)
@@ -101,7 +102,7 @@ const panels = {
   },
   SR: {
     text: '超分辨率',
-    description: '以2、3、4倍整数比例放大图像',
+    description: '以2、3、4甚至8倍整数比例放大图像',
     draggable: 1,
     args: {
       scale: {
@@ -114,8 +115,9 @@ const panels = {
         text: '超分模型',
         change: (_, opt) => {
           setScaleDisabled(scaleModelMapping[opt.model])
-          if (SRScaleValues[opt.scale - 2].disabled)
-            for (opt.scale = 2; SRScaleValues[opt.scale - 2].disabled; opt.scale++);
+          let i = SRScaleValues.findIndex(item => item.value === opt.scale)
+          for (; SRScaleValues[i].disabled; i = (i + 1) % SRScaleValues.length);
+          opt.scale = SRScaleValues[i].value
           return 1
         },
         values: [
@@ -125,7 +127,7 @@ const panels = {
             value: 'lite',
             text: '快速',
             notes: [
-              '快速模型仅能放大2倍或4倍，可以在后面添加“缩放”步骤配合使用'
+              '快速模型仅能放大2、4、8倍，可以在后面添加“缩放”步骤配合使用'
             ]
           },
           {
