@@ -1,7 +1,7 @@
 from functools import reduce
 import numpy as np
 from torch import load
-from imageProcess import ensemble, genGetModel, initModel, resize
+from imageProcess import ensemble, initModel, resize
 from models import Net2x, Net3x, Net4x
 from gan import RRDB_Net
 from MoeNet_lite2 import Net
@@ -39,7 +39,6 @@ def sr(x, opt):
   else:
     return sum
 
-getModel = genGetModel()
 
 ##################################
 
@@ -57,5 +56,5 @@ def getOpt(scale, mode, ensemble):
 
   opt.ramCoef = mode_switch[nmode][2][config.getRunType()]
   opt.cropsize = config.getConfig()[0]
-  opt.modelCached = initModel(getModel(opt), load(opt.model, map_location='cpu'))
+  opt.modelCached = initModel(opt, opt.model, 'SR' + nmode)
   return opt

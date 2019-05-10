@@ -74,7 +74,7 @@ const panels = {
     text: '批量输入',
     description: '将所有需要放大的图片放置到一个文件夹内，并在下方选择路径',
     position: 0,
-    submit: (opt, data) => opt.file && opt.file.length && [...opt.file].forEach(f => data.append('file', f, f.name)) && void 0,
+    submit: (opt, data) => opt.file && opt.file.length && [...opt.file].forEach(f => data.append && data.append('file', f, f.name)) && void 0,
     view: opt => ({ file: opt.file && opt.file.length ? [opt.file[0].name, '等', opt.file.length, '个'].join('') : '请选择' }),
     args: {
       file: {
