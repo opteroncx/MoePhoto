@@ -11,7 +11,6 @@ ifiles = [
         './pyc/models.pyc',
         './pyc/dehaze.pyc',
         './pyc/config.pyc',
-        './pyc/defaultConfig.pyc',
         './pyc/imageProcess.pyc',
         './pyc/progress.pyc',
         './pyc/readgpu.pyc',
@@ -30,6 +29,7 @@ ifiles = [
         './pyc/FIFOcache.pyc',
         './pyc/preset.pyc',
         './pyc/userConfig.pyc',
+        './pyc/defaultConfig.pyc',
         './templates',
         './static',
         './model',
@@ -69,7 +69,7 @@ base = None
 exe = Executable(script='./python/MoePhoto.py', base = base, icon='logo3.ico')
 
 
-with open('package.json') as manifest:
+with open('package.json','r',encoding='utf-8') as manifest:
   version = json.load(manifest)['version']
 
 setup(  name = 'MoePhoto',
