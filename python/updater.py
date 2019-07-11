@@ -66,6 +66,7 @@ def update():
     print('current version==',current_v)
     if compareVersion(v, current_v) <= 0:
         print('已是最新版本')
+        result = '已是最新版本'
     else:
         url_new_version = ufile+v+'.zip'
         # download zip
@@ -92,8 +93,10 @@ def update():
         print('升级完成,请重启软件')        
         #clean temp files
         shutil.rmtree('./update_tmp')
+        result = '升级完成,请重启软件'
+    return result
 
 if __name__ == '__main__':
     v = getVersion()
     print(v)
-    update_ffmpeg()
+    # update_ffmpeg()
