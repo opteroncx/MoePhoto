@@ -10,6 +10,8 @@ const panels = {
 
 const isType = type => x => type === typeof x
 const None = () => void 0
+const identity = x => x
+const toNumber = x => +x
 const setSubText = target => (item, key) =>
   isType('object')(target[key]) && (isType('object')(item) || isType('string')(item))
     ? setPanelTexts(target[key], item) : target[key] = item
@@ -36,7 +38,7 @@ const addPanel = (panelName, panel) => {
   let listeners = {}
   eventTypes.forEach(type => listeners[type] = [])
   for (let argName in panel.args) {
-    let arg = panel.args[argName]
+    let arg = panel.args[argName], typify = identity
     arg.name || (arg.name = argName)
     let selector = `${tags[arg.type] ? tags[arg.type] : 'input'}[name=${arg.name}]`
     arg.bindFlag = 0
@@ -49,6 +51,7 @@ const addPanel = (panelName, panel) => {
         v.checked ? panel.initOpt[argName] = v.value : 0
       })
       arg.dataType || arg.values.some(v => typeof v.value !== 'number') || (arg.dataType = 'number')
+      arg.dataType === 'number' && (typify = toNumber)
     }
     else
       arg.ignore || (panel.initOpt[argName] = arg.value)
@@ -58,7 +61,7 @@ const addPanel = (panelName, panel) => {
       opt[argName] || (opt[argName] = {})
       opt[argName][ev.target.value] = ev.target.checked
     } : arg.type === 'file' ? (ev, opt) => opt[argName] = ev.target.files
-        : (ev, opt) => opt[argName] = ev.target.value,
+        : (ev, opt) => opt[argName] = typify(ev.target.value),
       _c = arg.change ? arg.change.bind(arg) : _ => 0,
       changeBinds = arg.type === 'checkbox' ? ev =>
         setBinds(arg.values.find(v => v.value === ev.target.value).binds, !ev.target.checked)
@@ -130,7 +133,7 @@ const getArgHTML = (item, opt, hr = true) =>
   elementTypeMapping[item.type](item, opt),
   hr ? getNotes(item, opt) : ''].join('')
 const getCheckedItem = (item, opt) => item.values.filter(isChecked(opt))
-const flatArray = arrs => arrs.reduce((res, arr) => res.concat(arr))
+const flatArray = arrs => arrs.reduce((res, arr) => res.concat(arr), [])
 const getInputCheck = (item, opt) =>
   item.values.map(v => getInputCheckOption(v, opt))
     .concat(flatArray(getCheckedItem(item, opt).map(getNotes)))

@@ -57,7 +57,16 @@ $(document).ready($ => {
 const getResource = path => [path, '?', (new Date()).getTime()].join('')
 const processingMsg = '处理中'
 const genOnProgress = (unit, msg = processingMsg) => (gone, total) => `${msg}，共${total}${unit}，已处理${gone}${unit}`
+const toHMS = s => {
+  if (s == null || !isFinite(s)) return ''
+  let h = s / 3600 | 0, m = (s / 60 | 0) % 60
+  s = (s % 60).toFixed(2)
+  h = h ? `${h}${texts.space}${texts.hour}` : ''
+  m = m ? `${m}${texts.space}${texts.minute}` : ''
+  return [h, m, s, texts.second].join(texts.space)
+}
 const texts = {
+  space: '',
   step: '步骤',
   add: '点击添加...',
   fetching: '正在获取',
@@ -65,6 +74,8 @@ const texts = {
   labelSplitter: '：',
   pixel: '像素',
   fps: '帧每秒',
+  hour: '小时',
+  minute: '分钟',
   second: '秒',
   noFileMsg: '缺少输入文件',
   errorMsg: '出错啦',
@@ -77,8 +88,8 @@ const texts = {
   logWritten: '日志已写入浏览器控制台，请按<kbd>F12</kbd>查看',
   noMoreLog: '没有新的日志',
   needRefresh: '请在空闲后刷新',
-  onBusy: gone => '忙碌中' + (gone == null ? '' : `，已经过${gone}秒`),
-  timeFormatter: time => `，预计还需要${time.toFixed(2)}秒`,
+  onBusy: gone => '忙碌中' + (gone == null ? '' : `，已经过${toHMS(gone)}`),
+  timeFormatter: time => `，预计还需要${toHMS(time)}`,
   batchSucc: result => [
     result[0] === 'Success' ? texts.finish : '中途被打断了',
     `，处理了${result[1]}张图片`,

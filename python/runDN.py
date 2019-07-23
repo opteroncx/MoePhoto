@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 import numpy as np
 from torch import load
-from imageProcess import ensemble, genGetModel, initModel
+from imageProcess import ensemble, initModel
 from models import NetDN, SEDN
 from config import config
 
@@ -17,7 +17,6 @@ mode_switch = {
 
 dn = lambda x, opt: ensemble(x, 0, { 'opt': opt, 'model': opt.modelCached })
 
-getModel = genGetModel()
 
 ##################################
 
@@ -30,5 +29,5 @@ def getOpt(model):
 
   opt.ramCoef = mode_switch[model][2][config.getRunType()]
   opt.cropsize = config.getConfig()[1 if model[:4] == 'lite' else 2]
-  opt.modelCached = initModel(getModel(opt), load(opt.model, map_location='cpu'))
+  opt.modelCached = initModel(opt, opt.model, 'DN' + model)
   return opt

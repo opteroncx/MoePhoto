@@ -1,5 +1,8 @@
 import torch
 import torch.nn as nn
+from functools import reduce
+
+apply = lambda v, f: f(v)
 
 class upsample_block_v1(nn.Module):
   def __init__(self,in_channels,out_channels):
@@ -48,15 +51,13 @@ class Net(nn.Module):
   def __init__(self, upscale=2):
     super(Net, self).__init__()
     self.upscale = upscale
+    l = int(upscale).bit_length() - 1
 
     self.conv_input = nn.Conv2d(in_channels=1, out_channels=48, kernel_size=1, stride=1, padding=0, bias=False)
     self.conv_input2 = nn.Conv2d(in_channels=48, out_channels=48, kernel_size=1, stride=1, padding=0, bias=False)
     self.relu = nn.PReLU()
-    self.ures1 = upsample_block_v1(48,192)
-    self.uim1 = upsample_block_v1(48,192)
-    if upscale == 4:
-      self.ures2 = upsample_block_v1(48,192)
-      self.uim2 = upsample_block_v1(48,192)
+    self.ures = nn.ModuleList([upsample_block_v1(48,192) for _ in range(l)])
+    self.uim = nn.ModuleList([upsample_block_v1(48,192) for _ in range(l)])
     self.convt_R1 = nn.Conv2d(in_channels=48, out_channels=1, kernel_size=1, stride=1, padding=0, bias=False)
     self.convt_I1 = nn.Conv2d(in_channels=48, out_channels=1, kernel_size=1, stride=1, padding=0, bias=False)
     # add multi supervise
@@ -72,13 +73,10 @@ class Net(nn.Module):
     convt_F12 = self.convt_F12(convt_F11)
     convt_F13 = self.convt_F13(convt_F12)
 
-    res1 = self.ures1(convt_F13)
-    im1 = self.uim1(out)
-    if self.upscale == 4:
-      res1 = self.ures2(res1)
-      im1 = self.uim2(im1)
-    u11 = self.convt_R1(res1)
-    u12 = self.convt_I1(im1)
+    res = reduce(apply, self.ures, convt_F13)
+    im = reduce(apply, self.uim, out)
+    u11 = self.convt_R1(res)
+    u12 = self.convt_I1(im)
     HR = u11+u12
 
     return [HR]

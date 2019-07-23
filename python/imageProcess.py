@@ -15,6 +15,8 @@ deviceCPU = torch.device('cpu')
 outDir = config.outDir
 previewFormat = config.videoPreview
 log = logging.getLogger('Moe')
+modelCache = {}
+weightCache = {}
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
 padImageReflect = torch.nn.ReflectionPad2d
 unpadImage = lambda padding: lambda im: im[:, padding:-padding, padding:-padding]
@@ -62,20 +64,6 @@ def doCrop(opt, model, x, padding=1, sc=1):
       , leftT:leftT + tmp.shape[2]] = tmp
 
   return tmp_image
-
-PILResamples = {
-  'nearest': Image.NEAREST,
-  'bilinear': Image.BILINEAR,
-  'bicubic': Image.BICUBIC
-}
-def resizeByPIL(x, width, height, mode='bicubic'):
-  if x.shape[0] == 1:
-    x = x.squeeze(0)
-  y = Image.fromarray(toOutput8(toFloat(x))).resize((width, height), resample=PILResamples[mode])
-  y = np.array(y)
-  if len(y.shape) == 2:
-    y = y.reshape(*y.shape, 1)
-  return to_tensor(y).to(dtype=x.dtype, device=x.device)
 
 resizeByTorch = lambda x, width, height, mode='bilinear':\
   F.interpolate(x.unsqueeze(0), size=(height, width), mode=mode, align_corners=False).squeeze()
@@ -230,19 +218,27 @@ def readFile(nodes=[]):
       raise RuntimeError('Unknown image format')
   return f
 
-def genGetModel(f=lambda opt: opt.modelDef()):
-  def getModel(opt):
-    log.info('loading model {}'.format(opt.model))
-    return f(opt)
-  return getModel
+def getStateDict(path):
+  if not path in weightCache:
+    weightCache[path] = torch.load(path, map_location='cpu')
+  return weightCache[path]
 
-def initModel(model, weights=None):
+def initModel(opt, weights=None, key=None, f=lambda opt: opt.modelDef()):
+  if key and key in modelCache:
+    return modelCache[key].to(dtype=config.dtype(), device=config.device())
+  log.info('loading model {}'.format(opt.model))
+  model = f(opt)
   if weights:
     log.info('reloading weights')
+    if type(weights) == str:
+      weights = getStateDict(weights)
     model.load_state_dict(weights)
   for param in model.parameters():
     param.requires_grad_(False)
-  return model.eval().to(dtype=config.dtype(), device=config.device())
+  model.eval()
+  if key:
+    modelCache[key] = model
+  return model.to(dtype=config.dtype(), device=config.device())
 
 identity = lambda x, *_: x
 clean = lambda: torch.cuda.empty_cache()
