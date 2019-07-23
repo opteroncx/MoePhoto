@@ -29,7 +29,7 @@ def getVideoInfo(videoPath):
     '-'
   ]
   try:
-    pipeIn = sp.Popen(commandIn, stderr=sp.PIPE, encoding='utf_8')
+    pipeIn = sp.Popen(commandIn, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
     totalFrames = 0
 
     for line in iter(pipeIn.stderr.readline, ''):
