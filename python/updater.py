@@ -100,4 +100,4 @@ def update():
 if __name__ == '__main__':
     v = getVersion()
     print(v)
-    update_ffmpeg()
+    # update_ffmpeg()
