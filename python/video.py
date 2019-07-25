@@ -72,7 +72,7 @@ def readSubprocess(q):
   while True:
     try:
       t, line = q.get_nowait()
-      line = str(line, encoding='utf_8')
+      line = str(line, encoding='utf_8', errors='replace')
     except Empty:
       break
     else:
