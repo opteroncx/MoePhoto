@@ -6,34 +6,35 @@ import zipfile
 import tarfile
 import requests
 import shutil
+import json
 from moe_utils import compile_pyc
 from moe_utils import copyfile
 from mt_download import download_file
-from defaultConfig import defaultConfig
 from userConfig import compareVersion
-releases = 'http://www.may-workshop.com/moephoto/version.html'
-ufile = 'http://www.may-workshop.com/moephoto/files/'
 
 ffmpeg_home = './ffmpeg/bin/'
-isWindows = 1 if sys.platform[:3] == 'win' else 0
-ff = 'https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-latest-win64-static.zip' if isWindows else 'https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz'
+isWindows = sys.platform[:3] == 'win'
 ffname = 'ffmpeg.zip' if isWindows else 'ffmpeg.tar.xz'
 outfname = 'ffmpeg.exe' if isWindows else 'ffmpeg'
 
-def update_model():
-    print('更新模型文件')
+def loadManifest(path='manifest.json'):
+    with open(path, 'r') as f:
+        return json.load(f)
 
-def update_ffmpeg():
+def update_model(manifest=None):
+    print('更新模型文件', manifest)
+
+def update_ffmpeg(manifest):
     print('更新FFMPEG')
     # first time, check path
     if not os.path.exists(ffmpeg_home):
         os.makedirs(ffmpeg_home)
     # download files
-    url = ff
+    url = manifest['ffmpeg-win' if isWindows else 'ffmpeg-linux']
     print('downloading from ',url)
     fname = '{}{}'.format(ffmpeg_home, ffname)
     outPath = '{}{}'.format(ffmpeg_home, outfname)
-    download_file(ff,fname=fname)
+    download_file(url,fname=fname)
 
     if isWindows:
         # extract zip
@@ -53,23 +54,23 @@ def update_ffmpeg():
             out.write(buf)
     os.remove(fname)
 
-def getVersion(releases=releases):
-    f = requests.get(releases)
+def getVersion(manifest):
+    f = requests.get(manifest['releases'])
     fv = f.text
     return fv[8:]
 
-def update():
+def update(manifest):
     # make temp dir
     if not os.path.exists('./update_tmp'):
         os.mkdir('./update_tmp')
-    v = getVersion()
-    current_v = defaultConfig['version'][0]
+    v = getVersion(manifest)
+    current_v = manifest['version']
     print('current version==',current_v)
     if compareVersion(v, current_v) <= 0:
         print('已是最新版本')
         result = '已是最新版本'
     else:
-        url_new_version = ufile+v+'.zip'
+        url_new_version = manifest['ufile']+v+'.zip'
         # download zip
         print('downloading from ',url_new_version)
         url = url_new_version 
@@ -98,6 +99,7 @@ def update():
     return result
 
 if __name__ == '__main__':
-    v = getVersion()
+    manifest = loadManifest()
+    v = getVersion(manifest)
     print(v)
-    update_ffmpeg()
+    update_ffmpeg(manifest)

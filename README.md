@@ -1,5 +1,5 @@
 # MoePhoto
-[![Badge](https://img.shields.io/badge/version-4.5.5-brightgreen.svg)](https://github.com/opteroncx/MoePhoto/blob/master/update_log.txt)
+[![Badge](https://img.shields.io/badge/version-4.7.0-brightgreen.svg)](https://github.com/opteroncx/MoePhoto/blob/master/update_log.txt)
 [![Badge](https://img.shields.io/badge/link-may--workshop-blueviolet.svg)](http://may-workshop.com/?page_id=373)
 [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 

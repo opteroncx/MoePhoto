@@ -28,6 +28,7 @@ site-packages/nvidia-ml-py/t*
 /static/fonts/
 /static/js/
 /static/manifest.json
+manifest.json
 
 # ignore developments
 /node_modules/
