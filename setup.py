@@ -5,6 +5,7 @@ import json
 os.environ['TCL_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tcl8.6'
 os.environ['TK_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tk8.6'
 # Dependencies are automatically detected, but it might need fine tuning.
+manifestPath = './manifest.json'
 
 # include files
 ifiles = [
@@ -40,7 +41,8 @@ ifiles = [
         './libiompstubs5md.dll',
         './update_log.txt',
         './site-packages',
-        './server.bat'
+        './server.bat',
+        manifestPath
         ]
 
 # exclude files
@@ -71,6 +73,17 @@ exe = Executable(script='./python/MoePhoto.py', base = base, icon='logo3.ico')
 
 with open('package.json','r',encoding='utf-8') as manifest:
   version = json.load(manifest)['version']
+
+manifest = {
+  'version': version,
+  'releases': 'http://www.may-workshop.com/moephoto/version.html',
+  'ufile': 'http://www.may-workshop.com/moephoto/files/',
+  'ffmpeg-win': 'https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-latest-win64-static.zip',
+  'ffmpeg-linux': 'https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz'
+}
+
+with open(manifestPath, 'w') as f:
+  json.dump(manifest, f, ensure_ascii=False)
 
 setup(  name = 'MoePhoto',
         version = version,
