@@ -254,7 +254,7 @@ flip2 = lambda x: x.flip(-1, -2)
 combine = lambda *fs: lambda x: reduce(apply, fs, x)
 trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, flip), combine(transpose, flip, transpose), combine(flip2, transpose)]
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
-ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv).detach(), doCrop(x=x, **kwargs))
+ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs)).detach()
 previewPath = config.outDir + '/.preview.{}'.format(previewFormat if previewFormat else '')
 
 def toInt(o, keys):
