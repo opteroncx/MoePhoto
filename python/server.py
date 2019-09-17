@@ -8,11 +8,12 @@ from flask import Flask, render_template, request, jsonify, send_from_directory,
 from gevent import pywsgi, idle, spawn
 from userConfig import setConfig, VERSION
 from FIFOcache import Cache
-from preset import preset
+from preset import preset, initPreset
 
 config = {}
 try:
   setConfig(config, VERSION)
+  initPreset(config)
 except Exception as e:
   print(e)
 staticMaxAge = 86400

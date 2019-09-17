@@ -72,7 +72,7 @@ exe = Executable(script='./python/MoePhoto.py', base = base, icon='logo3.ico')
 
 
 with open('package.json','r',encoding='utf-8') as manifest:
-  version = json.load(manifest)['version']
+  version = json.load(manifest)['version'].split('-')[0]
 
 manifest = {
   'version': version,

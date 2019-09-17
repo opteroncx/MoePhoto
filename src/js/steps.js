@@ -280,6 +280,8 @@ const context = (steps => {
     options.html(getPanelView(panel === panels.index ? getIndexHTML : getPanelInnerView(getArgsHTML))(panel, opt, pos))
     for (let argName in args)
       args[argName].type === 'file' && (options.find(`input[name=${argName}]`).get(0).files = opt[argName])
+    for (let argName in args)
+      args[argName].load && args[argName].load(step)
     refreshStep && context.refreshCurrentStep()
     eventTypes.forEach(type => listeners[type].forEach(o => $(o.selector).on(type, o.f)))
   }

@@ -169,7 +169,7 @@ def SR_vid(video, *steps):
   pipeOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, shell=True)
   def p(raw_image=None):
     bufs = process((raw_image, height, width))
-    if type(bufs) != type(None) and len(bufs):
+    if (not bufs is None) and len(bufs):
       for buffer in bufs:
         if buffer:
           pipeOut.stdin.write(buffer)
@@ -192,7 +192,7 @@ def SR_vid(video, *steps):
       idle()
     p()
 
-    pipeOut.communicate()
+    pipeOut.communicate(timeout=300)
   finally:
     pipeIn.terminate()
     pipeOut.terminate()

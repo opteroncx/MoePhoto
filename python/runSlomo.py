@@ -118,7 +118,7 @@ def doSlomo(func, node):
     for item in tempOut[outStart:]:
       if type(item) == list:
         res.extend(item)
-      elif type(item) != type(None):
+      elif not item is None:
         res.append(item)
     opt.firstTime = 0
     return res

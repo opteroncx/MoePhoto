@@ -2,7 +2,8 @@ import os
 import json
 import time
 from flask import request
-from userConfig import version, compareVersion
+from userConfig import compareVersion, VERSION
+version = VERSION
 
 cache = {}
 
@@ -44,6 +45,11 @@ def savePreset(path):
       cache[name] = (time.time(), data, brief)
     return name
   return f
+
+def initPreset(config):
+  global version
+  if 'version' in config:
+    version = config['version']
 
 def preset():
   try:

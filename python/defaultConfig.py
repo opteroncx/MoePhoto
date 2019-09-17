@@ -1,6 +1,5 @@
 # MoePhoto运行配置文件
 defaultConfig = {
-  'version': ('4.7.0',), # distribution build doesn't have package.json
   'crop_sr': ('auto',),
   'crop_dn': ('auto',),
   'crop_dns': ('auto',),

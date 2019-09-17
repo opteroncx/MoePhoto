@@ -39,9 +39,9 @@ def serializeOps():
     res.append(dict(op=op.op, weight=op.weight, samples=op.samples))
   return res
 
-def saveOps(path=None):
+def saveOps(path=None, force=False):
   global needSave
-  if path and needSave:
+  if path and (needSave or force):
     spawn(saveInternal, path).start()
     needSave = False
   return serializeOps()
@@ -98,7 +98,7 @@ def initialETA(node):
   return node.ett
 
 class Node():
-  def __init__(self, op, load=1, total=1, learn=3, callback=NullFunc, name=None):
+  def __init__(self, op, load=1, total=1, learn=30, callback=NullFunc, name=None):
     self.load = load
     self.total = total
     self.gone = 0

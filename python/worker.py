@@ -52,6 +52,7 @@ def enhance(f):
     try:
       res = { 'result': f(*args, **kwargs) }
       code = 200
+      saveOps(opsPath, True)
     except:
       log.exception([f.__name__] + [filterOpt(arg) for arg in args])
       res = {
@@ -59,6 +60,7 @@ def enhance(f):
         'exception': format_exc()
       }
       code = 400
+      context.notifier.send(res)
     finally:
       clean()
     return (json.dumps(res, ensure_ascii=False, separators=(',', ':')), code)

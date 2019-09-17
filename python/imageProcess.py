@@ -63,7 +63,7 @@ def doCrop(opt, model, x, padding=1, sc=1):
     tmp_image[:, topT:topT + tmp.shape[1]
       , leftT:leftT + tmp.shape[2]] = tmp
 
-  return tmp_image
+  return tmp_image.detach()
 
 resizeByTorch = lambda x, width, height, mode='bilinear':\
   F.interpolate(x.unsqueeze(0), size=(height, width), mode=mode, align_corners=False).squeeze()
@@ -129,7 +129,7 @@ def windowWrap(f, opt, window=2):
   def g(inp=None):
     nonlocal h
     b = min(max(1, opt.batchSize), maxBatch)
-    if type(inp) != type(None):
+    if not inp is None:
       cache[h] = inp
       h += 1
       if h >= window + b - 1:
@@ -162,7 +162,7 @@ def toBuffer(bitDepth):
     dtype = np.uint8
   elif bitDepth == 16:
     dtype = np.uint16
-  return lambda im: im.astype(dtype).tostring() if type(im) != type(None) else None
+  return lambda im: im.astype(dtype).tostring() if not im is None else None
 
 def toFloat(image):
   if len(image.shape) == 3:  # to shape (H, W, C)
@@ -180,7 +180,7 @@ def toOutput(bitDepth):
   else:
     dtype = torch.int32
   def f(image):
-    image = image * quant
+    image = image.detach() * quant
     image.clamp_(0, quant - 1)
     return image.to(dtype=dtype, device=deviceCPU).numpy()
   return f
@@ -242,19 +242,19 @@ def initModel(opt, weights=None, key=None, f=lambda opt: opt.modelDef()):
 
 identity = lambda x, *_: x
 clean = lambda: torch.cuda.empty_cache()
-NonNullWrap = lambda f: lambda x: f(x) if type(x) != type(None) else None
+NonNullWrap = lambda f: lambda x: f(x) if not x is None else None
 BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
 BGR2RGBTorch = lambda im: torch.stack([im[2], im[1], im[0]])
 toOutput8 = toOutput(8)
 apply = lambda v, f: f(v)
-applyNonNull = lambda v, f: f(v) if type(v) != type(None) else None
+applyNonNull = lambda v, f: NonNullWrap(f)(v)
 transpose = lambda x: x.transpose(-1, -2)
 flip = lambda x: x.flip(-1)
 flip2 = lambda x: x.flip(-1, -2)
 combine = lambda *fs: lambda x: reduce(apply, fs, x)
 trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, flip), combine(transpose, flip, transpose), combine(flip2, transpose)]
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
-ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs))
+ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv).detach(), doCrop(x=x, **kwargs))
 previewPath = config.outDir + '/.preview.{}'.format(previewFormat if previewFormat else '')
 
 def toInt(o, keys):

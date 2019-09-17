@@ -38,34 +38,39 @@ const genPresetArgs = (path, presetSelectName = 'preset', presetListName = 'pres
         throw e
       })
   }
+  const loadPreset = () => {
+    let ele = getByName(presetSelectName)
+    ele.selectedIndex = loadPresetArg.selectedIndex
+    if (fetching > 1 && !loadPresetArg.options) {
+      names.length ? fillSelect(loadPresetArg)(names) : fillEmptyOption(loadPresetArg)
+      fillHtml(loadPresetArg, ele)
+      ele.selectedIndex = -1
+    }
+    if (fetching) return
+    fillEmptyOption(loadPresetArg, texts.fetching + '...')
+    fillHtml(loadPresetArg, ele)
+    return fetchNames(loadPresetArg)
+      .then(() => {
+        names.length || fillEmptyOption(loadPresetArg)
+        fillHtml(loadPresetArg, ele)
+        ele.selectedIndex = -1
+      })
+      .catch(() => fillHtml(loadPresetArg, ele))
+      .finally(None)
+  }
   var loadPresetArg = {
     type: 'select',
     text: '使用预置设定',
     classes: ['input-text', 'input-short'],
     ignore: true,
     binds: ['apply'],
-    focus: () => {
-      let ele = getByName(presetSelectName)
-      if (fetching > 1 && !loadPresetArg.options) {
-        names.length ? fillSelect(loadPresetArg)(names) : fillEmptyOption(loadPresetArg)
-        fillHtml(loadPresetArg, ele)
-        ele.selectedIndex = -1
-      }
-      if (fetching) return
-      fillEmptyOption(loadPresetArg, texts.fetching + '...')
-      fillHtml(loadPresetArg, ele)
-      return fetchNames(loadPresetArg)
-        .then(() => {
-          names.length || fillEmptyOption(loadPresetArg)
-          fillHtml(loadPresetArg, ele)
-          ele.selectedIndex = -1
-        })
-        .catch(() => fillHtml(loadPresetArg, ele))
-        .finally(None)
-    },
+    selectedIndex: -1,
+    load: loadPreset,
+    focus: loadPreset,
     change: () => {
-      let name = getByName(presetSelectName).value, t
+      let ele = getByName(presetSelectName), name = ele.value, t
       applyPresetButton.disabled = !name
+      loadPresetArg.selectedIndex = ele.selectedIndex
       name && (loadPresetArg.notes = cache[name].notes) && (t = loadPresetArg.notes) && (presetNotesEditor.value = t.join('\n'))
     }
   }
@@ -95,6 +100,7 @@ const genPresetArgs = (path, presetSelectName = 'preset', presetListName = 'pres
       savePresetArg.value = name
       savePresetButton.disabled = !name
       name && (t = cache[name]) && (t = t.notes) && (presetNotesEditor.value = t.join('\n'))
+      t != null || (presetNotesEditor.value = getByName(presetNotesName).value)
     }
   }
   var applyPresetButton = {
@@ -138,7 +144,8 @@ const genPresetArgs = (path, presetSelectName = 'preset', presetListName = 'pres
         method: 'POST',
         body: data
       }).catch(console.error.bind(console))
-        .finally(() => ev.target.value = savePresetButton.value)
+      .then(() => fetching = 0)
+      .finally(() => ev.target.value = savePresetButton.value)
     },
     disabled: true
   }
