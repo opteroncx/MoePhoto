@@ -8,6 +8,9 @@ import torch.nn.functional as F
 def initParameters(model):
   for i, convt in enumerate(model.convt_F):
     model.add_module('convt_F{}'.format(i + 1), convt)
+  initConvParameters(model)
+
+def initConvParameters(model):
   for m in model.modules():
     if isinstance(m, nn.Conv2d):
       n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -29,7 +32,7 @@ def genUpsampleBlock(r):
 upsample_block = genUpsampleBlock(2)
 upsample_block3 = genUpsampleBlock(3)
 
-Conv3x3 = lambda channelIn, channelOut:nn.Conv2d(in_channels=channelIn, out_channels=channelOut, kernel_size=3, stride=1, padding=1, bias=False)
+Conv3x3 = lambda channelIn, channelOut, stride=1: nn.Conv2d(in_channels=channelIn, out_channels=channelOut, kernel_size=3, stride=stride, padding=1, bias=False)
 
 def multiConvt(model, convt_R1, x, u):
   HR = []
