@@ -2,17 +2,24 @@ from torch import load
 from torchvision.transforms import Normalize
 import numpy as np
 from models import AODnet
+from sun_demoire import Net as SUNNet
 from imageProcess import initModel
-modelPath = './model/dehaze/AOD_net_epoch_relu_10.pth'
+normalize = Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+identity = lambda x: x
+mode_switch = {
+  'dehaze': ('./model/dehaze/AOD_net_epoch_relu_10.pth', AODnet, normalize),
+  'sun': ('./model/demoire/sun_epoch_200.pth', SUNNet, identity),
+  'mddm': ('./model/demoire/mddm.pth', SUNNet, identity),
+}
 
-def getOpt(*_):
+def getOpt(model):
   def opt():pass
+  modelPath, M, transform = mode_switch[model]
   opt.model = modelPath
-  opt.modelDef = AODnet
-  opt.modelCached = initModel(opt, modelPath, 'dehaze')
+  opt.modelDef = M
+  opt.modelCached = initModel(opt, modelPath, model)
+  opt.transform = transform
   return opt
-
-transform = Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 
 def extractAlpha(t):
   def f(im):
@@ -37,8 +44,8 @@ def mergeAlpha(t):
 def Dehaze(img, opt):
   net = opt.modelCached
   t = {}
-  imgIn = transform(extractAlpha(t)(img)).unsqueeze(0)
+  imgIn = opt.transform(extractAlpha(t)(img)).unsqueeze(0)
 
   prediction = net(imgIn)
-  dhim = prediction.squeeze()
+  dhim = prediction.squeeze(0)
   return mergeAlpha(t)(dhim)

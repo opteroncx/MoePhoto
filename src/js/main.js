@@ -259,6 +259,22 @@ const panels = {
     description: '去雾AODnet',
     draggable: 1
   },
+  demoire: {
+    op: 'dehaze',
+    text: '去摩尔纹',
+    description: '去除图像明暗相间的条纹缺陷',
+    draggable: 1,
+    args: {
+      model: {
+        type: 'radio',
+        text: '模型',
+        values: [
+          { value: 'sun', text: '小模型', checked: 1 },
+          { value: 'mddm', text: '大模型', disabled: 1 }
+        ]
+      }
+    }
+  },
   decode: {
     text: '输入解码',
     description: '传入ffmpeg的解码参数设定，跟命令行使用是一样的，默认不做额外的解码处理',

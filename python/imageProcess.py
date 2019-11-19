@@ -188,7 +188,7 @@ def toOutput(bitDepth):
 def toTorch(bitDepth, dtype, device):
   if bitDepth <= 8:
     return lambda image: to_tensor(image).to(dtype=dtype, device=device)
-  quant = 1 << bitDepth
+  quant = 1 << (bitDepth - 8)
   return lambda image: (to_tensor(image).to(dtype=torch.float, device=device) / quant).to(dtype=dtype)
 
 def writeFile(image, name, *args):
@@ -325,7 +325,7 @@ def procDehaze(opt, out, *_):
   load = out['load']
   dehazeOpt = opt['opt']
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
-  node = Node(dict(op='dehaze'), load, name=opt['name'] if 'name' in opt else None)
+  node = Node(dict(op=opt['model']), load, name=opt['name'] if 'name' in opt else None)
   ns.append(appendFuncs(lambda im: dehaze.Dehaze(im, dehazeOpt), node, fs))
   return fs, ns, out
 
@@ -387,7 +387,9 @@ def genProcess(steps, root=True, outType=None):
     for opt in filter((lambda opt: opt['op'] == 'DN'), steps):
       opt['opt'] = runDN.getOpt(opt['model'])
     for opt in filter((lambda opt: opt['op'] == 'dehaze'), steps):
-      opt['opt'] = dehaze.getOpt()
+      if not 'model' in opt:
+        opt['model'] = 'dehaze'
+      opt['opt'] = dehaze.getOpt(opt['model'])
     slomos = [*filter((lambda opt: opt['op'] == 'slomo'), steps)]
     for opt in slomos:
       toInt(opt, ['sf'])

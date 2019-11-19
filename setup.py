@@ -31,6 +31,7 @@ ifiles = [
         './pyc/preset.pyc',
         './pyc/userConfig.pyc',
         './pyc/defaultConfig.pyc',
+        './pyc/sun_demoire.pyc',
         './templates',
         './static',
         './model',
