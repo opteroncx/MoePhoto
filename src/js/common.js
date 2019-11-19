@@ -1,4 +1,4 @@
-const VERSION = '4.6'
+const VERSION = '5.0'
 import('bootstrap/dist/css/bootstrap.min.css')
 import('../css/style.css')
 import('../css/font-awesome.css')
