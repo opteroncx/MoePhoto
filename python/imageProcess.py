@@ -188,7 +188,7 @@ def toOutput(bitDepth):
 def toTorch(bitDepth, dtype, device):
   if bitDepth <= 8:
     return lambda image: to_tensor(image).to(dtype=dtype, device=device)
-  quant = 1 << (bitDepth - 8)
+  quant = 1 << bitDepth
   return lambda image: (to_tensor(image).to(dtype=torch.float, device=device) / quant).to(dtype=dtype)
 
 def writeFile(image, name, *args):

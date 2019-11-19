@@ -190,7 +190,9 @@ def getDynamicInfo(_):
   return disk_free, mem_free, current.session, current.path
 
 def setOutputName(args, fp):
-  args[-1]['file'] = fp.filename
+  if not len(args):
+    args = ({'op': 'output'},)
+  args[-1]['file'] = '{}/{}'.format(outDir, fp.filename)
   return args
 
 def responseEnhance(t, req):
@@ -249,7 +251,7 @@ def videoEnhancePrep(req):
     os.mkdir(uploadDir)
   path ='{}/{}'.format(uploadDir, vidfile.filename)
   vidfile.save(path)
-  return (path, *readOpt(req))
+  return (path, *setOutputName(readOpt(req), vidfile))
 makeHandler('video_enhance', videoEnhancePrep, responseEnhance)
 
 @app.route('/batch_enhance', methods=['POST'])
