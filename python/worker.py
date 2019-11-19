@@ -63,7 +63,7 @@ def enhance(f):
       context.notifier.send(res)
     finally:
       clean()
-    return (json.dumps(res, ensure_ascii=False, separators=(',', ':')), code)
+    return res, code
   return g
 
 def worker(main, taskIn, taskOut, notifier, stopEvent):

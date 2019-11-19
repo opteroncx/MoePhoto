@@ -44,7 +44,7 @@ with open('static/manifest.json') as manifest:
 vendorsJs = assetMapping['vendors.js'] if 'vendors.js' in assetMapping else None
 commonJs = assetMapping['common.js'] if 'common.js' in assetMapping else None
 getKey = lambda session, request: request.values['path'] + str(session) if 'path' in request.values else ''
-toResponse = lambda obj: (json.dumps(obj, ensure_ascii=False, separators=(',',':')), 200)
+toResponse = lambda obj, code=200: (json.dumps(obj, ensure_ascii=False, separators=(',', ':')), code)
 
 def acquireSession(request):
   if current.session:
@@ -52,9 +52,9 @@ def acquireSession(request):
   while noter.poll():
     noter.recv()
   current.session = request.values['session']
-  current.path = request.path
+  current.path = request.values['path'] if 'path' in request.values else request.path
   current.key = current.path + str(current.session)
-  current.eta = 10
+  current.eta = request.values['eta'] if 'eta' in request.values else 10
   return False if current.session else E403
 
 def controlPoint(path, fMatch, fUnmatch, fNoCurrent, check=lambda *_: True):
@@ -114,7 +114,7 @@ def makeHandler(name, prepare, final, methods=['POST']):
     sender.send((name, *prepare(request)))
     while not receiver.poll():
       idle()
-    return endSession(final(receiver.recv()))
+    return endSession(final(receiver.recv(), request))
   app.route('/' + name, methods=methods, endpoint=name)(f)
 
 def renderPage(item, header=None, footer=None):
@@ -189,6 +189,15 @@ def getDynamicInfo(_):
   mem_free = psutil.virtual_memory().free // 2**20
   return disk_free, mem_free, current.session, current.path
 
+def setOutputName(args, fp):
+  args[-1]['file'] = fp.filename
+  return args
+
+def responseEnhance(t, req):
+  res, code = t
+  res.update((k, req.values[k]) for k in ('eta', 'gone', 'total') if k in req.values)
+  return toResponse(res, code)
+
 about_updater = lambda *_: [codecs.open('./update_log.txt', encoding='utf-8').read()]
 
 header = codecs.open('./templates/1-header.html','r','utf-8').read()
@@ -214,7 +223,7 @@ for item in routes:
     h = header
   app.route(item[0], endpoint=item[0])(renderPage(item, h, footer))
 
-identity = lambda x: x
+identity = lambda x, *_: x
 readOpt = lambda req: json.loads(req.values['steps'])
 onRequestCache = lambda session, request: cache.pop(getKey(session, request))
 controlPoint('/stop', stopCurrent, lambda: E403, lambda *_: E404)
@@ -229,8 +238,9 @@ app.route("/{}/<path:filename>".format(outDir), endpoint='download')(sendFromDow
 lockFinal = lambda result: (jsonify(result='Interrupted', remain=result), 200) if result > 0 else (jsonify(result='Idle'), 200)
 makeHandler('lockInterface', (lambda req: [int(float(readOpt(req)[0]['duration']))]), lockFinal, ['GET', 'POST'])
 makeHandler('systemInfo', (lambda _: []), identity, ['GET', 'POST'])
-imageEnhancePrep = lambda req: (current.writeFile(req.files['file']), *readOpt(req))
-makeHandler('image_enhance', imageEnhancePrep, identity)
+getReqFile = lambda f: lambda req: f(req, req.files['file'])
+imageEnhancePrep = lambda req, fp: (current.writeFile(fp), *setOutputName(readOpt(req), fp))
+makeHandler('image_enhance', getReqFile(imageEnhancePrep), responseEnhance)
 app.route('/preset', methods=['GET', 'POST'], endpoint='preset')(preset)
 
 def videoEnhancePrep(req):
@@ -240,7 +250,7 @@ def videoEnhancePrep(req):
   path ='{}/{}'.format(uploadDir, vidfile.filename)
   vidfile.save(path)
   return (path, *readOpt(req))
-makeHandler('video_enhance', videoEnhancePrep, identity)
+makeHandler('video_enhance', videoEnhancePrep, responseEnhance)
 
 @app.route('/batch_enhance', methods=['POST'])
 def batchEnhance():
@@ -249,6 +259,8 @@ def batchEnhance():
     return c
   count = 0
   fail = 0
+  fails = []
+  done = []
   result = 'Success'
   fileList = request.files.getlist('file')
   output_path = '{}/{}/'.format(outDir, int(time.time()))
@@ -257,17 +269,12 @@ def batchEnhance():
   opt = readOpt(request)
   total = len(fileList)
   print('batch total: {}'.format(total))
-  current.result = {
-    'eta': total,
-    'gone': 0,
-    'total': total
-  }
   opt.append(dict(trace=False, op='output'))
   for image in fileList:
     if current.stopFlag.is_set():
       result = 'Interrupted'
       break
-    name = output_path + os.path.basename(image.filename)
+    name = os.path.join(output_path, image.filename)
     start = time.time()
     opt[-1]['file'] = name
     sender.send(('batch', current.writeFile(image), *opt))
@@ -282,10 +289,12 @@ def batchEnhance():
     }
     if output[1] == 200:
       note['preview'] = name
+      done.append(name)
     else:
       fail += 1
+      fails.append(name)
     cache.put(current.key, toResponse(note))
-  return endSession(toResponse({'result': (result, count, fail, output_path)}))
+  return endSession(toResponse({'result': (result, count, done, fail, fails, output_path)}))
 
 def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm):
   global sender, receiver, noter
