@@ -12,7 +12,7 @@ if sys.platform[:3] == 'win':
 def main():
   from progress import Node
   from worker import begin, context, enhance
-  from imageProcess import genProcess
+  from procedure import genProcess
   from video import SR_vid
   from config import config
   stepFile = [{'op': 'file'}]

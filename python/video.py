@@ -7,7 +7,8 @@ import logging
 from queue import Queue, Empty
 from gevent import spawn_later, idle
 from config import config
-from imageProcess import genProcess, clean, writeFile, BGR2RGB
+from imageProcess import clean, writeFile, BGR2RGB
+from procedure import genProcess
 from progress import Node, initialETA
 from worker import context, begin
 
