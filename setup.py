@@ -13,6 +13,7 @@ ifiles = [
         './pyc/dehaze.pyc',
         './pyc/config.pyc',
         './pyc/imageProcess.pyc',
+        './pyc/procedure.pyc',
         './pyc/progress.pyc',
         './pyc/readgpu.pyc',
         './pyc/server.pyc',

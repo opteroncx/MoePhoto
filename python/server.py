@@ -192,7 +192,15 @@ def getDynamicInfo(_):
 def setOutputName(args, fp):
   if not len(args):
     args = ({'op': 'output'},)
-  args[-1]['file'] = '{}/{}'.format(outDir, fp.filename)
+  if 'file' in args[-1]:
+    return args
+  base, ext = os.path.splitext(fp.filename)
+  path = '{}/{}{}'.format(outDir, base, ext)
+  i = 0
+  while os.path.exists(path):
+    i += 1
+    path = '{}/{}_{}{}'.format(outDir, base, i, ext)
+  args[-1]['file'] = path
   return args
 
 def responseEnhance(t, req):
