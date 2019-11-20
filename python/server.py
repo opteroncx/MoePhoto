@@ -111,7 +111,12 @@ def makeHandler(name, prepare, final, methods=['POST']):
     c = acquireSession(request)
     if c:
       return c
-    sender.send((name, *prepare(request)))
+    try:
+      args = prepare(request)
+    except Exception as e:
+      endSession()
+      return (str(e), 400)
+    sender.send((name, *args))
     while not receiver.poll():
       idle()
     return endSession(final(receiver.recv(), request))
@@ -243,7 +248,7 @@ app.route('/favicon.ico', endpoint='favicon')(lambda: send_from_directory(app.ro
 if previewFormat:
   app.route("/{}/.preview.{}".format(outDir, previewFormat), endpoint='preview')(
     lambda: Response(current.getPreview(), mimetype='image/{}'.format(previewFormat)))
-sendFromDownDir = lambda filename: send_from_directory(downDir, filename, as_attachment=True)
+sendFromDownDir = lambda filename: send_from_directory(downDir, filename)
 app.route("/{}/<path:filename>".format(outDir), endpoint='download')(sendFromDownDir)
 lockFinal = lambda result: (jsonify(result='Interrupted', remain=result), 200) if result > 0 else (jsonify(result='Idle'), 200)
 makeHandler('lockInterface', (lambda req: [int(float(readOpt(req)[0]['duration']))]), lockFinal, ['GET', 'POST'])
