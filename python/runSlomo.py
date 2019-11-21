@@ -5,20 +5,13 @@ code refered from https://github.com/avinashpaliwal/Super-SloMo.git
 # pylint: disable=E1101
 import logging
 import torch
-from torch.nn import ReflectionPad2d
-#from torchvision.transforms import Normalize
 from slomo import UNet, backWarp
-from imageProcess import initModel, getStateDict
+from imageProcess import initModel, getStateDict, getPadBy32
 from config import config
 
 log = logging.getLogger('Moe')
 modelPath = './model/slomo/SuperSloMo.ckpt'
 ramCoef = [.9 / x for x in (6418.7, 1393., 1156.3)]
-#mean = [0.429, 0.431, 0.397]
-#std  = [1, 1, 1]
-#negMean = [-x for x in mean]
-#identity = lambda x, *_: x
-upTruncBy32 = lambda x: (-x & -32 ^ -1) + 1
 getFlowComp = lambda *_: UNet(6, 4)
 getFlowIntrp = lambda *_: UNet(20, 5)
 getFlowBack = lambda opt: backWarp(opt.width, opt.height, config.device(), config.dtype())
@@ -48,11 +41,7 @@ def doSlomo(func, node):
   def f(data, opt):
     node.reset()
     node.trace(0, p='slomo start')
-    _, oriHeight, oriWidth = data[0][0].size()
-    width = upTruncBy32(oriWidth)
-    height = upTruncBy32(oriHeight)
-    pad = ReflectionPad2d((0, width - oriWidth, 0, height - oriHeight))
-    unpad = lambda im: im[:, :oriHeight, :oriWidth]
+    width, height, pad, unpad = getPadBy32(data[0][0], opt)
     opt.width = width
     opt.height = height
     flowBackWarp = initModel(opt, None, 'flowBackWarp', getFlowBack)

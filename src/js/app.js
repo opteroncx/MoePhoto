@@ -15,20 +15,36 @@ const setup = opt => {
   }
   if (opt.dropZone && opt.dropZone.length) {
     var dropZone = opt.dropZone[0]
-    dropZone.addEventListener('dragover', e => {
-      e.stopPropagation()
-      e.preventDefault()
-      e.dataTransfer.dropEffect = 'copy'
-    }, false)
-    dropZone.addEventListener('drop', e => {
-      e.stopPropagation()
-      e.preventDefault()
-      let imgInp = options.find('.imgInp')
-      imgInp[0].files = e.dataTransfer.files
-      imgInp.trigger('change')
-    }, false)
+    dropZone.addEventListener(
+      'dragover',
+      e => {
+        e.stopPropagation()
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'copy'
+      },
+      false
+    )
+    dropZone.addEventListener(
+      'drop',
+      e => {
+        e.stopPropagation()
+        e.preventDefault()
+        let imgInp = options.find('.imgInp')
+        imgInp[0].files = e.dataTransfer.files
+        imgInp.trigger('change')
+      },
+      false
+    )
   }
-  var downloader = $('#downloader'), loading = $('#FG'), runButton = $('#RunButton'), intervalId, running = 0
+  var downloader = $('#downloader')
+
+  var loading = $('#FG')
+
+  var runButton = $('#RunButton')
+
+  var intervalId
+
+  var running = 0
   loading.hide()
   downloader.hide()
 
@@ -41,15 +57,14 @@ const setup = opt => {
     } else {
       clearInterval(intervalId)
       let result = event.data.result
-      if (result === 'Fail')
-        onError(0, 400, event.data.exception)
-      else if (result != null)
-        onSuccess(event.data)
-      else
-        running || ((running = 1) && runButton.attr('disabled', true))
+      if (result === 'Fail') onError(0, 400, event.data.exception)
+      else if (result != null) onSuccess(event.data)
+      else running || ((running = 1) && runButton.attr('disabled', true))
     }
   }
-  messager.on('message', onMessage).on('open', onMessage)
+  messager
+    .on('message', onMessage)
+    .on('open', onMessage)
     .on('error', event => {
       console.error(event)
       running = 0
@@ -63,7 +78,7 @@ const setup = opt => {
       } else eta = reconnectPeriod
       if (eta) {
         eta += Math.random()
-        eta = Math.min(Math.max(eta, .1), 2147483)
+        eta = Math.min(Math.max(eta, 0.1), 2147483)
         setTimeout(openMessager, eta * 1000)
       }
       return opt.setStatus && opt.setStatus(eta)
@@ -89,19 +104,21 @@ const setup = opt => {
     opt.error ? opt.error(texts.errorMsg, xhr) : alert(texts.errorMsg)
   }
 
-  const beforeSend = messager.beforeSend = _ => {
+  const beforeSend = (messager.beforeSend = _ => {
     running = 1
     loading.show()
     intervalId = setInterval(openMessager, 200)
     openMessager()
     return messager
-  }
+  })
 
   if (opt.session) {
     runButton.bind('click', _ => {
       var fdata = new FormData()
       opt.beforeSend && opt.beforeSend(fdata)
-      if (!(opt.noCheckFile || fdata.get('file').size)) return opt.setMessage ? opt.setMessage(texts.noFileMsg) : alert(texts.noFileMsg)
+      if (!(opt.noCheckFile || fdata.get('file').size)) {
+        return opt.setMessage ? opt.setMessage(texts.noFileMsg) : alert(texts.noFileMsg)
+      }
       $.post({
         url: `${opt.path}?session=${opt.session}`,
         data: fdata,

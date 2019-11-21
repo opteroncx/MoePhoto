@@ -210,7 +210,9 @@ def setOutputName(args, fp):
 
 def responseEnhance(t, req):
   res, code = t
-  res.update((k, req.values[k]) for k in ('eta', 'gone', 'total') if k in req.values)
+  if 'eta' in req.values:
+    res['eta'] = float(req.values['eta'])
+  res.update((k, int(req.values[k])) for k in ('gone', 'total') if k in req.values)
   return toResponse(res, code)
 
 about_updater = lambda *_: [codecs.open('./update_log.txt', encoding='utf-8').read()]

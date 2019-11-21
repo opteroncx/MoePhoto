@@ -233,6 +233,14 @@ def toInt(o, keys):
     if key in o:
       o[key] = int(o[key])
 
+def getPadBy32(img, _):
+  *_, oriHeight, oriWidth = img.shape
+  width = ceilBy32(oriWidth)
+  height = ceilBy32(oriHeight)
+  pad = padImageReflect((0, width - oriWidth, 0, height - oriHeight))
+  unpad = lambda im: im[:, :oriHeight, :oriWidth]
+  return width, height, pad, unpad
+
 deviceCPU = torch.device('cpu')
 outDir = config.outDir
 previewFormat = config.videoPreview
@@ -258,3 +266,4 @@ combine = lambda *fs: lambda x: reduce(apply, fs, x)
 trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, flip), combine(transpose, flip, transpose), combine(flip2, transpose)]
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
 ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs)).detach()
+ceilBy32 = lambda x: (-x & -32 ^ -1) + 1
