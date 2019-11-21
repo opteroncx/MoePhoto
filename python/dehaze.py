@@ -6,15 +6,16 @@ from sun_demoire import Net as SUNNet
 from imageProcess import initModel, getPadBy32, identity
 _normalize = Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 normalize = lambda x: _normalize(x.squeeze(0)).unsqueeze(0)
+ramCoef = .95 / np.array([[443., 160., 152.], [503.1, 275.34, 276.], [41951.3, 16788.7, 7029.7]])
 mode_switch = {
-  'dehaze': ('./model/dehaze/AOD_net_epoch_relu_10.pth', AODnet, lambda *_: (normalize, identity)),
-  'sun': ('./model/demoire/sun_epoch_200.pth', SUNNet, getPadBy32),
-  'mddm': ('./model/demoire/mddm.pth', SUNNet, getPadBy32),
+  'dehaze': ('./model/dehaze/AOD_net_epoch_relu_10.pth', AODnet, ramCoef[0], lambda *_: (normalize, identity)),
+  'sun': ('./model/demoire/sun_epoch_200.pth', SUNNet, ramCoef[1], getPadBy32),
+  'mddm': ('./model/demoire/mddm.pth', SUNNet, ramCoef[2], getPadBy32),
 }
 
 def getOpt(model):
   def opt():pass
-  modelPath, opt.modelDef, opt.prepare = mode_switch[model]
+  modelPath, opt.modelDef, opt.ram, opt.prepare = mode_switch[model]
   opt.model = modelPath
   opt.modelCached = initModel(opt, modelPath, model)
   return opt
