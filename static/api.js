@@ -32,6 +32,7 @@ const videoMimes = {
   '.mpeg': 'video/mpeg'
 }
 const mimes = mixin(imageMimes, videoMimes)
+const identity = x => x
 
 const mkpic = dir => (name, fn) => {
   let ext = path.extname(name)
@@ -178,8 +179,8 @@ const error = res => {
   return res
 }
 
-const processType = (opt, type, single = false) => {
-  let r = type
+const processType = (opt, isVideo, single = false) => {
+  let r = isVideo
     ? [videoMimes, 'video', '%2Fvideo_enhance']
     : [imageMimes, 'image', '%2F' + (single ? 'image_enhance' : 'batch_enhance')]
   return r.concat([mixin(opt, { timeout: 500, path: `/msg?session=0&path=${r[2]}` })])
@@ -192,8 +193,8 @@ const API = (url = 'localhost', port = 2333) => {
   let o = { host: url, port }
   const process = async (filepath, preset) => {
     let { dir, base, ext } = path.parse(filepath)
-    let type = ext in videoMimes
-    let [, p, , optMsg] = processType(o, type, true)
+    let isVideo = ext in videoMimes
+    let [, p, , optMsg] = processType(o, isVideo, true)
     let response = getPreset(o, p, preset)
     let optPost = mixin(o, { path: `/${p}_enhance?session=0`, method: 'POST' })
     let steps = (await response).steps
@@ -201,15 +202,16 @@ const API = (url = 'localhost', port = 2333) => {
     req.end()
     return q.then(responsePromise).then(_ => getRequest(optMsg))
   }
-  const processFolder = async (dir, preset, type = 0, callback = log) => {
+  const processFolder = async (dir, preset, isVideo = false, filesHandler = identity, callback = log) => {
     let files = []
 
     let results = []
 
-    let [m, p, fakePath, optMsg] = processType(o, type)
+    let [m, p, fakePath, optMsg] = processType(o, isVideo)
     let response = getPreset(o, p, preset)
     for await (const name of traverse(dir)) if (path.extname(name).toLowerCase() in m) files.push(name)
-    if (!files.length) return results
+    files = await filesHandler(files)
+    if (!(files && files.length)) return results
     let steps = (await response).steps
     let optPost = mixin(o, {
       path: `/${p}_enhance?session=0&total=${files.length}&path=${fakePath}`,
