@@ -122,7 +122,7 @@ def genProcess(steps, root=True, outType=None):
   rf = lambda im: reduce(apply, funcs, im)
   if root:
     for opt in filter((lambda opt: opt['op'] == 'SR'), steps):
-      toInt(opt, ['scale'])
+      toInt(opt, ['scale', 'ensemble'])
       opt['opt'] = runSR.getOpt(opt)
     for opt in filter((lambda opt: opt['op'] == 'resize'), steps):
       toInt(opt, ['width', 'height'])

@@ -8,7 +8,7 @@ normalize = Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 ramCoef = .95 / np.array([[443., 160., 152.], [503.1, 275.34, 276.], [41951.3, 16788.7, 7029.7]])
 mode_switch = {
   'dehaze': ('./model/dehaze/AOD_net_epoch_relu_10.pth', AODnet, ramCoef[0], 1, 8, normalize),
-  'sun': ('./model/demoire/sun_epoch_200.pth', SUNNet, ramCoef[1], 31, 32, identity),
+  'sun': ('./model/demoire/sun_epoch_200.pth', SUNNet, ramCoef[1], 62, 32, identity),
   'mddm': ('./model/demoire/mddm.pth', SUNNet, ramCoef[2], 31, 32, identity),
 }
 
