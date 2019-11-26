@@ -11,50 +11,76 @@ from config import config
 from progress import updateNode
 import logging
 
-def doCrop(opt, model, x, padding=1, sc=1):
-  pad = padImageReflect(padding)
-  unpad = unpadImage(sc * padding)
-  squeeze = 1 if (not hasattr(opt, 'C2B')) or opt.C2B else 0
-  c = x.shape[0]
-  baseFlag = hasattr(opt, 'mode') and opt.mode == 'lite.old'
-  if baseFlag:
-    c = c >> 1
-    base = padImageReflect(sc * padding)(x[c:].unsqueeze(squeeze))
-    x = x[:c,:x.shape[1] >> 1,:x.shape[2] >> 1]
-  hOut = x.shape[1] * sc
-  wOut = x.shape[2] * sc
-  x = pad(x.unsqueeze(squeeze))
-  _, _, h, w = x.shape
-  tmp_image = torch.zeros([c, hOut, wOut]).to(x)
+def getAnchors(s, ns, l, pad, af, sc):
+  a = af(s)
+  n = l - 2 * pad
+  step = int(np.ceil(ns / n))
+  start = np.arange(step, dtype=np.int) * n + pad
+  start[0] = 0
+  end = start + l
+  if step > 1:
+    start[-1] = s - l
+    end[-1] = s
+    clip = [(end[-2] - s - pad) * sc, l * sc]
+  else:
+    end[-1] = a
+    clip = [0, s * sc]
+  # clip = [0:l, pad:l - pad, ..., end[-2] - s - pad:l]
+  return start, end, clip, step
 
-  cropsize = opt.cropsize
-  if not cropsize:
-    try:
-      freeRam = config.calcFreeMem()
-      cropsize = int(np.sqrt(freeRam * opt.ramCoef / c))
-    except:
-      raise MemoryError()
-  if cropsize > 2048:
-    cropsize = 2048
-  if not cropsize > 32:
-    raise MemoryError()
-  size = cropsize - 2 * padding
+def prepare(shape, ram, ramCoef, pad, sc, cropsize=0, align=8):
+  c, h, w = shape
+  n = ram * ramCoef / c
+  af = alignF[align]
+  s = af(minSize + pad * 2)
+  if n < s * s:
+    raise MemoryError('Free memory space is not enough.')
+  ph, pw = max(1, h - pad * 2), max(1, w - pad * 2)
+  ns = np.arange(s / align, int(n / (align * s)) + 1, dtype=np.int)
+  ms = (n / (align * align) / ns).astype(int)
+  ns, ms = ns * align, ms * align
+  ds = np.ceil(ph / (ns - 2 * pad)) * np.ceil(pw / (ms - 2 * pad)) # minimize number of clips
+  ind = np.argwhere(ds == ds.min()).squeeze(1)
+  mina = ind[np.abs(ind - len(ds) / 2).argmin()] # pick the size with ratio of width and height closer to 1
+  ah, aw = af(h), af(w)
+  ih, iw = (min(cropsize, ns[mina]), min(cropsize, ms[mina])) if cropsize > 0 else (ns[mina], ms[mina])
+  ih, iw = min(ah, ih), min(aw, iw)
+  startH, endH, clipH, stepH = getAnchors(h, ph, ih, pad, af, sc)
+  startW, endW, clipW, stepW = getAnchors(w, pw, iw, pad, af, sc)
+  padImage = identity if (stepH > 1) and (stepW > 1) else padImageReflect((0, (aw - w) * (stepW < 2), 0, (ah - h) * (stepH < 2)))
+  padSc, ihSc, iwSc = pad * sc, ih * sc, iw * sc
+  eh, ew = (ih - pad) * sc, (iw - pad) * sc
+  outh, outw = h * sc, w * sc
+  def iterClip():
+    for i in range(stepH):
+      top, bottom = startH[i], endH[i]
+      topT, bottomT = clipH if i == stepH - 1 else ((0, ihSc) if i == 0 else (padSc, eh))
+      bottomR = top * sc + bottomT
+      for j in range(stepW):
+        left, right = startW[j], endW[j]
+        leftT, rightT = clipW if j == stepW - 1 else ((0, iwSc) if j == 0 else (padSc, ew))
+        rightR = left * sc + rightT
+        yield (top, bottom, left, right, topT, bottomT, leftT, rightT, bottomR, rightR)
+  return iterClip, padImage, (c, outh, outw)
 
-  for topS, leftS in itertools.product(cropIter(h, padding, size), cropIter(w, padding, size)):
-    leftT = leftS * sc
-    topT = topS * sc
-    bottomS = topS + cropsize
-    rightS = leftS + cropsize
-    s = x[:, :, topS:bottomS, leftS:rightS]
-    r = model(s, base[:, :, topT:bottomS * sc,leftT:rightS * sc]) if baseFlag else model(s)[-1]
-    tmp = unpad(r.squeeze(squeeze))
-    tmp_image[:, topT:topT + tmp.shape[1]
-      , leftT:leftT + tmp.shape[2]] = tmp
+def doCrop(opt, x):
+  try:
+    freeRam = config.calcFreeMem()
+  except:
+    raise MemoryError('Can not calculate free memory.')
+  model = opt.modelCached
+  iterClip, padImage, outShape = prepare(x.shape, freeRam, opt.ramCoef, opt.padding, opt.scale, opt.cropsize, opt.align)
+  squeeze = 1 if opt.C2B else 0
+  x = padImage(x.unsqueeze(squeeze))
+  tmp_image = torch.zeros(outShape, dtype=x.dtype, device=x.device)
+
+  for top, bottom, left, right, topT, bottomT, leftT, rightT, bottomR, rightR in iterClip():
+    s = x[:, :, top:bottom, left:right]
+    r = model(s)[-1].squeeze(squeeze)[:, topT:bottomT, leftT:rightT]
+    _, h, w = r.shape
+    tmp_image[:, bottomR - h:bottomR, rightR - w:rightR] = r
 
   return tmp_image.detach()
-
-resizeByTorch = lambda x, width, height, mode='bilinear':\
-  F.interpolate(x.unsqueeze(0), size=(height, width), mode=mode, align_corners=False).squeeze()
 
 def resize(opt, out, pos=0, nodes=[]):
   opt['update'] = True
@@ -241,6 +267,13 @@ def getPadBy32(img, _):
   unpad = lambda im: im[:, :oriHeight, :oriWidth]
   return width, height, pad, unpad
 
+class Option():
+  def __init__(self, path=''):
+    self.ramCoef = 1e-3
+    self.padding, self.scale, self.cropsize, self.align = 1, 1, 0, 8
+    self.C2B, self.ensemble = 0, 0
+    self.model = path
+
 deviceCPU = torch.device('cpu')
 outDir = config.outDir
 previewFormat = config.videoPreview
@@ -250,10 +283,13 @@ modelCache = {}
 weightCache = {}
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
 padImageReflect = torch.nn.ReflectionPad2d
-unpadImage = lambda padding: lambda im: im[:, padding:-padding, padding:-padding]
-cropIter = lambda length, padding, size:\
-  itertools.chain(range(length - padding * 2 - size, 0, -size), [] if padding >= (length - padding * 2) % size > 0 else [0])
 identity = lambda x, *_: x
+ceilBy = lambda d: lambda x: (-int(x) & -d ^ -1) + 1 # d needed to be a power of 2
+ceilBy32 = ceilBy(32)
+minSize = 28
+alignF = { 1: identity, 8: ceilBy(8), 32: ceilBy(32) }
+resizeByTorch = lambda x, width, height, mode='bilinear':\
+  F.interpolate(x.unsqueeze(0), size=(height, width), mode=mode, align_corners=False).squeeze()
 clean = lambda: torch.cuda.empty_cache()
 BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
 BGR2RGBTorch = lambda im: torch.stack([im[2], im[1], im[0]])
@@ -265,6 +301,4 @@ flip2 = lambda x: x.flip(-1, -2)
 combine = lambda *fs: lambda x: reduce(apply, fs, x)
 trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, flip), combine(transpose, flip, transpose), combine(flip2, transpose)]
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
-ensemble = lambda x, es, kwargs: reduce((lambda v, t: v + t[2](doCrop(x=t[1](x), **kwargs))), zip(range(es), trans, transInv), doCrop(x=x, **kwargs)).detach()
-ceilBy = lambda d: lambda x: (-int(x) & -d ^ -1) + 1 # d needed to be a power of 2
-ceilBy32 = ceilBy(32)
+ensemble = lambda opt: lambda x: reduce((lambda v, t: v + t[2](doCrop(opt, t[1](x)))), zip(range(opt.ensemble), trans, transInv), doCrop(opt, x)).detach()

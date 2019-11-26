@@ -3,7 +3,7 @@ from functools import reduce
 import numpy as np
 from config import config
 from progress import Node
-from imageProcess import toFloat, toOutput, toOutput8, toTorch, toNumPy, toBuffer, toInt, readFile, writeFile, BGR2RGB, BGR2RGBTorch, resize, restrictSize, windowWrap, apply, identity, previewFormat, previewPath
+from imageProcess import toFloat, toOutput, toOutput8, toTorch, toNumPy, toBuffer, toInt, readFile, writeFile, BGR2RGB, BGR2RGBTorch, resize, restrictSize, windowWrap, apply, identity, previewFormat, previewPath, ensemble
 import runDN
 import runSR
 import runSlomo
@@ -39,7 +39,7 @@ def procDN(opt, out, *_):
   node = Node(dict(op='DN', model=opt['model']), out['load'])
   if 'name' in opt:
     node.name = opt['name']
-  return [NonNullWrap(node.bindFunc(lambda im: runDN.dn(im, DNopt)))], [node], out
+  return [NonNullWrap(node.bindFunc(ensemble(DNopt)))], [node], out
 
 def convertChannel(out):
   out['channel'] = 0
@@ -55,7 +55,7 @@ def procSR(opt, out, *_):
     raise TypeError('Invalid scale setting for SR.')
   out['load'] = load * scale * scale
   fs, ns = convertChannel(out) if out['channel'] and mode == 'gan' else ([], [])
-  ns.append(appendFuncs(lambda im: runSR.sr(im, SRopt), Node(dict(op='SR', model=mode), load), fs))
+  ns.append(appendFuncs(runSR.sr(SRopt), Node(dict(op='SR', model=mode), load), fs))
   if 'name' in opt:
     ns[-1].name = opt['name']
   return fs, ns, out
@@ -69,9 +69,10 @@ def procSlomo(opt, out, *_):
 def procDehaze(opt, out, *_):
   load = out['load']
   dehazeOpt = opt['opt']
+  model = opt.get('model', 'dehaze')
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
-  node = Node(dict(op=opt['model']), load, name=opt['name'] if 'name' in opt else None)
-  ns.append(appendFuncs(lambda im: dehaze.Dehaze(im, dehazeOpt), node, fs))
+  node = Node(dict(op=model), load, name=opt['name'] if 'name' in opt else None)
+  ns.append(appendFuncs(lambda im: dehaze.Dehaze(dehazeOpt, im), node, fs))
   return fs, ns, out
 
 def procResize(opt, out, nodes):
@@ -122,7 +123,7 @@ def genProcess(steps, root=True, outType=None):
   if root:
     for opt in filter((lambda opt: opt['op'] == 'SR'), steps):
       toInt(opt, ['scale'])
-      opt['opt'] = runSR.getOpt(opt['scale'], opt['model'], config.ensembleSR)
+      opt['opt'] = runSR.getOpt(opt)
     for opt in filter((lambda opt: opt['op'] == 'resize'), steps):
       toInt(opt, ['width', 'height'])
       if 'scaleW' in opt:
@@ -130,11 +131,9 @@ def genProcess(steps, root=True, outType=None):
       if 'scaleH' in opt:
         opt['scaleH'] = float(opt['scaleH'])
     for opt in filter((lambda opt: opt['op'] == 'DN'), steps):
-      opt['opt'] = runDN.getOpt(opt['model'])
+      opt['opt'] = runDN.getOpt(opt)
     for opt in filter((lambda opt: opt['op'] == 'dehaze'), steps):
-      if not 'model' in opt:
-        opt['model'] = 'dehaze'
-      opt['opt'] = dehaze.getOpt(opt['model'])
+      opt['opt'] = dehaze.getOpt(opt)
     slomos = [*filter((lambda opt: opt['op'] == 'slomo'), steps)]
     for opt in slomos:
       toInt(opt, ['sf'])
@@ -159,8 +158,8 @@ def genProcess(steps, root=True, outType=None):
         f = identity
         nodesAfter = []
       slomoOpt = opt['opt']
-      slomo = funcs[-1](f, nodes[-1])
-      funcs[-1] = windowWrap(lambda data: slomo(data, slomoOpt), slomoOpt, 2)
+      slomo = funcs[-1](f, nodes[-1], slomoOpt)
+      funcs[-1] = windowWrap(slomo, slomoOpt, 2)
       nodeAfter = Node({}, total=opt['sf'], learn=0)
       for node in nodesAfter:
         nodeAfter.append(node)

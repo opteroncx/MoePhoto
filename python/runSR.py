@@ -1,7 +1,7 @@
 from functools import reduce
 import numpy as np
 from torch import load
-from imageProcess import ensemble, initModel, resize
+from imageProcess import ensemble, initModel, resize, Option
 from models import Net2x, Net3x, Net4x
 from gan import RRDB_Net
 from MoeNet_lite2 import Net
@@ -24,35 +24,22 @@ mode_switch = {
   'lite8': ('./model/lite/model_8.pth', lambda: Net(upscale=8), ramCoef[7])
 }
 
-def sr(x, opt):
-  sc = opt.scale
-  if opt.mode == 'lite.old':
-    x = resize(dict(scaleH=2, scaleW=2), {'source': 0})(x)
-  sum = ensemble(x, opt.ensemble, {
-    'opt': opt,
-    'model': opt.modelCached,
-    'padding': 2 if sc == 3 else 1,
-    'sc': sc
-  })
-  if opt.ensemble:
-    return sum / (opt.ensemble + 1)
-  else:
-    return sum
-
+sr = lambda opt: (lambda x: ensemble(opt)(x) / (opt.ensemble + 1)) if opt.ensemble else ensemble(opt)
 
 ##################################
 
-def getOpt(scale, mode, ensemble):
-  def opt():pass
-  nmode = mode+str(scale)
+def getOpt(optSR):
+  opt = Option()
+  opt.mode = optSR['model']
+  opt.scale = optSR['scale']
+  nmode = opt.mode+str(opt.scale)
   if not nmode in mode_switch:
     return
-  opt.C2B = mode[:3] != 'gan'
-  opt.mode = mode
+  opt.C2B = opt.mode[:3] != 'gan'
+  opt.padding = 9 if opt.scale == 3 else 5
   opt.model = mode_switch[nmode][0]
   opt.modelDef = mode_switch[nmode][1]
-  opt.scale = scale
-  opt.ensemble = ensemble
+  opt.ensemble = optSR['ensemble'] if 'ensemble' in optSR and (0 <= optSR['ensemble'] <= 7) else config.ensembleSR
 
   opt.ramCoef = mode_switch[nmode][2][config.getRunType()]
   opt.cropsize = config.getConfig()[0]

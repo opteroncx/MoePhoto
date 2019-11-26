@@ -6,7 +6,7 @@ code refered from https://github.com/avinashpaliwal/Super-SloMo.git
 import logging
 import torch
 from slomo import UNet, backWarp
-from imageProcess import initModel, getStateDict, getPadBy32
+from imageProcess import initModel, getStateDict, getPadBy32, Option
 from config import config
 
 log = logging.getLogger('Moe')
@@ -17,9 +17,8 @@ getFlowIntrp = lambda *_: UNet(20, 5)
 getFlowBack = lambda opt: backWarp(opt.width, opt.height, config.device(), config.dtype())
 
 def getOpt(option):
-  def opt():pass
+  opt = Option(modelPath)
   # Initialize model
-  opt.model = modelPath
   dict1 = getStateDict(modelPath)
   opt.flowComp = initModel(opt, dict1['state_dictFC'], 'flowComp', getFlowComp)
   opt.ArbTimeFlowIntrp = initModel(opt, dict1['state_dictAT'], 'ArbTimeFlowIntrp', getFlowIntrp)
@@ -27,6 +26,7 @@ def getOpt(option):
   opt.firstTime = 1
   opt.notLast = 1
   opt.batchSize = 0
+  opt.align = 32
   if opt.sf < 2:
     raise RuntimeError('Error: --sf/slomo factor has to be at least 2')
   return opt
@@ -34,11 +34,11 @@ def getOpt(option):
 def getBatchSize(option):
   return max(1, int((config.calcFreeMem() / option['load']) * ramCoef[config.getRunType()]))
 
-def doSlomo(func, node):
+def doSlomo(func, node, opt):
   # Temporary fix for issue #7 https://github.com/avinashpaliwal/Super-SloMo/issues/7 -
   # - Removed per channel mean subtraction for CPU.
 
-  def f(data, opt):
+  def f(data):
     node.reset()
     node.trace(0, p='slomo start')
     width, height, pad, unpad = getPadBy32(data[0][0], opt)

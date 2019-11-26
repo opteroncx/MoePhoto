@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 import numpy as np
 from torch import load
-from imageProcess import ensemble, initModel
+from imageProcess import initModel, Option
 from models import NetDN, SEDN
 from config import config
 
@@ -15,19 +15,18 @@ mode_switch = {
   'lite15': ('./model/dn_lite15/model_new.pth', NetDN, ramCoef[0]),
 }
 
-dn = lambda x, opt: ensemble(x, 0, { 'opt': opt, 'model': opt.modelCached })
-
-
 ##################################
 
-def getOpt(model):
-  def opt():pass
+def getOpt(optDN):
+  model = optDN['model']
   if not model in mode_switch:
     return
-  opt.model = mode_switch[model][0]
+  opt = Option(mode_switch[model][0])
   opt.modelDef = mode_switch[model][1]
 
   opt.ramCoef = mode_switch[model][2][config.getRunType()]
   opt.cropsize = config.getConfig()[1 if model[:4] == 'lite' else 2]
   opt.modelCached = initModel(opt, opt.model, 'DN' + model)
+  opt.C2B = 1
+  opt.padding = 5
   return opt

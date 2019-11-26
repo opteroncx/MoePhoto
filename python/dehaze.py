@@ -3,19 +3,19 @@ from torchvision.transforms import Normalize
 import numpy as np
 from models import AODnet
 from sun_demoire import Net as SUNNet
-from imageProcess import initModel, getPadBy32, identity
-_normalize = Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-normalize = lambda x: _normalize(x.squeeze(0)).unsqueeze(0)
+from imageProcess import initModel, identity, doCrop, Option
+normalize = Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 ramCoef = .95 / np.array([[443., 160., 152.], [503.1, 275.34, 276.], [41951.3, 16788.7, 7029.7]])
 mode_switch = {
-  'dehaze': ('./model/dehaze/AOD_net_epoch_relu_10.pth', AODnet, ramCoef[0], lambda *_: (normalize, identity)),
-  'sun': ('./model/demoire/sun_epoch_200.pth', SUNNet, ramCoef[1], getPadBy32),
-  'mddm': ('./model/demoire/mddm.pth', SUNNet, ramCoef[2], getPadBy32),
+  'dehaze': ('./model/dehaze/AOD_net_epoch_relu_10.pth', AODnet, ramCoef[0], 1, 8, normalize),
+  'sun': ('./model/demoire/sun_epoch_200.pth', SUNNet, ramCoef[1], 31, 32, identity),
+  'mddm': ('./model/demoire/mddm.pth', SUNNet, ramCoef[2], 31, 32, identity),
 }
 
-def getOpt(model):
-  def opt():pass
-  modelPath, opt.modelDef, opt.ram, opt.prepare = mode_switch[model]
+def getOpt(optDe):
+  model = optDe.get('model', 'dehaze')
+  opt = Option()
+  modelPath, opt.modelDef, opt.ram, opt.padding, opt.align, opt.prepare = mode_switch[model]
   opt.model = modelPath
   opt.modelCached = initModel(opt, modelPath, model)
   return opt
@@ -40,12 +40,9 @@ def mergeAlpha(t):
       return im
   return f
 
-def Dehaze(img, opt):
-  net = opt.modelCached
+def Dehaze(opt, img):
   t = {}
-  *_, transform, revert = opt.prepare(img, opt)
-  imgIn = transform(extractAlpha(t)(img).unsqueeze(0))
+  imgIn = opt.prepare(extractAlpha(t)(img))
 
-  prediction = net(imgIn)
-  out = revert(prediction.squeeze(0))
-  return mergeAlpha(t)(out)
+  prediction = doCrop(opt, imgIn)
+  return mergeAlpha(t)(prediction)

@@ -5,7 +5,7 @@ import { setup } from './progress.js'
 import { genPresetArgs, presetNotesEditor } from './preset.js'
 
 const None = () => void 0
-const setAll = (arr, key) => values => arr.map((o, i) => o[key] = values[i])
+const setAll = (arr, key) => values => arr.map((o, i) => (o[key] = values[i]))
 const copyTruly = obj => {
   let res = {}
   for (let key in obj) obj[key] && (res[key] = obj[key])
@@ -24,8 +24,7 @@ const scaleModelMapping = {
   lite: [0, 1, 0, 0],
   gan: [1, 1, 0, 1]
 }
-var getResizeView = (by, scale, size) =>
-  by === 'scale' ? scale + '倍' : appendText('pixel')(size)
+var getResizeView = (by, scale, size) => (by === 'scale' ? scale + '倍' : appendText('pixel')(size))
 const setFile = opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : '请选择' })
 const submitFile = (opt, data) => opt.file && opt.file[0] && data.set('file', opt.file[0]) && void 0
 const [loadImagePreset, saveImagePreset, applyImagePresetButton, saveImagePresetButton] = genPresetArgs('image')
@@ -62,9 +61,7 @@ const panels = {
         text: '视频',
         classes: ['inputfile-6', 'imgInp'],
         attributes: ['required', 'accept="video/*,application/octet-stream"'],
-        notes: [
-          '视频会复制一份上传，存放在程序的upload目录下'
-        ]
+        notes: ['视频会复制一份上传，存放在程序的upload目录下']
       },
       preset: loadVideoPreset,
       apply: applyVideoPresetButton
@@ -74,8 +71,14 @@ const panels = {
     text: '批量输入',
     description: '将所有需要放大的图片放置到一个文件夹内，并在下方选择路径',
     position: 0,
-    submit: (opt, data) => opt.file && opt.file.length && [...opt.file].forEach(f => data.append && data.append('file', f, f.name)) && void 0,
-    view: opt => ({ file: opt.file && opt.file.length ? [opt.file[0].name, '等', opt.file.length, '个'].join('') : '请选择' }),
+    submit: (opt, data) =>
+      opt.file &&
+      opt.file.length &&
+      [...opt.file].forEach(f => data.append && data.append('file', f, f.name)) &&
+      void 0,
+    view: opt => ({
+      file: opt.file && opt.file.length ? [opt.file[0].name, '等', opt.file.length, '个'].join('') : '请选择'
+    }),
     args: {
       file: {
         type: 'file',
@@ -126,18 +129,24 @@ const panels = {
           {
             value: 'lite',
             text: '快速',
-            notes: [
-              '快速模型仅能放大2、4、8倍，可以在后面添加“缩放”步骤配合使用'
-            ]
+            notes: ['快速模型仅能放大2、4、8倍，可以在后面添加“缩放”步骤配合使用']
           },
           {
             value: 'gan',
             text: 'GAN',
-            notes: [
-              'GAN模型仅适用于RGB图像',
-              'GAN模型仅能放大4倍，可以在后面添加“缩放”步骤配合使用'
-            ]
+            notes: ['GAN模型仅适用于RGB图像', 'GAN模型仅能放大4倍，可以在后面添加“缩放”步骤配合使用']
           }
+        ]
+      },
+      ensemble: {
+        type: 'number',
+        text: '额外的处理次数',
+        value: 0,
+        classes: ['input-number'],
+        attributes: ['min="0"', 'max="7"', 'step="1"'],
+        notes: [
+          '让超分模型额外处理变换的图像，之后混合多次处理的结果，轻微提高质量，花费时间以此处设置倍数增长',
+          '可填0-7倍'
         ]
       }
     }
@@ -148,8 +157,8 @@ const panels = {
     draggable: 1,
     submit: opt => {
       let res = { method: opt.method }
-      opt.byW === 'scale' ? res.scaleW = opt.scaleW : res.width = opt.width
-      opt.byH === 'scale' ? res.scaleH = opt.scaleH : res.height = opt.height
+      opt.byW === 'scale' ? (res.scaleW = opt.scaleW) : (res.width = opt.width)
+      opt.byH === 'scale' ? (res.scaleH = opt.scaleH) : (res.height = opt.height)
       return res
     },
     load: opt => {
@@ -167,18 +176,12 @@ const panels = {
       method: {
         type: 'radio',
         text: '插值方法',
-        values: [
-          { value: 'nearest', text: '最近邻' },
-          { value: 'bilinear', text: '双线性', checked: 1 }
-        ]
+        values: [{ value: 'nearest', text: '最近邻' }, { value: 'bilinear', text: '双线性', checked: 1 }]
       },
       byW: {
         type: 'radio',
         text: '宽度',
-        values: [
-          { value: 'scale', binds: ['scaleW'] },
-          { value: 'pixel', binds: ['width'], checked: 1 }
-        ]
+        values: [{ value: 'scale', binds: ['scaleW'] }, { value: 'pixel', binds: ['width'], checked: 1 }]
       },
       scaleW: {
         type: 'number',
@@ -198,10 +201,7 @@ const panels = {
       byH: {
         type: 'radio',
         text: '高度',
-        values: [
-          { value: 'scale', binds: ['scaleH'] },
-          { value: 'pixel', binds: ['height'], checked: 1 }
-        ],
+        values: [{ value: 'scale', binds: ['scaleH'] }, { value: 'pixel', binds: ['height'], checked: 1 }],
         notes: ['按比例缩放图像长宽的小数部分四舍五入为整数']
       },
       scaleH: {
@@ -268,10 +268,7 @@ const panels = {
       model: {
         type: 'radio',
         text: '模型',
-        values: [
-          { value: 'sun', text: '小模型', checked: 1 },
-          { value: 'mddm', text: '大模型', disabled: 1 }
-        ]
+        values: [{ value: 'sun', text: '小模型', checked: 1 }, { value: 'mddm', text: '大模型', disabled: 1 }]
       }
     }
   },
@@ -288,10 +285,7 @@ const panels = {
         value: '',
         classes: ['input-text'],
         attributes: ['spellcheck="false"'],
-        notes: [
-          '请不要在这里设置颜色格式',
-          '注意无论下一步的开始于设定为多少，解码都是从视频头开始的'
-        ]
+        notes: ['请不要在这里设置颜色格式', '注意无论下一步的开始于设定为多少，解码都是从视频头开始的']
       },
       width: {
         type: 'number',
@@ -308,7 +302,9 @@ const panels = {
         view: appendText('pixel'),
         classes: ['input-number'],
         attributes: ['min="1"', 'step="10"'],
-        notes: ['我们从输入视频文件里获取画面大小信息，如果这里的解码处理改变了画面大小，请设置上面的两个覆盖值从而告诉后面的处理过程，否则就不要动它们啦']
+        notes: [
+          '我们从输入视频文件里获取画面大小信息，如果这里的解码处理改变了画面大小，请设置上面的两个覆盖值从而告诉后面的处理过程，否则就不要动它们啦'
+        ]
       }
     }
   },
@@ -339,9 +335,7 @@ const panels = {
         view: html => `第${html}帧`,
         classes: ['input-number'],
         attributes: ['min="0"'],
-        notes: [
-          '输出不包括上述编号的帧，即输出帧数为结束减开始，若该值小于等于开始则忽略并处理到视频结尾'
-        ]
+        notes: ['输出不包括上述编号的帧，即输出帧数为结束减开始，若该值小于等于开始则忽略并处理到视频结尾']
       }
     }
   },
@@ -355,7 +349,8 @@ const panels = {
       codec: {
         type: 'text',
         text: '编码参数',
-        value: 'libx264 -crf 17 -bf 10 -refs 12 -coder ac -cmp chroma -profile:v high -level 51 -g 720 -keyint_min 20 -psy 1 -weightb 1 -weightp 2 -mbtree 1 -threads 0 -pix_fmt yuv420p',
+        value:
+          'libx264 -crf 17 -bf 10 -refs 12 -coder ac -cmp chroma -profile:v high -level 51 -g 720 -keyint_min 20 -psy 1 -weightb 1 -weightp 2 -mbtree 1 -threads 0 -pix_fmt yuv420p',
         classes: ['input-text'],
         attributes: ['spellcheck="false"'],
         notes: [
@@ -410,7 +405,5 @@ const setupMain = opt => {
   context.setFeatures(opt.features)
 }
 const exportApp = { setup: setupMain, texts, getResource }
-if (window.app)
-  Object.assign(window.app, exportApp)
-else
-  window.app = exportApp
+if (window.app) Object.assign(window.app, exportApp)
+else window.app = exportApp
