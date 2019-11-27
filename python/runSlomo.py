@@ -11,15 +11,15 @@ from config import config
 
 log = logging.getLogger('Moe')
 modelPath = './model/slomo/SuperSloMo.ckpt'
-ramCoef = [.9 / x for x in (2400., 999., 888.)]
+ramCoef = [.9 / x for x in (450., 138., 450., 137., 223., 60.)]
 getFlowComp = lambda *_: UNet(6, 4)
 getFlowIntrp = lambda *_: UNet(20, 5)
 getFlowBack = lambda opt: backWarp(opt.width, opt.height, config.device(), config.dtype())
 
-def newOpt(f):
+def newOpt(f, ramType):
   opt = Option()
   opt.modelCached = lambda x: (f(x),)
-  opt.ramCoef = ramCoef[config.getRunType()]
+  opt.ramCoef = ramCoef[config.getRunType() * 2 + ramType]
   opt.align = 32
   opt.padding = 45
   opt.squeeze = identity
@@ -36,9 +36,9 @@ def getOpt(option):
   opt.firstTime = 1
   opt.notLast = 1
   opt.batchSize = 0
-  opt.optFlow = newOpt(flowComp)
-  opt.optFlow.ramCoef *= 2.5
-  opt.optArb = newOpt(ArbTimeFlowIntrp)
+  opt.key = None
+  opt.optFlow = newOpt(flowComp, 0)
+  opt.optArb = newOpt(ArbTimeFlowIntrp, 1)
   if opt.sf < 2:
     raise RuntimeError('Error: --sf/slomo factor has to be at least 2')
   return opt
@@ -53,10 +53,14 @@ def doSlomo(func, node, opt):
   def f(data):
     node.reset()
     node.trace(0, p='slomo start')
-    width, height, pad, unpad = getPadBy32(data[0][0], opt)
-    opt.width = width
-    opt.height = height
-    flowBackWarp = initModel(opt, None, 'flowBackWarp', getFlowBack)
+    if opt.key is None:
+      width, height, opt.pad, opt.unpad = getPadBy32(data[0][0], opt)
+      opt.width = width
+      opt.height = height
+      opt.key = hash((width, height))
+    else:
+      width, height = opt.width, opt.height
+    flowBackWarp = initModel(opt, None, opt.key, getFlowBack)
 
     if not opt.batchSize:
       opt.batchSize = getBatchSize({'load': width * height})
@@ -76,8 +80,8 @@ def doSlomo(func, node, opt):
       tempOut[(i + 1) * sf] = frames[1]
 
     # Load data
-    I0 = pad(torch.stack([frames[0] for frames in data]))
-    I1 = pad(torch.stack([frames[1] for frames in data]))
+    I0 = opt.pad(torch.stack([frames[0] for frames in data]))
+    I1 = opt.pad(torch.stack([frames[1] for frames in data]))
     flowOut = doCrop(opt.optFlow, torch.cat((I0, I1), dim=1))
     F_0_1 = flowOut[:,:2,:,:]
     F_1_0 = flowOut[:,2:,:,:]
@@ -110,7 +114,7 @@ def doSlomo(func, node, opt):
 
       # Save intermediate frame
       for i in range(batchSize):
-        tempOut[intermediateIndex + i * sf] = unpad(Ft_p[i].detach())
+        tempOut[intermediateIndex + i * sf] = opt.unpad(Ft_p[i].detach())
 
       node.trace()
       tempOut[intermediateIndex] = func(tempOut[intermediateIndex])

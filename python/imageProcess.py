@@ -35,7 +35,7 @@ def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
   af = alignF[align]
   s = af(minSize + pad * 2)
   if n < s * s:
-    raise MemoryError('Free memory space {} bytes is not enough.'.format(ram))
+    raise MemoryError('Free memory space is {} bytes, which is not enough.'.format(ram))
   ph, pw = max(1, h - pad * 3), max(1, w - pad * 3)
   ns = np.arange(s / align, int(n / (align * s)) + 1, dtype=np.int)
   ms = (n / (align * align) / ns).astype(int)
@@ -306,6 +306,12 @@ class Option():
     self.squeeze = lambda x: x.squeeze(0)
     self.unsqueeze = lambda x: x.unsqueeze(0)
 
+def clean():
+  torch.cuda.empty_cache()
+  caches = tuple(key for key in modelCache if type(key) != str)
+  for key in caches:
+    del modelCache[key]
+
 deviceCPU = torch.device('cpu')
 outDir = config.outDir
 previewFormat = config.videoPreview
@@ -322,7 +328,6 @@ minSize = 28
 alignF = { 1: identity, 8: ceilBy(8), 32: ceilBy(32) }
 resizeByTorch = lambda x, width, height, mode='bilinear':\
   F.interpolate(x.unsqueeze(0), size=(height, width), mode=mode, align_corners=False).squeeze()
-clean = lambda: torch.cuda.empty_cache()
 BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
 BGR2RGBTorch = lambda im: torch.stack([im[2], im[1], im[0]])
 toOutput8 = toOutput(8)

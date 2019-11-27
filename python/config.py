@@ -38,8 +38,10 @@ class Config():
   def getConfig(self):
     return tuple(map(transform(self), ('crop_sr', 'crop_dn', 'crop_dns')))
 
-  def getPath(self):
-    return self.videoName.format(timestamp=int(time.time()))
+  def getPath(self, **kwargs):
+    kwargs['timestamp'] = int(time.time())
+    d = dict((key, kwargs[key]) for key in kwargs if key in self.videoName)
+    return self.videoName.format(**d)
 
   def getFreeMem(self, emptyCache=False):
     if self.cuda:
