@@ -12,23 +12,24 @@ from progress import updateNode
 import logging
 
 def getAnchors(s, ns, l, pad, af, sc):
-  a = af(s)
   n = l - 2 * pad
   step = int(np.ceil(ns / n))
   start = np.arange(step, dtype=np.int) * n + pad
   start[0] = 0
   end = start + l
+  endSc = end * sc
   if step > 1:
-    start[-1] = s - l
+    start[-1] = s - af(s - end[-2] + pad)
     end[-1] = s
-    clip = [(end[-2] - s - pad) * sc, l * sc]
+    clip = (int(end[-2]) - s - pad) * sc
   else:
-    end[-1] = a
-    clip = [0, s * sc]
+    end[-1] = af(s)
+    clip = 0
+  endSc[-1] = s * sc
   # clip = [0:l, pad:l - pad, ..., end[-2] - s - pad:l]
-  return start, end, clip, step
+  return start.tolist(), end.tolist(), clip, step, endSc.tolist()
 
-def prepare(shape, ram, ramCoef, pad, sc, cropsize=0, align=8):
+def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
   c, h, w = shape
   n = ram * ramCoef / c
   af = alignF[align]
@@ -45,40 +46,63 @@ def prepare(shape, ram, ramCoef, pad, sc, cropsize=0, align=8):
   ah, aw = af(h), af(w)
   ih, iw = (min(cropsize, ns[mina]), min(cropsize, ms[mina])) if cropsize > 0 else (ns[mina], ms[mina])
   ih, iw = min(ah, ih), min(aw, iw)
-  startH, endH, clipH, stepH = getAnchors(h, ph, ih, pad, af, sc)
-  startW, endW, clipW, stepW = getAnchors(w, pw, iw, pad, af, sc)
-  padImage = identity if (stepH > 1) and (stepW > 1) else padImageReflect((0, (aw - w) * (stepW < 2), 0, (ah - h) * (stepH < 2)))
-  padSc, ihSc, iwSc = pad * sc, ih * sc, iw * sc
-  eh, ew = (ih - pad) * sc, (iw - pad) * sc
-  outh, outw = h * sc, w * sc
+  startH, endH, clipH, stepH, bH = getAnchors(h, ph, ih, pad, af, sc)
+  startW, endW, clipW, stepW, wH = getAnchors(w, pw, iw, pad, af, sc)
+  padSc, outh, outw = pad * sc, h * sc, w * sc
+  if (stepH > 1) and (stepW > 1):
+    padImage = identity
+    unpad = identity
+  elif stepH > 1:
+    padImage = padImageReflect((0, aw - w, 0, 0))
+    unpad = lambda im: im[:, :, :outw]
+  else:
+    padImage = padImageReflect((0, 0, 0, ah - h))
+    unpad = lambda im: im[:, :outh]
+  b = ((torch.arange(padSc, dtype=config.dtype(), device=config.device()) / padSc - .5) * 9).sigmoid().view(1, -1)
   def iterClip():
     for i in range(stepH):
-      top, bottom = startH[i], endH[i]
-      topT, bottomT = clipH if i == stepH - 1 else ((0, ihSc) if i == 0 else (padSc, eh))
-      bottomR = top * sc + bottomT
+      top, bottom, bsc = startH[i], endH[i], bH[i]
+      topT = clipH if i == stepH - 1 else (0 if i == 0 else padSc)
       for j in range(stepW):
-        left, right = startW[j], endW[j]
-        leftT, rightT = clipW if j == stepW - 1 else ((0, iwSc) if j == 0 else (padSc, ew))
-        rightR = left * sc + rightT
-        yield (top, bottom, left, right, topT, bottomT, leftT, rightT, bottomR, rightR)
-  return iterClip, padImage, (c, outh, outw)
+        left, right, rsc = startW[j], endW[j], wH[j]
+        leftT = clipW if j == stepW - 1 else (0 if j == 0 else padSc)
+        yield (top, bottom, left, right, topT, leftT, bsc, rsc)
+  return iterClip, padImage, unpad, (c, outh, outw), b
+
+def blend(r, x, lt, pad, dim, blend):
+  l = r.shape[dim]
+  if lt < 0:
+    lt = l + lt
+  if lt < 1:
+    return r, x
+  start = lt - pad
+  ls, ll = l - start, l - lt
+  _, b, c = r.split([start, pad, ll], dim) # share storage
+  _, bx, _ = x.split([start, pad, ll], dim)
+  b = b * blend + bx * (1 - blend)
+  return torch.cat([b, c], dim), x.narrow(dim, start, ls)
 
 def doCrop(opt, x):
-  try:
-    freeRam = config.calcFreeMem()
-  except:
-    raise MemoryError('Can not calculate free memory.')
-  model = opt.modelCached
-  iterClip, padImage, outShape = prepare(x.shape, freeRam, opt.ramCoef, opt.padding, opt.scale, opt.cropsize, opt.align)
+  sc, pad = opt.scale, opt.padding
+  padSc = pad * sc
+  if opt.iterClip is None:
+    try:
+      freeRam = config.calcFreeMem()
+    except:
+      raise MemoryError('Can not calculate free memory.')
+    opt.iterClip, opt.padImage, opt.unpad, opt.outShape, opt.blend = prepare(x.shape, freeRam, opt.ramCoef, pad, sc, opt.align, opt.cropsize)
+  model, bl = opt.modelCached, opt.blend
   squeeze = 1 if opt.C2B else 0
-  x = padImage(x.unsqueeze(squeeze))
-  tmp_image = torch.zeros(outShape, dtype=x.dtype, device=x.device)
+  x = opt.padImage(x.unsqueeze(squeeze))
+  tmp_image = torch.zeros(opt.outShape, dtype=x.dtype, device=x.device)
 
-  for top, bottom, left, right, topT, bottomT, leftT, rightT, bottomR, rightR in iterClip():
+  for top, bottom, left, right, topT, leftT, bsc, rsc in opt.iterClip():
     s = x[:, :, top:bottom, left:right]
-    r = model(s)[-1].squeeze(squeeze)[:, topT:bottomT, leftT:rightT]
-    _, h, w = r.shape
-    tmp_image[:, bottomR - h:bottomR, rightR - w:rightR] = r
+    r = model(s)[-1].squeeze(squeeze)
+    t = tmp_image[:, top * sc:bsc, left * sc:rsc]
+    q, _ = blend(*blend(opt.unpad(r), t, topT, padSc, 1, bl.t()), leftT, padSc, 2, bl)
+    _, h, w = q.shape
+    tmp_image[:, bsc - h:bsc, rsc - w:rsc] = q
 
   return tmp_image.detach()
 
@@ -273,6 +297,8 @@ class Option():
     self.padding, self.scale, self.cropsize, self.align = 1, 1, 0, 8
     self.C2B, self.ensemble = 0, 0
     self.model = path
+    self.outShape = None
+    self.iterClip = None
 
 deviceCPU = torch.device('cpu')
 outDir = config.outDir
