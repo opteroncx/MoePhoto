@@ -13,7 +13,7 @@ import logging
 
 def getAnchors(s, ns, l, pad, af, sc):
   n = l - 2 * pad
-  step = int(np.ceil(ns / n))
+  step = 1 if l >= af(s) else max(2, int(np.ceil(ns / n)))
   start = np.arange(step, dtype=np.int) * n + pad
   start[0] = 0
   end = start + l
@@ -21,26 +21,29 @@ def getAnchors(s, ns, l, pad, af, sc):
   if step > 1:
     start[-1] = s - af(s - end[-2] + pad)
     end[-1] = s
-    clip = (int(end[-2]) - s - pad) * sc
+    clip = (int(end[-2]) - s) * sc
   else:
     end[-1] = af(s)
     clip = 0
   endSc[-1] = s * sc
-  # clip = [0:l, pad:l - pad, ..., end[-2] - s - pad:l]
+  # clip = [0:l, pad:l - pad, ..., end[-2] - s:l]
   return start.tolist(), end.tolist(), clip, step, endSc.tolist()
 
 def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
-  c, h, w = shape
+  *_, c, h, w = shape
   n = ram * ramCoef / c
   af = alignF[align]
   s = af(minSize + pad * 2)
   if n < s * s:
-    raise MemoryError('Free memory space is not enough.')
-  ph, pw = max(1, h - pad * 2), max(1, w - pad * 2)
+    raise MemoryError('Free memory space {} bytes is not enough.'.format(ram))
+  ph, pw = max(1, h - pad * 3), max(1, w - pad * 3)
   ns = np.arange(s / align, int(n / (align * s)) + 1, dtype=np.int)
   ms = (n / (align * align) / ns).astype(int)
   ns, ms = ns * align, ms * align
-  ds = np.ceil(ph / (ns - 2 * pad)) * np.ceil(pw / (ms - 2 * pad)) # minimize number of clips
+  nn, mn = np.ceil(ph / (ns - 2 * pad)).clip(2), np.ceil(pw / (ms - 2 * pad)).clip(2)
+  nn[ns >= h] = 1
+  mn[ms >= w] = 1
+  ds = nn * mn # minimize number of clips
   ind = np.argwhere(ds == ds.min()).squeeze(1)
   mina = ind[np.abs(ind - len(ds) / 2).argmin()] # pick the size with ratio of width and height closer to 1
   ah, aw = af(h), af(w)
@@ -67,7 +70,7 @@ def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
         left, right, rsc = startW[j], endW[j], wH[j]
         leftT = clipW if j == stepW - 1 else (0 if j == 0 else padSc)
         yield (top, bottom, left, right, topT, leftT, bsc, rsc)
-  return iterClip, padImage, unpad, (c, outh, outw), b
+  return iterClip, padImage, unpad, (*shape[:-2], outh, outw), b
 
 def blend(r, x, lt, pad, dim, blend):
   l = r.shape[dim]
@@ -82,7 +85,7 @@ def blend(r, x, lt, pad, dim, blend):
   b = b * blend + bx * (1 - blend)
   return torch.cat([b, c], dim), x.narrow(dim, start, ls)
 
-def doCrop(opt, x):
+def doCrop(opt, x, *args):
   sc, pad = opt.scale, opt.padding
   padSc = pad * sc
   if opt.iterClip is None:
@@ -90,19 +93,20 @@ def doCrop(opt, x):
       freeRam = config.calcFreeMem()
     except:
       raise MemoryError('Can not calculate free memory.')
-    opt.iterClip, opt.padImage, opt.unpad, opt.outShape, opt.blend = prepare(x.shape, freeRam, opt.ramCoef, pad, sc, opt.align, opt.cropsize)
-  model, bl = opt.modelCached, opt.blend
-  squeeze = 1 if opt.C2B else 0
-  x = opt.padImage(x.unsqueeze(squeeze))
+    opt.iterClip, opt.padImage, opt.unpad, outShape, opt.blend = prepare(x.shape, freeRam, opt.ramCoef, pad, sc, opt.align, opt.cropsize)
+    if (not hasattr(opt, 'outShape')) or opt.outShape is None:
+      opt.outShape = outShape
+  f, bl = opt.modelCached, opt.blend
+  x = opt.padImage(opt.unsqueeze(x))
   tmp_image = torch.zeros(opt.outShape, dtype=x.dtype, device=x.device)
 
   for top, bottom, left, right, topT, leftT, bsc, rsc in opt.iterClip():
-    s = x[:, :, top:bottom, left:right]
-    r = model(s)[-1].squeeze(squeeze)
-    t = tmp_image[:, top * sc:bsc, left * sc:rsc]
-    q, _ = blend(*blend(opt.unpad(r), t, topT, padSc, 1, bl.t()), leftT, padSc, 2, bl)
-    _, h, w = q.shape
-    tmp_image[:, bsc - h:bsc, rsc - w:rsc] = q
+    s = x[..., top:bottom, left:right]
+    r = opt.squeeze(f(s, *args)[-1])
+    t = tmp_image[..., top * sc:bsc, left * sc:rsc]
+    q, _ = blend(*blend(opt.unpad(r), t, topT, padSc, -2, bl.t()), leftT, padSc, -1, bl)
+    *_, h, w = q.shape
+    tmp_image[..., bsc - h:bsc, rsc - w:rsc] = q
 
   return tmp_image.detach()
 
@@ -295,10 +299,12 @@ class Option():
   def __init__(self, path=''):
     self.ramCoef = 1e-3
     self.padding, self.scale, self.cropsize, self.align = 1, 1, 0, 8
-    self.C2B, self.ensemble = 0, 0
+    self.ensemble = 0
     self.model = path
     self.outShape = None
     self.iterClip = None
+    self.squeeze = lambda x: x.squeeze(0)
+    self.unsqueeze = lambda x: x.unsqueeze(0)
 
 deviceCPU = torch.device('cpu')
 outDir = config.outDir

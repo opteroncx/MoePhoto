@@ -27,6 +27,7 @@ def getOpt(optDN):
   opt.ramCoef = mode_switch[model][2][config.getRunType()]
   opt.cropsize = config.getConfig()[1 if model[:4] == 'lite' else 2]
   opt.modelCached = initModel(opt, opt.model, 'DN' + model)
-  opt.C2B = 1
+  opt.squeeze = lambda x: x.squeeze(1)
+  opt.unsqueeze = lambda x: x.unsqueeze(1)
   opt.padding = 5
   return opt

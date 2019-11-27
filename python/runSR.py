@@ -35,7 +35,9 @@ def getOpt(optSR):
   nmode = opt.mode+str(opt.scale)
   if not nmode in mode_switch:
     return
-  opt.C2B = opt.mode[:3] != 'gan'
+  if opt.mode[:3] != 'gan':
+    opt.squeeze = lambda x: x.squeeze(1)
+    opt.unsqueeze = lambda x: x.unsqueeze(1)
   opt.padding = 9 if opt.scale == 3 else 5
   opt.model = mode_switch[nmode][0]
   opt.modelDef = mode_switch[nmode][1]

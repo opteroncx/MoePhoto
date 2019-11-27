@@ -6,27 +6,39 @@ code refered from https://github.com/avinashpaliwal/Super-SloMo.git
 import logging
 import torch
 from slomo import UNet, backWarp
-from imageProcess import initModel, getStateDict, getPadBy32, Option
+from imageProcess import initModel, getStateDict, getPadBy32, doCrop, identity, Option
 from config import config
 
 log = logging.getLogger('Moe')
 modelPath = './model/slomo/SuperSloMo.ckpt'
-ramCoef = [.9 / x for x in (6418.7, 1393., 1156.3)]
+ramCoef = [.9 / x for x in (2400., 999., 888.)]
 getFlowComp = lambda *_: UNet(6, 4)
 getFlowIntrp = lambda *_: UNet(20, 5)
 getFlowBack = lambda opt: backWarp(opt.width, opt.height, config.device(), config.dtype())
+
+def newOpt(f):
+  opt = Option()
+  opt.modelCached = lambda x: (f(x),)
+  opt.ramCoef = ramCoef[config.getRunType()]
+  opt.align = 32
+  opt.padding = 45
+  opt.squeeze = identity
+  opt.unsqueeze = identity
+  return opt
 
 def getOpt(option):
   opt = Option(modelPath)
   # Initialize model
   dict1 = getStateDict(modelPath)
-  opt.flowComp = initModel(opt, dict1['state_dictFC'], 'flowComp', getFlowComp)
-  opt.ArbTimeFlowIntrp = initModel(opt, dict1['state_dictAT'], 'ArbTimeFlowIntrp', getFlowIntrp)
+  flowComp = initModel(opt, dict1['state_dictFC'], 'flowComp', getFlowComp)
+  ArbTimeFlowIntrp = initModel(opt, dict1['state_dictAT'], 'ArbTimeFlowIntrp', getFlowIntrp)
   opt.sf = option['sf']
   opt.firstTime = 1
   opt.notLast = 1
   opt.batchSize = 0
-  opt.align = 32
+  opt.optFlow = newOpt(flowComp)
+  opt.optFlow.ramCoef *= 2.5
+  opt.optArb = newOpt(ArbTimeFlowIntrp)
   if opt.sf < 2:
     raise RuntimeError('Error: --sf/slomo factor has to be at least 2')
   return opt
@@ -50,6 +62,8 @@ def doSlomo(func, node, opt):
       opt.batchSize = getBatchSize({'load': width * height})
       log.info('Slomo batch size={}'.format(opt.batchSize))
     batchSize = len(data)
+    opt.optFlow.outShape = (batchSize, 4, height, width)
+    opt.optArb.outShape = (batchSize, 5, height, width)
     sf = opt.sf
     tempOut = [0 for _ in range(batchSize * sf + 1)]
     # Save reference frames
@@ -64,7 +78,7 @@ def doSlomo(func, node, opt):
     # Load data
     I0 = pad(torch.stack([frames[0] for frames in data]))
     I1 = pad(torch.stack([frames[1] for frames in data]))
-    flowOut = opt.flowComp(torch.cat((I0, I1), dim=1))
+    flowOut = doCrop(opt.optFlow, torch.cat((I0, I1), dim=1))
     F_0_1 = flowOut[:,:2,:,:]
     F_1_0 = flowOut[:,2:,:,:]
     node.trace()
@@ -82,7 +96,7 @@ def doSlomo(func, node, opt):
       g_I0_F_t_0 = flowBackWarp(I0, F_t_0)
       g_I1_F_t_1 = flowBackWarp(I1, F_t_1)
 
-      intrpOut = opt.ArbTimeFlowIntrp(torch.cat((I0, I1, F_0_1, F_1_0, F_t_1, F_t_0, g_I1_F_t_1, g_I0_F_t_0), dim=1))
+      intrpOut = doCrop(opt.optArb, torch.cat((I0, I1, F_0_1, F_1_0, F_t_1, F_t_0, g_I1_F_t_1, g_I0_F_t_0), dim=1))
 
       F_t_0_f = intrpOut[:, :2, :, :] + F_t_0
       F_t_1_f = intrpOut[:, 2:4, :, :] + F_t_1
