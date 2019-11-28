@@ -306,12 +306,6 @@ class Option():
     self.squeeze = lambda x: x.squeeze(0)
     self.unsqueeze = lambda x: x.unsqueeze(0)
 
-def clean():
-  torch.cuda.empty_cache()
-  caches = tuple(key for key in modelCache if type(key) != str)
-  for key in caches:
-    del modelCache[key]
-
 deviceCPU = torch.device('cpu')
 outDir = config.outDir
 previewFormat = config.videoPreview
@@ -328,6 +322,7 @@ minSize = 28
 alignF = { 1: identity, 8: ceilBy(8), 32: ceilBy(32) }
 resizeByTorch = lambda x, width, height, mode='bilinear':\
   F.interpolate(x.unsqueeze(0), size=(height, width), mode=mode, align_corners=False).squeeze()
+clean = lambda: torch.cuda.empty_cache()
 BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
 BGR2RGBTorch = lambda im: torch.stack([im[2], im[1], im[0]])
 toOutput8 = toOutput(8)

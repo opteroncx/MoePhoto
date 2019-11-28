@@ -36,7 +36,7 @@ def getOpt(option):
   opt.firstTime = 1
   opt.notLast = 1
   opt.batchSize = 0
-  opt.key = None
+  opt.flowBackWarp = None
   opt.optFlow = newOpt(flowComp, 0)
   opt.optArb = newOpt(ArbTimeFlowIntrp, 1)
   if opt.sf < 2:
@@ -44,7 +44,7 @@ def getOpt(option):
   return opt
 
 def getBatchSize(option):
-  return max(1, int((config.calcFreeMem() / option['load']) * ramCoef[config.getRunType()]))
+  return max(1, int((config.calcFreeMem() / option['load'] / 6) * ramCoef[config.getRunType() * 2]))
 
 def doSlomo(func, node, opt):
   # Temporary fix for issue #7 https://github.com/avinashpaliwal/Super-SloMo/issues/7 -
@@ -53,14 +53,14 @@ def doSlomo(func, node, opt):
   def f(data):
     node.reset()
     node.trace(0, p='slomo start')
-    if opt.key is None:
+    if opt.flowBackWarp is None:
       width, height, opt.pad, opt.unpad = getPadBy32(data[0][0], opt)
       opt.width = width
       opt.height = height
-      opt.key = hash((width, height))
+      opt.flowBackWarp = initModel(opt, None, None, getFlowBack)
     else:
       width, height = opt.width, opt.height
-    flowBackWarp = initModel(opt, None, opt.key, getFlowBack)
+    flowBackWarp = opt.flowBackWarp
 
     if not opt.batchSize:
       opt.batchSize = getBatchSize({'load': width * height})
