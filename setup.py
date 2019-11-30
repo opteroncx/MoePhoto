@@ -2,8 +2,10 @@ import sys
 from cx_Freeze import setup, Executable
 import os
 import json
-os.environ['TCL_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tcl8.6'
-os.environ['TK_LIBRARY'] = 'C:\\Users\\opteroncx.000\\Py36\\tcl\\tk8.6'
+os.environ['TCL_LIBRARY'] = 'C:\\Users\\opteroncx\\py37\\tcl\\tcl8.6'
+os.environ['TK_LIBRARY'] = 'C:\\Users\\opteroncx\\py37\\tcl\\tk8.6'
+# os.environ['TCL_LIBRARY'] = 'C:\\Users\\opteroncx\\Anaconda3\\tcl\\tcl8.6'
+# os.environ['TK_LIBRARY'] = 'C:\\Users\\opteroncx\\Anaconda3\\tcl\\tk8.6'
 # Dependencies are automatically detected, but it might need fine tuning.
 manifestPath = './manifest.json'
 
