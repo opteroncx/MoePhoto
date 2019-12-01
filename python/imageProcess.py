@@ -1,5 +1,6 @@
 # pylint: disable=E1101
 import time
+from copy import copy
 from functools import reduce
 import itertools
 import torch
@@ -85,7 +86,7 @@ def blend(r, x, lt, pad, dim, blend):
   b = b * blend + bx * (1 - blend)
   return torch.cat([b, c], dim), x.narrow(dim, start, ls)
 
-def doCrop(opt, x, *args):
+def prepareOpt(opt, shape):
   sc, pad = opt.scale, opt.padding
   padSc = pad * sc
   if opt.iterClip is None:
@@ -93,9 +94,20 @@ def doCrop(opt, x, *args):
       freeRam = config.calcFreeMem()
     except:
       raise MemoryError('Can not calculate free memory.')
-    opt.iterClip, opt.padImage, opt.unpad, outShape, opt.blend = prepare(x.shape, freeRam, opt.ramCoef, pad, sc, opt.align, opt.cropsize)
+    if opt.ensemble > 0:
+      opt2 = copy(opt)
+      opt2.iterClip, opt2.padImage, opt2.unpad, *_ = prepare(transposeShape(shape), freeRam, opt.ramCoef, pad, sc, opt.align, opt.cropsize)
+    opt.iterClip, opt.padImage, opt.unpad, outShape, opt.blend = prepare(shape, freeRam, opt.ramCoef, pad, sc, opt.align, opt.cropsize)
     if (not hasattr(opt, 'outShape')) or opt.outShape is None:
       opt.outShape = outShape
+    if opt.ensemble > 0:
+      opt2.blend = opt.blend
+      opt2.outShape = transposeShape(opt.outShape)
+      opt.transposedOpt = opt2
+  return sc, padSc
+
+def doCrop(opt, x, *args):
+  sc, padSc = prepareOpt(opt, x.shape)
   f, bl = opt.modelCached, opt.blend
   x = opt.padImage(opt.unsqueeze(x))
   tmp_image = torch.zeros(opt.outShape, dtype=x.dtype, device=x.device)
@@ -295,6 +307,12 @@ def getPadBy32(img, _):
   unpad = lambda im: im[:, :oriHeight, :oriWidth]
   return width, height, pad, unpad
 
+def transposeShape(shape):
+  tShape = list(shape)
+  tShape[-1] = shape[-2]
+  tShape[-2] = shape[-1]
+  return tShape
+
 class Option():
   def __init__(self, path=''):
     self.ramCoef = 1e-3
@@ -331,6 +349,8 @@ transpose = lambda x: x.transpose(-1, -2)
 flip = lambda x: x.flip(-1)
 flip2 = lambda x: x.flip(-1, -2)
 combine = lambda *fs: lambda x: reduce(apply, fs, x)
+getTransposedOpt = lambda opt: opt.transposedOpt
 trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, flip), combine(transpose, flip, transpose), combine(flip2, transpose)]
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
-ensemble = lambda opt: lambda x: reduce((lambda v, t: v + t[2](doCrop(opt, t[1](x)))), zip(range(opt.ensemble), trans, transInv), doCrop(opt, x)).detach()
+which = [getTransposedOpt, identity, identity, getTransposedOpt, getTransposedOpt, identity, getTransposedOpt]
+ensemble = lambda opt: lambda x: reduce((lambda v, t: v + t[2](doCrop(t[3](opt), t[1](x)))), zip(range(opt.ensemble), trans, transInv, which), doCrop(opt, x)).detach()
