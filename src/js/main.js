@@ -27,8 +27,20 @@ const scaleModelMapping = {
 var getResizeView = (by, scale, size) => (by === 'scale' ? scale + '倍' : appendText('pixel')(size))
 const setFile = opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : '请选择' })
 const submitFile = (opt, data) => opt.file && opt.file[0] && data.set('file', opt.file[0]) && void 0
-const [loadImagePreset, saveImagePreset, applyImagePresetButton, saveImagePresetButton] = genPresetArgs('image')
-const [loadVideoPreset, saveVideoPreset, applyVideoPresetButton, saveVideoPresetButton] = genPresetArgs('video')
+const [
+  loadImagePreset,
+  saveImagePreset,
+  applyImagePresetButton,
+  saveImagePresetButton,
+  applyImagePreset
+] = genPresetArgs('image')
+const [
+  loadVideoPreset,
+  saveVideoPreset,
+  applyVideoPresetButton,
+  saveVideoPresetButton,
+  applyVideoPreset
+] = genPresetArgs('video')
 const panels = {
   input: {
     text: '输入',
@@ -403,6 +415,9 @@ const setupMain = opt => {
   setup(opt)
   initListeners()
   context.setFeatures(opt.features)
+  let applyPreset = opt.features.indexOf('inputVideo') > -1 ? applyVideoPreset : applyImagePreset
+  let preset = new URLSearchParams(location.search).get('preset')
+  preset && applyPreset(preset)
 }
 const exportApp = { setup: setupMain, texts, getResource }
 if (window.app) Object.assign(window.app, exportApp)
