@@ -25,7 +25,7 @@ const scaleModelMapping = {
   gan: [1, 1, 0, 1]
 }
 var getResizeView = (by, scale, size) => (by === 'scale' ? scale + '倍' : appendText('pixel')(size))
-const setFile = opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : '请选择' })
+const setFile = opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : texts.noFile })
 const submitFile = (opt, data) => opt.file && opt.file[0] && data.set('file', opt.file[0]) && void 0
 const [
   loadImagePreset,
@@ -47,7 +47,7 @@ const panels = {
     description: '选择一张你需要放大的图片，开始体验吧！运行完毕请点击保存',
     position: 0,
     submit: submitFile,
-    view: opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : '请选择' }),
+    view: setFile,
     args: {
       file: {
         type: 'file',
@@ -64,9 +64,14 @@ const panels = {
     text: '输入',
     description: '选择一段需要放大的视频！运行完毕请点击保存',
     position: 0,
-    submit: submitFile,
-    view: setFile,
+    submit: (opt, data) => (opt.by === 'url' ? (data.set('url', opt.url) && void 0) : submitFile(opt, data)),
+    view: opt => (opt.by === 'url' ? { url: (opt.url ? opt.url : texts.noFile) } : setFile(opt)),
     args: {
+      by: {
+        type: 'radio',
+        text: '来源',
+        values: [{ value: 'file', binds: ['file'], checked: 1 }, { value: 'url', binds: ['url'] }]
+      },
       file: {
         type: 'file',
         name: 'file',
@@ -74,6 +79,13 @@ const panels = {
         classes: ['inputfile-6', 'imgInp'],
         attributes: ['required', 'accept="video/*,application/octet-stream"'],
         notes: ['视频会复制一份上传，存放在程序的upload目录下']
+      },
+      url: {
+        type: 'text',
+        text: 'URL',
+        value: '',
+        classes: ['input-text'],
+        attributes: ['required', 'spellcheck="false"']
       },
       preset: loadVideoPreset,
       apply: applyVideoPresetButton

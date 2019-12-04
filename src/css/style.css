@@ -2818,10 +2818,12 @@ html {
 }
 #options .opValue {
     padding: 0 .5em;
-    font-weight: 400
+    font-weight: 400;
 }
 #options .argName {
-    padding: 0 .5em
+    padding: 0 .5em;
+    clear: left;
+    float: left
 }
 #options input[type=radio], input[type=checkbox] {
     margin-left: .5em

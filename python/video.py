@@ -19,8 +19,12 @@ stepVideo = [dict(op='buffer', bitDepth=16)]
 pix_fmt = 'bgr48le'
 pixBytes = 6
 bufsize = 10 ** 8
+reMatchInfo = re.compile(r'Stream #.*: Video:')
+reSearchInfo = re.compile(r',[\s]*([\d]+)x([\d]+)[\s]*.+,[\s]*([.\d]+)[\s]*fps')
+reMatchFrame = re.compile(r'frame=')
+reSearchFrame = re.compile(r'frame=[\s]*([\d]+) ')
 
-def getVideoInfo(videoPath):
+def getVideoInfo(videoPath, pipeIn, width, height, frameRate):
   commandIn = [
     ffmpegPath,
     '-i', videoPath,
@@ -29,31 +33,43 @@ def getVideoInfo(videoPath):
     '-f', 'null',
     '-'
   ]
+  matchInfo = not (width and height and frameRate)
+  matchFrame = bool(pipeIn)
+  error = RuntimeError('Video info not found')
   try:
-    pipeIn = sp.Popen(commandIn, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
+    if matchFrame:
+      pipeIn = sp.Popen(commandIn, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
     totalFrames = 0
 
-    for line in iter(pipeIn.stderr.readline, ''):
-      line = line.lstrip()
-      if re.match('Stream #.*: Video:', line):
+    while matchInfo or matchFrame:
+      line = pipeIn.stderr.readline().lstrip()
+      if matchInfo and reMatchInfo.match(line):
         try:
-          videoInfo = re.search(',[\\s]*([\\d]+)x([\\d]+)[\\s]*.+,[\\s]*([.\\d]+)[\\s]*fps', line).groups()
-          width = int(videoInfo[0])
-          height = int(videoInfo[1])
-          frameRate = float(videoInfo[2])
+          videoInfo = reSearchInfo.search(line).groups()
+          if not width:
+            width = int(videoInfo[0])
+          if not height:
+            height = int(videoInfo[1])
+          if not frameRate:
+            frameRate = float(videoInfo[2])
         except:
           log.error(line)
-          raise RuntimeError('Video info not found')
-      if re.match('frame=', line):
+          raise error
+        matchInfo = False
+      if matchFrame and reMatchFrame.match(line):
         try:
-          totalFrames = int(re.search('frame=[\\s]*([\\d]+) ', line).groups()[0])
+          totalFrames = int(reSearchFrame.search(line).groups()[0])
         except:
           log.error(line)
 
-    pipeIn.stderr.flush()
-    pipeIn.stderr.close()
+    if matchFrame:
+      pipeIn.stderr.flush()
+      pipeIn.stderr.close()
   finally:
-    pipeIn.terminate()
+    if matchFrame:
+      pipeIn.terminate()
+  if matchInfo or matchFrame:
+    raise error
   log.info('Info of video {}: {}x{}@{}fps, {} frames'.format(videoPath, width, height, frameRate, totalFrames))
   return width, height, frameRate, totalFrames
 
@@ -85,34 +101,16 @@ def readSubprocess(q):
 def prepare(video, steps):
   optEncode = steps[-1]
   encodec = optEncode['codec'] if 'codec' in optEncode else config.defaultEncodec  # pylint: disable=E1101
-  optDecode = steps[0]
+  optDecode = steps[1]
   decodec = optDecode['codec'] if 'codec' in optDecode else config.defaultDecodec  # pylint: disable=E1101
-  optRange = steps[1]
+  optRange = steps[2]
   start = int(optRange['start']) if 'start' in optRange else 0
   outDir = config.outDir  # pylint: disable=E1101
-  procSteps = stepVideo + list(steps[2:-1])
+  procSteps = stepVideo + list(steps[3:-1])
   process, nodes = genProcess(procSteps)
   root = begin(Node({'op': 'video', 'encodec': encodec}, 1, 2, 0), nodes, False)
   context.root = root
-  width, height, frameRate, totalFrames = getVideoInfo(video)
   slomos = [*filter((lambda opt: opt['op'] == 'slomo'), procSteps)]
-  if 'frameRate' in optEncode:
-    frameRate = optEncode['frameRate']
-  else:
-    for opt in slomos:
-      frameRate *= opt['sf']
-  if 'width' in optDecode:
-    width = optDecode['width']
-  if 'height' in optDecode:
-    height = optDecode['height']
-  outWidth, outHeight = (width, height)
-  for opt in filter((lambda opt: opt['op'] == 'SR' or opt['op'] == 'resize'), procSteps):
-    if opt['op'] == 'SR':
-      outWidth *= opt['scale']
-      outHeight *= opt['scale']
-    else: # resize
-      outWidth = round(outWidth * opt['scaleW']) if 'scaleW' in opt else opt['width']
-      outHeight = round(outHeight * opt['scaleH']) if 'scaleH' in opt else opt['height']
   if start < 0:
     start = 0
   if start and len(slomos): # should generate intermediate frames between start-1 and start
@@ -123,22 +121,17 @@ def prepare(video, steps):
   if 'stop' in optRange:
     stop = int(optRange['stop'])
     if stop <= start:
-      stop = None
-  root.total = (stop if stop else totalFrames) - start
-  if not stop:
-    stop = 0xffffffff
-  root.multipleLoad(width * height * 3)
-  initialETA(root)
-  root.reset().trace(0)
-  videoName = config.getPath()
-  outputPath = outDir + '/' + videoName
+      stop = -1
+  else:
+    stop = -1
+  root.total = -1 if stop < 0 else stop - start
+  outputPath = optEncode.get('file', '') or outDir + '/' + config.getPath()
   commandIn = [
     ffmpegPath,
     '-i', video,
     '-an',
     '-sn',
     '-f', 'rawvideo',
-    '-s', '{}x{}'.format(width, height),
     '-pix_fmt', pix_fmt]
   if len(decodec):
     commandIn.extend(decodec.split(' '))
@@ -148,25 +141,49 @@ def prepare(video, steps):
     '-y',
     '-f', 'rawvideo',
     '-pix_fmt', pix_fmt,
-    '-s', '{}x{}'.format(outWidth, outHeight),
-    '-r', str(frameRate),
+    '-s', '',
+    '-r', '',
     '-i', '-',
     '-i', video,
     '-map', '0:v',
     '-map', '1?',
     '-map', '-1:v',
     '-c:1', 'copy',
-    '-c:v:0']
+    '-c:v:0'] + encodec.split(' ')
   if start > 0:
     commandOut = commandOut[:12] + commandOut[22:]
-  if len(encodec):
-    commandOut.extend(encodec.split(' '))
   commandOut.append(outputPath)
-  return commandIn, commandOut, outputPath, width, height, start, stop, root, process
+  frameRate = optEncode.get('frameRate', 0)
+  width = optDecode.get('width', 0)
+  height = optDecode.get('height', 0)
+  sizes = filter((lambda opt: opt['op'] == 'SR' or opt['op'] == 'resize'), procSteps)
+  return outputPath, process, start, stop, root, commandIn, commandOut, slomos, sizes, width, height, frameRate
 
-def SR_vid(video, *steps):
-  commandIn, commandOut, outputPath, width, height, start, stop, root, process = prepare(video, steps)
+def setupInfo(root, commandOut, slomos, sizes, start, width, height, frameRate, totalFrames):
+  if root.total < 0 and totalFrames > 0:
+    root.total = totalFrames - start
+  if not frameRate:
+    for opt in slomos:
+      frameRate *= opt['sf']
+  outWidth, outHeight = (width, height)
+  for opt in sizes:
+    if opt['op'] == 'SR':
+      outWidth *= opt['scale']
+      outHeight *= opt['scale']
+    else: # resize
+      outWidth = round(outWidth * opt['scaleW']) if 'scaleW' in opt else opt['width']
+      outHeight = round(outHeight * opt['scaleH']) if 'scaleH' in opt else opt['height']
+  commandOut[7] = f'{outWidth}x{outHeight}'
+  commandOut[9] = str(frameRate)
+  root.multipleLoad(width * height * 3)
+  initialETA(root)
+  root.reset().trace(0)
+
+def SR_vid(video, by, *steps):
+  outputPath, process, start, stop, root, commandIn, commandOut, slomos, sizes, *info = prepare(video, steps)
   pipeIn = sp.Popen(commandIn, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize)
+  width, height, *more = getVideoInfo(video, by and pipeIn, *info)
+  setupInfo(root, commandOut, slomos, sizes, start, width, height, *more)
   pipeOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, shell=True)
   def p(raw_image=None):
     bufs = process((raw_image, height, width))
@@ -182,7 +199,7 @@ def SR_vid(video, *steps):
     createEnqueueThread(pipeIn.stderr, 1)
     createEnqueueThread(pipeOut.stderr, 1)
     i = 0
-    while i <= stop and not context.stopFlag.is_set():
+    while (stop < 0 or i <= stop) and not context.stopFlag.is_set():
       raw_image = pipeIn.stdout.read(width * height * pixBytes) # read width*height*6 bytes (= 1 frame)
       if len(raw_image) == 0:
         break

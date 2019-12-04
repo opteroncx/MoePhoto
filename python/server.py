@@ -72,6 +72,8 @@ def controlPoint(path, fMatch, fUnmatch, fNoCurrent, check=lambda *_: True):
 
 def stopCurrent():
   if current.session:
+    if hasattr(current, 'root'):
+      current.root.toStop() # pylint: disable=E1101
     current.stopFlag.set()
   return OK
 
@@ -261,12 +263,16 @@ makeHandler('image_enhance', getReqFile(imageEnhancePrep), responseEnhance)
 app.route('/preset', methods=['GET', 'POST'], endpoint='preset')(preset)
 
 def videoEnhancePrep(req):
-  vidfile = req.files['file']
-  if not os.path.exists(uploadDir):
-    os.mkdir(uploadDir)
-  path ='{}/{}'.format(uploadDir, vidfile.filename)
-  vidfile.save(path)
-  return (path, *setOutputName(readOpt(req), vidfile))
+  url = req.values.get('url', None)
+  if url:
+    return (url, True, *readOpt(req))
+  else:
+    vidfile = req.files['file']
+    if not os.path.exists(uploadDir):
+      os.mkdir(uploadDir)
+    path ='{}/{}'.format(uploadDir, vidfile.filename)
+    vidfile.save(path)
+    return (path, False, *setOutputName(readOpt(req), vidfile))
 makeHandler('video_enhance', videoEnhancePrep, responseEnhance)
 
 @app.route('/batch_enhance', methods=['POST'])

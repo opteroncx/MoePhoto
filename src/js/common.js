@@ -77,6 +77,7 @@ const texts = {
   hour: '小时',
   minute: '分钟',
   second: '秒',
+  noFile: '请选择',
   noFileMsg: '缺少输入文件',
   errorMsg: '出错啦',
   empty: '暂时没有',

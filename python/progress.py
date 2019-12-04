@@ -14,13 +14,16 @@ def recurse(f):
     for n in node.nodes:
       r(n)
   return r
-getNodeETA = lambda node: ops[node.op].weight * node.load * (node.total - node.gone)
+getNodeETA = lambda node: ops[node.op].weight * node.load * max(0, node.total - node.gone)
 sumETT = lambda node: sum(map(lambda n: n.ett, node.nodes)) if len(node.nodes) else 1
-getETT = lambda node: ops[node.op].weight * node.load * node.total * sumETT(node)
+getETT = lambda node: ops[node.op].weight * node.load * max(0, node.total) * sumETT(node)
 def updateNode(node):
   s = ops[node.op].weight * node.load * sumETT(node)
-  node.ett = node.total * s
-  node.eta = (node.total - node.gone) * s
+  if node.total >= 0:
+    node.ett = node.total * s
+    node.eta = (node.total - node.gone) * s
+  else:
+    node.ett = node.eta = -1
 slideAverage = lambda coef: lambda op, sample: coef * op.weight + (1 - coef) * sample
 setNodeCallback = lambda node, callback, any: node.setCallback(callback) if any or hasattr(node, 'name') else None
 setCallback = lambda node, callback, all=False: recurse(lambda node: setNodeCallback(node, callback, all))(node)
@@ -80,7 +83,7 @@ def updateAncestor(node, eta=False):
     while not (p.nodes[i] is node):
       i += 1
     updateNode(p)
-    if eta:
+    if eta and p.total >= 0:
       p.eta += node.eta - sum(map(lambda n: n.ett, p.nodes[:i + 1]))
       if p.eta < 0:
         p.eta = 0
@@ -89,11 +92,9 @@ def updateAncestor(node, eta=False):
 
 def initialETA(node):
   node.gone = 0
+  s = sum(map(initialETA, node.nodes)) if len(node.nodes) else 1
   c = getNodeETA(node)
-  if len(node.nodes):
-    node.eta = c * sum(map(initialETA, node.nodes))
-  else:
-    node.eta = c
+  node.eta = c * s if node.total >= 0 else -1
   node.ett = node.eta
   return node.ett
 
@@ -192,3 +193,7 @@ class Node():
       self.parent = target
     if flag:
       updateAncestor(self)
+
+  def toStop(self):
+    self.total = self.gone + 1
+    return self.trace(0)

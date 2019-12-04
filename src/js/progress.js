@@ -34,9 +34,11 @@ const bindProgress = $ele => {
   const setStatus = str => statusBox.html(str) && progress
   const setTime = eta => {
     intervalId || show()
-    bar[0].max = eta + +bar[0].value
-    remain = eta
-    timeBox.text(texts.timeFormatter(remain))
+    if (eta >= 0) {
+      bar[0].max = eta + +bar[0].value
+      remain = eta
+      timeBox.text(texts.timeFormatter(remain))
+    } else timeBox.text('')
     return progress
   }
   return progress = { show, hide, setMessage, setStatus, setTime }
