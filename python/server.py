@@ -53,7 +53,7 @@ def acquireSession(request):
     noter.recv()
   current.session = request.values['session']
   current.path = request.values['path'] if 'path' in request.values else request.path
-  current.key = current.path + str(current.session)
+  current.key = getKey(current.session, request)
   current.eta = request.values['eta'] if 'eta' in request.values else 10
   return False if current.session else E403
 
@@ -89,6 +89,9 @@ def onConnect():
   res = None
   while current.key and noter.poll():
     res = noter.recv()
+  if cache.peek(current.key) and getKey(current.session, request) == current.key:
+    res = cache.pop(current.key)
+    return res
   if res:
     if 'eta' in res:
       current.eta = res['eta']
@@ -96,9 +99,6 @@ def onConnect():
       current.fileSize = res['fileSize']
       del res['fileSize']
     return toResponse(res)
-  if cache.peek(current.key):
-    res = cache.pop(current.key)
-    return res
   else:
     return OK
 

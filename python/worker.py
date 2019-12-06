@@ -54,9 +54,11 @@ def enhance(f):
       code = 200
       saveOps(opsPath, True)
     except:
-      log.exception([f.__name__] + [filterOpt(arg) for arg in args])
+      info = [f.__name__] + [filterOpt(arg) for arg in args]
+      log.exception(info)
       res = {
         'result': 'Fail',
+        'call': info,
         'exception': format_exc()
       }
       code = 400

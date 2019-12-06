@@ -57,8 +57,8 @@ const setup = opt => {
     } else {
       clearInterval(intervalId)
       let result = event.data.result
-      if (result === 'Fail') onError(0, 400, event.data.exception)
-      else if (result != null) onSuccess(event.data)
+      if (result === 'Fail' && !onError(0, 400, event.data.exception)) return
+      if (result != null) onSuccess(event.data)
       else running || ((running = 1) && runButton.attr('disabled', true))
     }
   }
@@ -98,6 +98,7 @@ const setup = opt => {
 
   const onError = (xhr, status, error) => {
     console.error(xhr, status, error)
+    if (opt.ignoreError) return 1
     running = 0
     clearInterval(intervalId)
     loading.hide()
