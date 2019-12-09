@@ -23,6 +23,7 @@ reMatchInfo = re.compile(r'Stream #.*: Video:')
 reSearchInfo = re.compile(r',[\s]*([\d]+)x([\d]+)[\s]*.+,[\s]*([.\d]+)[\s]*fps')
 reMatchFrame = re.compile(r'frame=')
 reSearchFrame = re.compile(r'frame=[\s]*([\d]+) ')
+popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize)
 
 def getVideoInfo(videoPath, pipeIn, width, height, frameRate):
   commandIn = [
@@ -34,7 +35,7 @@ def getVideoInfo(videoPath, pipeIn, width, height, frameRate):
     '-'
   ]
   matchInfo = not (width and height and frameRate)
-  matchFrame = bool(pipeIn)
+  matchFrame = not bool(pipeIn)
   error = RuntimeError('Video info not found')
   try:
     if matchFrame:
@@ -43,6 +44,8 @@ def getVideoInfo(videoPath, pipeIn, width, height, frameRate):
 
     while matchInfo or matchFrame:
       line = pipeIn.stderr.readline().lstrip()
+      if not line:
+        break
       if matchInfo and reMatchInfo.match(line):
         try:
           videoInfo = reSearchInfo.search(line).groups()
@@ -181,8 +184,12 @@ def setupInfo(root, commandOut, slomos, sizes, start, width, height, frameRate, 
 
 def SR_vid(video, by, *steps):
   outputPath, process, start, stop, root, commandIn, commandOut, slomos, sizes, *info = prepare(video, steps)
-  pipeIn = sp.Popen(commandIn, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize)
-  width, height, *more = getVideoInfo(video, by and pipeIn, *info)
+  if by:
+    pipeIn = popen(commandIn)
+    width, height, *more = getVideoInfo(video, pipeIn, *info)
+  else:
+    width, height, *more = getVideoInfo(video, False, *info)
+    pipeIn = popen(commandIn)
   setupInfo(root, commandOut, slomos, sizes, start, width, height, *more)
   pipeOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, shell=True)
   def p(raw_image=None):

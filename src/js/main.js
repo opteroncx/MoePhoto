@@ -70,7 +70,7 @@ const panels = {
       by: {
         type: 'radio',
         text: '来源',
-        classes: ['full-width'],
+        labelClasses: ['full-width'],
         values: [
           { value: 'file', binds: ['file'], classes: ['largeMargin'], checked: 1 },
           { value: 'url', binds: ['url'], classes: ['largeMargin'] }
@@ -88,7 +88,7 @@ const panels = {
         type: 'text',
         text: 'URL',
         value: '',
-        classes: ['input-text'],
+        classes: ['input-text', 'full-width'],
         attributes: ['required', 'spellcheck="false"']
       },
       preset: loadVideoPreset,

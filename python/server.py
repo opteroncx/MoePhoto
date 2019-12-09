@@ -65,12 +65,12 @@ def controlPoint(path, fMatch, fUnmatch, fNoCurrent, check=lambda *_: True):
     if not session:
       return E403
     if current.session:
-      return spawn(fMatch).get() if current.session == session and check(request) else fUnmatch()
+      return spawn(fMatch, getKey(session, request)).get() if current.session == session and check(request) else fUnmatch()
     else:
       return fNoCurrent(session, request)
   app.route(path, methods=['GET', 'POST'], endpoint=path)(f)
 
-def stopCurrent():
+def stopCurrent(*_):
   if current.session:
     if hasattr(current, 'root'):
       current.root.toStop() # pylint: disable=E1101
@@ -83,14 +83,14 @@ def checkMsgMatch(request):
   path = request.values['path']
   return path == current.path
 
-def onConnect():
-  while current.key and not (noter.poll() or cache.peek(current.key)):
+def onConnect(key):
+  while not current.session is None and not (noter.poll() or (key and cache.peek(key))):
     idle()
   res = None
-  while current.key and noter.poll():
+  while not current.session is None and noter.poll():
     res = noter.recv()
-  if cache.peek(current.key) and getKey(current.session, request) == current.key:
-    res = cache.pop(current.key)
+  if key and cache.peek(key):
+    res = cache.pop(key)
     return res
   if res:
     if 'eta' in res:

@@ -131,7 +131,7 @@ const getNotes = item =>
     ['<ul class="visible-md visible-lg description">', ...item.notes.map(getNoteHTML), '</ul>'].join('') : ''
 const getArgHTML = (item, opt, hr = true) =>
   [(hr ? '<hr>' : ''),
-  `<label class="${hr ? 'argName col-sm-2' : 'opValue'}${getClassList(item.classes)}" for="${item.name}">${item.text}</label>`,
+  `<label class="${hr ? 'argName col-sm-2' + getClassList(item.labelClasses) : 'opValue'}" for="${item.name}">${item.text}</label>`,
   elementTypeMapping[item.type](item, opt),
   hr ? getNotes(item, opt) : ''].join('')
 const deduplicate = arr => [...(new Set(arr))]

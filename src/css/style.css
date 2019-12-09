@@ -582,6 +582,7 @@ h3.agileits-title,h2.agileits-title{
     vertical-align: middle;
     position: relative;
     z-index: 1;
+    backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     -moz-osx-font-smoothing: grayscale;
     border: 1px solid #17b9ea;
@@ -814,8 +815,7 @@ a.w3effct-agile:hover .agile-figcap{
     padding: .7em 1em;
     margin-bottom: 1.5em;
     border: solid 1px #ccc;
-    -webkit-appearance: none;
-    display: inline-block;
+    -webkit-appearance: none
 }
 .contact input.email {
     float: right;
@@ -2829,7 +2829,7 @@ html {
     margin-left: .5em
 }
 #options .largeMargin {
-    margin: 1em 0 .5em 1em
+    margin: 1em 0 1em 1em !important
 }
 .full-width {
     width: 100%;
