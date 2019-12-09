@@ -106,12 +106,12 @@ def readSubprocess(q):
 def prepare(video, steps):
   optEncode = steps[-1]
   encodec = optEncode['codec'] if 'codec' in optEncode else config.defaultEncodec  # pylint: disable=E1101
-  optDecode = steps[1]
+  optDecode = steps[0]
   decodec = optDecode['codec'] if 'codec' in optDecode else config.defaultDecodec  # pylint: disable=E1101
-  optRange = steps[2]
+  optRange = steps[1]
   start = int(optRange['start']) if 'start' in optRange else 0
   outDir = config.outDir  # pylint: disable=E1101
-  procSteps = stepVideo + list(steps[3:-1])
+  procSteps = stepVideo + list(steps[2:-1])
   process, nodes = genProcess(procSteps)
   root = begin(Node({'op': 'video', 'encodec': encodec}, 1, 2, 0), nodes, False)
   context.root = root
