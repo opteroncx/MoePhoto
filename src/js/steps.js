@@ -134,7 +134,8 @@ const getArgHTML = (item, opt, hr = true) =>
   `<label class="${hr ? 'argName col-sm-2' : 'opValue'}${getClassList(item.classes)}" for="${item.name}">${item.text}</label>`,
   elementTypeMapping[item.type](item, opt),
   hr ? getNotes(item, opt) : ''].join('')
-const getCheckedItem = (item, opt) => item.values.filter(isChecked(opt))
+const deduplicate = arr => [...(new Set(arr))]
+const getCheckedItem = (item, opt) => deduplicate(flatArray(item.values.filter(isChecked(opt)).map(v => v.binds || [])))
 const flatArray = arrs => arrs.reduce((res, arr) => res.concat(arr), [])
 const getInputCheck = (item, opt) =>
   item.values.map(v => getInputCheckOption(v, opt))
