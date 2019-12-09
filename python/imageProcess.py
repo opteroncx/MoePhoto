@@ -47,8 +47,8 @@ def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
   ds = nn * mn # minimize number of clips
   ind = np.argwhere(ds == ds.min()).squeeze(1)
   mina = ind[np.abs(ind - len(ds) / 2).argmin()] # pick the size with ratio of width and height closer to 1
-  ah, aw = af(h), af(w)
-  ih, iw = (min(cropsize, ns[mina]), min(cropsize, ms[mina])) if cropsize > 0 else (ns[mina], ms[mina])
+  ah, aw, acs = af(h), af(w), af(cropsize)
+  ih, iw = (min(acs, ns[mina]), min(acs, ms[mina])) if cropsize > 0 else (ns[mina], ms[mina])
   ih, iw = min(ah, ih), min(aw, iw)
   startH, endH, clipH, stepH, bH = getAnchors(h, ph, ih, pad, af, sc)
   startW, endW, clipW, stepW, wH = getAnchors(w, pw, iw, pad, af, sc)

@@ -167,7 +167,7 @@ def prepare(video, steps):
 def setupInfo(root, commandOut, slomos, sizes, start, width, height, frameRate, totalFrames):
   if root.total < 0 and totalFrames > 0:
     root.total = totalFrames - start
-  if not frameRate:
+  if frameRate:
     for opt in slomos:
       frameRate *= opt['sf']
   outWidth, outHeight = (width, height)
