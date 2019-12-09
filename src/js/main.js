@@ -64,18 +64,22 @@ const panels = {
     text: '输入',
     description: '选择一段需要放大的视频！运行完毕请点击保存',
     position: 0,
-    submit: (opt, data) => (opt.by === 'url' ? (data.set('url', opt.url) && void 0) : submitFile(opt, data)),
-    view: opt => (opt.by === 'url' ? { url: (opt.url ? opt.url : texts.noFile) } : setFile(opt)),
+    submit: (opt, data) => (opt.by === 'url' ? data.set('url', opt.url) && void 0 : submitFile(opt, data)),
+    view: opt => (opt.by === 'url' ? { url: opt.url ? opt.url : texts.noFile } : setFile(opt)),
     args: {
       by: {
         type: 'radio',
         text: '来源',
-        values: [{ value: 'file', binds: ['file'], checked: 1 }, { value: 'url', binds: ['url'] }]
+        classes: ['full-width'],
+        values: [
+          { value: 'file', binds: ['file'], classes: ['largeMargin'], checked: 1 },
+          { value: 'url', binds: ['url'], classes: ['largeMargin'] }
+        ]
       },
       file: {
         type: 'file',
         name: 'file',
-        text: '视频',
+        text: '视频文件',
         classes: ['inputfile-6', 'imgInp'],
         attributes: ['required', 'accept="video/*,application/octet-stream"'],
         notes: ['视频会复制一份上传，存放在程序的upload目录下']

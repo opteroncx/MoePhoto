@@ -2828,6 +2828,13 @@ html {
 #options input[type=radio], input[type=checkbox] {
     margin-left: .5em
 }
+#options .largeMargin {
+    margin: 1em 0 .5em 1em
+}
+.full-width {
+    width: 100%;
+    display: block
+}
 .step .configs {
     white-space: nowrap;
     overflow: hidden;
