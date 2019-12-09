@@ -11,6 +11,7 @@ context.root = None
 context.getFile = lambda size: BytesIO(context.sharedView[:size])
 log = initLogging(config.logPath).getLogger('Moe') # pylint: disable=E1101
 opsPath = config.opsPath # pylint: disable=E1101
+getInfo = lambda f, args: [f.__name__] + [filterOpt(arg) for arg in args]
 
 def filterOpt(item):
   if type(item) == dict and 'opt' in item:
@@ -47,14 +48,16 @@ def onProgress(node, kwargs={}):
     res['stageTotal'] = node.total
   context.notifier.send(res)
 
-def enhance(f):
+def enhance(f, verbose=True):
   def g(*args, **kwargs):
     try:
       res = { 'result': f(*args, **kwargs) }
       code = 200
       saveOps(opsPath, True)
+      if verbose:
+        log.info(getInfo(f, args))
     except:
-      info = [f.__name__] + [filterOpt(arg) for arg in args]
+      info = getInfo(f, args)
       log.exception(info)
       res = {
         'result': 'Fail',

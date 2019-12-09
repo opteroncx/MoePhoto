@@ -43,9 +43,11 @@ def getVideoInfo(videoPath, pipeIn, width, height, frameRate):
     totalFrames = 0
 
     while matchInfo or matchFrame:
-      line = pipeIn.stderr.readline().lstrip()
+      line = pipeIn.stderr.readline()
+      sys.stdout.write(line)
       if not line:
         break
+      line = line.lstrip()
       if matchInfo and reMatchInfo.match(line):
         try:
           videoInfo = reSearchInfo.search(line).groups()
@@ -71,7 +73,7 @@ def getVideoInfo(videoPath, pipeIn, width, height, frameRate):
   finally:
     if matchFrame:
       pipeIn.terminate()
-  if matchInfo or matchFrame:
+  if matchInfo or (matchFrame and not totalFrames):
     raise error
   log.info('Info of video {}: {}x{}@{}fps, {} frames'.format(videoPath, width, height, frameRate, totalFrames))
   return width, height, frameRate, totalFrames

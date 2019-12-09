@@ -41,8 +41,8 @@ def main():
 
   return mm, {
     'lockInterface': lock,
-    'image_enhance': enhance(imageEnhance),
-    'batch': enhance(imageEnhance),
+    'image_enhance': enhance(imageEnhance, verbose=False),
+    'batch': enhance(imageEnhance, verbose=False),
     'video_enhance': enhance(SR_vid),
     'systemInfo': enhance(config.system)
   }
