@@ -11,6 +11,7 @@ from imageProcess import clean, writeFile, BGR2RGB
 from procedure import genProcess
 from progress import Node, initialETA
 from worker import context, begin
+from pipe import Pipe
 
 log = logging.getLogger('Moe')
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
@@ -25,7 +26,7 @@ reMatchFrame = re.compile(r'frame=')
 reSearchFrame = re.compile(r'frame=[\s]*([\d]+) ')
 popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize)
 
-def getVideoInfo(videoPath, pipeIn, width, height, frameRate):
+def getVideoInfo(videoPath, procIn, width, height, frameRate):
   commandIn = [
     ffmpegPath,
     '-i', videoPath,
@@ -35,15 +36,15 @@ def getVideoInfo(videoPath, pipeIn, width, height, frameRate):
     '-'
   ]
   matchInfo = not (width and height and frameRate)
-  matchFrame = not bool(pipeIn)
+  matchFrame = not bool(procIn)
   error = RuntimeError('Video info not found')
   try:
     if matchFrame:
-      pipeIn = sp.Popen(commandIn, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
+      procIn = sp.Popen(commandIn, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
     totalFrames = 0
 
     while matchInfo or matchFrame:
-      line = pipeIn.stderr.readline()
+      line = procIn.stderr.readline()
       if type(line) != str:
         line = str(line, 'utf-8', errors='ignore')
       sys.stdout.write(line)
@@ -70,11 +71,11 @@ def getVideoInfo(videoPath, pipeIn, width, height, frameRate):
           log.error(line)
 
     if matchFrame:
-      pipeIn.stderr.flush()
-      pipeIn.stderr.close()
+      procIn.stderr.flush()
+      procIn.stderr.close()
   finally:
     if matchFrame:
-      pipeIn.terminate()
+      procIn.terminate()
   if matchInfo or (matchFrame and not totalFrames):
     raise error
   log.info('Info of video {}: {}x{}@{}fps, {} frames'.format(videoPath, width, height, frameRate, totalFrames))
@@ -112,7 +113,7 @@ def prepare(video, steps):
   decodec = optDecode['codec'] if 'codec' in optDecode else config.defaultDecodec  # pylint: disable=E1101
   optRange = steps[1]
   start = int(optRange['start']) if 'start' in optRange else 0
-  outDir, uploadDir = config.outDir, config.uploadDir  # pylint: disable=E1101
+  outDir = config.outDir  # pylint: disable=E1101
   procSteps = stepVideo + list(steps[2:-1])
   process, nodes = genProcess(procSteps)
   root = begin(Node({'op': 'video', 'encodec': encodec}, 1, 2, 0), nodes, False)
@@ -133,21 +134,23 @@ def prepare(video, steps):
     stop = -1
   root.total = -1 if stop < 0 else stop - start
   outputPath = optEncode.get('file', '') or outDir + '/' + config.getPath()
-  t0Path = uploadDir + '/t0.ts'
-  t1Path = uploadDir + '/t1.ts'
+  pipe = Pipe('MoePhoto.ts', start == 0)
+  srcPath = pipe.getSrc()
+  dstPath = pipe.getDst()
   commandIn = [
     ffmpegPath,
     '-i', video,
     '-vn',
     '-c', 'copy',
-    t0Path,
+    '-y',
+    srcPath,
     '-map', '0:v',
     '-f', 'rawvideo',
     '-pix_fmt', pix_fmt]
   if len(decodec):
     commandIn.extend(decodec.split(' '))
   commandIn.append('-')
-  commandVideo = [
+  commandOut = [
     ffmpegPath,
     '-y',
     '-f', 'rawvideo',
@@ -155,29 +158,22 @@ def prepare(video, steps):
     '-s', '',
     '-r', '',
     '-i', '-',
-    '-c:v:0'] + encodec.split(' ') + [t1Path]
-  commandOut = [
-    ffmpegPath,
-    '-y',
-    '-i', t1Path,
-    '-i', t0Path,
+    '-i', dstPath,
+    '-map', '0:v',
+    '-map', '1?',
+    '-map', '-1:v',
     '-c:1', 'copy',
-    '-c:0', 'copy',
-    outputPath
-  ]
+    '-c:v:0'] + encodec.split(' ')
   if start > 0:
-    commandIn = commandIn[:3] + commandIn[7:]
-    commandOut = commandOut[:4] + commandOut[8:]
-    files = (t1Path, t0Path)
-  else:
-    files = (t1Path,)
+    commandIn = commandIn[:3] + commandIn[8:]
+    commandOut = commandOut[:12] + commandOut[22:]
   frameRate = optEncode.get('frameRate', 0)
   width = optDecode.get('width', 0)
   height = optDecode.get('height', 0)
   sizes = filter((lambda opt: opt['op'] == 'SR' or opt['op'] == 'resize'), procSteps)
-  return outputPath, process, start, stop, root, commandIn, commandVideo, commandOut, files, slomos, sizes, width, height, frameRate
+  return outputPath, process, start, stop, root, commandIn, commandOut, pipe, slomos, sizes, width, height, frameRate
 
-def setupInfo(root, commandVideo, slomos, sizes, start, width, height, frameRate, totalFrames):
+def setupInfo(root, commandOut, slomos, sizes, start, width, height, frameRate, totalFrames):
   if root.total < 0 and totalFrames > 0:
     root.total = totalFrames - start
   if frameRate:
@@ -191,39 +187,39 @@ def setupInfo(root, commandVideo, slomos, sizes, start, width, height, frameRate
     else: # resize
       outWidth = round(outWidth * opt['scaleW']) if 'scaleW' in opt else opt['width']
       outHeight = round(outHeight * opt['scaleH']) if 'scaleH' in opt else opt['height']
-  commandVideo[7] = f'{outWidth}x{outHeight}'
-  commandVideo[9] = str(frameRate)
+  commandOut[7] = f'{outWidth}x{outHeight}'
+  commandOut[9] = str(frameRate)
   root.multipleLoad(width * height * 3)
   initialETA(root)
   root.reset().trace(0)
 
 def SR_vid(video, by, *steps):
-  outputPath, process, start, stop, root, commandIn, commandVideo, commandOut, files, slomos, sizes, *info = prepare(video, steps)
+  outputPath, process, start, stop, root, commandIn, commandOut, pipe, slomos, sizes, *info = prepare(video, steps)
   if by:
-    pipeIn = popen(commandIn)
-    width, height, *more = getVideoInfo(video, pipeIn, *info)
+    procIn = popen(commandIn)
+    width, height, *more = getVideoInfo(video, procIn, *info)
   else:
     width, height, *more = getVideoInfo(video, False, *info)
-    pipeIn = popen(commandIn)
-  setupInfo(root, commandVideo, slomos, sizes, start, width, height, *more)
-  pipeVideo = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, shell=True)
+    procIn = popen(commandIn)
+  setupInfo(root, commandOut, slomos, sizes, start, width, height, *more)
+  procOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, shell=True)
   def p(raw_image=None):
+    pipe.transmit()
     bufs = process((raw_image, height, width))
     if (not bufs is None) and len(bufs):
       for buffer in bufs:
         if buffer:
-          pipeVideo.stdin.write(buffer)
+          procOut.stdin.write(buffer)
     if raw_image:
       root.trace()
 
   try:
-    pipeOut = 0
-    createEnqueueThread(pipeVideo.stdout, 0)
-    createEnqueueThread(pipeIn.stderr, 1)
-    createEnqueueThread(pipeVideo.stderr, 1)
+    createEnqueueThread(procOut.stdout, 0)
+    createEnqueueThread(procIn.stderr, 1)
+    createEnqueueThread(procOut.stderr, 1)
     i = 0
     while (stop < 0 or i <= stop) and not context.stopFlag.is_set():
-      raw_image = pipeIn.stdout.read(width * height * pixBytes) # read width*height*6 bytes (= 1 frame)
+      raw_image = procIn.stdout.read(width * height * pixBytes) # read width*height*6 bytes (= 1 frame)
       if len(raw_image) == 0:
         break
       readSubprocess(qOut)
@@ -233,23 +229,15 @@ def SR_vid(video, by, *steps):
       idle()
     p()
 
-    pipeVideo.communicate(timeout=300)
-    pipeOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
-    createEnqueueThread(pipeOut.stdout, 0)
-    createEnqueueThread(pipeOut.stderr, 0)
-    pipeOut.communicate(timeout=300)
+    procOut.communicate(timeout=300)
   finally:
-    pipeIn.terminate()
-    pipeVideo.terminate()
-    if pipeOut:
-      pipeOut.terminate()
+    procIn.terminate()
+    procOut.terminate()
     clean()
     try:
       if not by:
         os.remove(video)
-      if start > 0:
-        os.remove(files[1])
-      os.remove(files[0])
+      pipe.close()
     except:
       log.warning('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(video))
   readSubprocess(qOut)

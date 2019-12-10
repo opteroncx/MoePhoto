@@ -58,14 +58,27 @@ class PipeUnix():
   def close(self):
     os.unlink(self.path)
 
+class DummyPipe():
+  def __init__(self, _=None): pass
+
+  def getSrc(self):
+    return ''
+
+  def getDst(self):
+    return ''
+
+  def transmit(self): pass
+
+  def close(self): pass
+
 if platform[:3] == 'win':
   import win32pipe, win32file
   import errno
   pipeT = r'\\.\pipe\{}{}'
   bufsize = 2 ** 20
-  Pipe = PipeWin
+  Pipe = lambda name, real: PipeWin(name) if real else DummyPipe()
 else:
   import os
   from config import config
   uploadDir = config.uploadDir  # pylint: disable=E1101
-  Pipe = PipeUnix
+  Pipe = lambda name, real: PipeUnix(name) if real else DummyPipe()
