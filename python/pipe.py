@@ -1,4 +1,4 @@
-import sys
+from sys import platform
 
 class PipeWin():
   def __init__(self, name):
@@ -12,6 +12,7 @@ class PipeWin():
       win32pipe.PIPE_ACCESS_OUTBOUND | win32file.FILE_FLAG_OVERLAPPED,
       win32pipe.PIPE_TYPE_BYTE,
       1, bufsize, 0, 300, None)
+    self.open = True
 
   def getSrc(self):
     return self.src
@@ -20,6 +21,8 @@ class PipeWin():
     return self.dst
 
   def transmit(self):
+    if not self.open:
+      return 0
     try:
       _, size, err = win32pipe.PeekNamedPipe(self.psrc, 0)
       if err:
@@ -37,6 +40,7 @@ class PipeWin():
   def close(self):
     self.psrc.close()
     self.pdst.close()
+    self.open = False
 
 class PipeUnix():
   def __init__(self, name):
@@ -54,8 +58,7 @@ class PipeUnix():
   def close(self):
     os.unlink(self.path)
 
-isWindows = sys.platform[:3] == 'win'
-if isWindows:
+if platform[:3] == 'win':
   import win32pipe, win32file
   import errno
   pipeT = r'\\.\pipe\{}{}'
