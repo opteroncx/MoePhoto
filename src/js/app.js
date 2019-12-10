@@ -117,7 +117,7 @@ const setup = opt => {
     runButton.bind('click', _ => {
       var fdata = new FormData()
       opt.beforeSend && opt.beforeSend(fdata)
-      if (!(opt.noCheckFile || fdata.get('file').size)) {
+      if (!(opt.noCheckFile || fdata.noCheckFile || (fdata.get('file') && fdata.get('file').size))) {
         return opt.setMessage ? opt.setMessage(texts.noFileMsg) : alert(texts.noFileMsg)
       }
       $.post({

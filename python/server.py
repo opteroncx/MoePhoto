@@ -14,6 +14,7 @@ config = {}
 try:
   setConfig(config, VERSION)
   initPreset(config)
+  dVer = {'version': config['version']}
 except Exception as e:
   print(e)
 staticMaxAge = 86400
@@ -172,10 +173,10 @@ def gallery(req):
     doc.append('</div>')
   return (''.join(doc),) if len(doc) else ('暂时没有图片，快去尝试放大吧',)
 
-def getSystemInfo():
+def getSystemInfo(info):
   import readgpu
   cuda, cudnn = readgpu.getCudaVersion()
-  info = {
+  info.update({
     'cpu_count_phy': psutil.cpu_count(logical=False),
     'cpu_count_log': psutil.cpu_count(logical=True),
     'cpu_freq': psutil.cpu_freq().max,
@@ -186,7 +187,7 @@ def getSystemInfo():
     'cuda': cuda,
     'cudnn': cudnn,
     'gpus': readgpu.getGPUProperties()
-  }
+  })
   readgpu.uninstall()
   del readgpu
   return info
@@ -223,14 +224,14 @@ header = codecs.open('./templates/1-header.html','r','utf-8').read()
 footer = codecs.open('./templates/1-footer.html','r','utf-8').read()
 routes = [
   #(query path, template file, active page name, request handler, request result names, dict of static variables)
-  ('/', 'index.html', '主页', None),
-  ('/video', 'video.html', 'AI视频', None),
-  ('/batch', 'batch.html', '批量放大', None),
-  ('/document', 'document.html', None, None),
-  ('/about', 'about.html', None, about_updater, ['log']),
-  ('/system', 'system.html', None, getDynamicInfo, ['disk_free', 'mem_free', 'session', 'path'], getSystemInfo()),
-  ('/gallery', 'gallery.html', None, gallery, ['var']),
-  ('/lock', 'lock.html', None, None)
+  ('/', 'index.html', '主页', None, None, dVer),
+  ('/video', 'video.html', 'AI视频', None, None, dVer),
+  ('/batch', 'batch.html', '批量放大', None, None, dVer),
+  ('/document', 'document.html', None, None, None, dVer),
+  ('/about', 'about.html', None, about_updater, ['log'], dVer),
+  ('/system', 'system.html', None, getDynamicInfo, ['disk_free', 'mem_free', 'session', 'path'], getSystemInfo(dVer)),
+  ('/gallery', 'gallery.html', None, gallery, ['var'], dVer),
+  ('/lock', 'lock.html', None, None, None, dVer)
 ]
 
 for item in routes:
@@ -264,12 +265,12 @@ app.route('/preset', methods=['GET', 'POST'], endpoint='preset')(preset)
 
 def videoEnhancePrep(req):
   url = req.values.get('url', None)
+  if not os.path.exists(uploadDir):
+    os.mkdir(uploadDir)
   if url:
     return (url, True, *readOpt(req))
   else:
     vidfile = req.files['file']
-    if not os.path.exists(uploadDir):
-      os.mkdir(uploadDir)
     path ='{}/{}'.format(uploadDir, vidfile.filename)
     vidfile.save(path)
     return (path, False, *setOutputName(readOpt(req), vidfile))

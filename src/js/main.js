@@ -26,7 +26,8 @@ const scaleModelMapping = {
 }
 var getResizeView = (by, scale, size) => (by === 'scale' ? scale + '倍' : appendText('pixel')(size))
 const setFile = opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : texts.noFile })
-const submitFile = (opt, data) => opt.file && opt.file[0] && data.set('file', opt.file[0]) && void 0
+const submitFile = (opt, data) => opt.file && opt.file[0] && (data.set('file', opt.file[0]) || (data.noCheckFile = 0))
+const submitUrl = (opt, data) => (data.set('url', opt.url) || (data.noCheckFile = 1)) && void 0
 const [
   loadImagePreset,
   saveImagePreset,
@@ -64,7 +65,7 @@ const panels = {
     text: '输入',
     description: '选择一段需要放大的视频！运行完毕请点击保存',
     position: 0,
-    submit: (opt, data) => (opt.by === 'url' ? data.set('url', opt.url) && void 0 : submitFile(opt, data)),
+    submit: (opt, data) => (opt.by === 'url' ? submitUrl(opt, data) : submitFile(opt, data)),
     view: opt => (opt.by === 'url' ? { url: opt.url ? opt.url : texts.noFile } : setFile(opt)),
     args: {
       by: {
