@@ -13,12 +13,24 @@ class PipeWin():
       win32pipe.PIPE_TYPE_BYTE,
       1, bufsize, 0, 300, None)
     self.open = True
+    self.size = 0
+    self.info = 0
 
   def getSrc(self):
     return self.src
 
   def getDst(self):
     return self.dst
+
+  def _write(self):
+    size = self.size
+    if not (size and self.info):
+      return 0
+    err, data = win32file.ReadFile(self.psrc, size)
+    print(data[:8], err)
+    win32file.WriteFile(self.pdst, data)
+    self.size = 0
+    return size
 
   def transmit(self):
     if not self.open:
@@ -28,16 +40,21 @@ class PipeWin():
       if err:
         raise RuntimeError('Read failed on {}.'.format(self.src))
       if size:
-        err, data = win32file.ReadFile(self.psrc, size)
-        win32file.WriteFile(self.pdst, data)
+        self.size = size
+        if not self.info:
+          try:
+            self.info = win32pipe.GetNamedPipeClientProcessId(self.pdst)
+            print(self.info)
+          except: pass
+        return self._write()
     except Exception as e:
       if hasattr(e, 'winerror') and e.winerror in (109, errno.ESHUTDOWN):  # pylint: disable=E1101
         self.close()
         return 0
       raise e
-    return size
 
   def close(self):
+    self._write()
     self.psrc.close()
     self.pdst.close()
     self.open = False
@@ -76,9 +93,9 @@ if platform[:3] == 'win':
   import errno
   pipeT = r'\\.\pipe\{}{}'
   bufsize = 2 ** 20
-  Pipe = lambda name, real: PipeWin(name) if real else DummyPipe()
+  Pipe = lambda name, dummy: DummyPipe() if dummy else PipeWin(name)
 else:
   import os
   from config import config
   uploadDir = config.uploadDir  # pylint: disable=E1101
-  Pipe = lambda name, real: PipeUnix(name) if real else DummyPipe()
+  Pipe = lambda name, dummy: DummyPipe() if dummy else PipeUnix(name)

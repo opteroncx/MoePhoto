@@ -116,7 +116,8 @@ def prepare(video, steps):
   outDir = config.outDir  # pylint: disable=E1101
   procSteps = stepVideo + list(steps[2:-1])
   process, nodes = genProcess(procSteps)
-  root = begin(Node({'op': 'video', 'encodec': encodec}, 1, 2, 0), nodes, False)
+  traceDetail = config.progressDetail  # pylint: disable=E1101
+  root = begin(Node({'op': 'video', 'encodec': encodec}, 1, 2, 0), nodes, traceDetail)
   context.root = root
   slomos = [*filter((lambda opt: opt['op'] == 'slomo'), procSteps)]
   if start < 0:
@@ -134,7 +135,7 @@ def prepare(video, steps):
     stop = -1
   root.total = -1 if stop < 0 else stop - start
   outputPath = optEncode.get('file', '') or outDir + '/' + config.getPath()
-  pipe = Pipe('MoePhoto.ts', start == 0)
+  pipe = Pipe('MoePhoto.ts', start > 0)
   srcPath = pipe.getSrc()
   dstPath = pipe.getDst()
   commandIn = [
@@ -163,7 +164,7 @@ def prepare(video, steps):
     '-map', '1?',
     '-map', '-1:v',
     '-c:1', 'copy',
-    '-c:v:0'] + encodec.split(' ')
+    '-c:v:0'] + encodec.split(' ') + [outputPath]
   if start > 0:
     commandIn = commandIn[:3] + commandIn[8:]
     commandOut = commandOut[:12] + commandOut[22:]
@@ -204,12 +205,12 @@ def SR_vid(video, by, *steps):
   setupInfo(root, commandOut, slomos, sizes, start, width, height, *more)
   procOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, shell=True)
   def p(raw_image=None):
-    pipe.transmit()
     bufs = process((raw_image, height, width))
     if (not bufs is None) and len(bufs):
       for buffer in bufs:
         if buffer:
           procOut.stdin.write(buffer)
+    pipe.transmit()
     if raw_image:
       root.trace()
 
