@@ -143,7 +143,6 @@ def prepare(video, steps):
     '-i', video,
     '-vn',
     '-c', 'copy',
-    '-y',
     srcPath,
     '-map', '0:v',
     '-f', 'rawvideo',
@@ -195,15 +194,6 @@ def setupInfo(root, commandOut, slomos, sizes, start, width, height, frameRate, 
   root.reset().trace(0)
 
 def SR_vid(video, by, *steps):
-  outputPath, process, start, stop, root, commandIn, commandOut, pipe, slomos, sizes, *info = prepare(video, steps)
-  if by:
-    procIn = popen(commandIn)
-    width, height, *more = getVideoInfo(video, procIn, *info)
-  else:
-    width, height, *more = getVideoInfo(video, False, *info)
-    procIn = popen(commandIn)
-  setupInfo(root, commandOut, slomos, sizes, start, width, height, *more)
-  procOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, shell=True)
   def p(raw_image=None):
     bufs = process((raw_image, height, width))
     if (not bufs is None) and len(bufs):
@@ -213,6 +203,18 @@ def SR_vid(video, by, *steps):
     pipe.transmit()
     if raw_image:
       root.trace()
+    else:
+      pipe.close(True)
+
+  outputPath, process, start, stop, root, commandIn, commandOut, pipe, slomos, sizes, *info = prepare(video, steps)
+  if by:
+    procIn = popen(commandIn)
+    width, height, *more = getVideoInfo(video, procIn, *info)
+  else:
+    width, height, *more = getVideoInfo(video, False, *info)
+    procIn = popen(commandIn)
+  setupInfo(root, commandOut, slomos, sizes, start, width, height, *more)
+  procOut = sp.Popen(commandOut, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, shell=True)
 
   try:
     createEnqueueThread(procOut.stdout, 0)

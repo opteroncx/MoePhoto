@@ -10,5 +10,5 @@ context.stopFlag = Event()
 context.shared = None
 video = 'upload\\realshort.mp4'
 copyfile('test\\realshort.mp4', video)
-steps = [{'op': 'decode'}, {'op': 'range'}, {'codec': 'libx264 -pix_fmt yuv420p', 'op': 'encode', 'file': 'download/realshort.mp4'}]
-SR_vid(video, False, *steps)
+steps = [{'op': 'decode'}, {'op': 'range'}, {'codec': 'libx264 -pix_fmt yuv420p', 'op': 'encode', 'file': 'download/realshort.webm'}]
+print(SR_vid(video, False, *steps))
