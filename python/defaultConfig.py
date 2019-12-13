@@ -19,5 +19,6 @@ defaultConfig = {
   'videoPreview': ('jpeg',),
   'maxResultsKept': (1 << 10,),
   'sharedMemSize': (100 * 2 ** 20, '前后台共享的内存文件交换区字节大小，要能装下一张输入或输出图片'),
-  'port': (2333,)
+  'port': (2333,),
+  'progressDetail': (False,)
 }

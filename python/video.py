@@ -4,6 +4,7 @@ import re
 import sys
 import threading
 import logging
+import signal
 from queue import Queue, Empty
 from gevent import spawn_later, idle
 from config import config
@@ -19,14 +20,20 @@ stepVideo = [dict(op='buffer', bitDepth=16)]
 pix_fmt = 'bgr48le'
 pixBytes = 6
 bufsize = 10 ** 8
+isWindows = sys.platform[:3] == 'win'
 reMatchInfo = re.compile(r'Stream #.*: Video:')
 reSearchInfo = re.compile(r',[\s]*([\d]+)x([\d]+)[\s]*.+,[\s]*([.\d]+)[\s]*fps')
 reMatchFrame = re.compile(r'frame=')
 reSearchFrame = re.compile(r'frame=[\s]*([\d]+) ')
-popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize)
+reMatchAudio = re.compile(r'Stream #0:1:')
+reMatchOutput = re.compile(r'Output #0,')
+creationflag = sp.CREATE_NEW_PROCESS_GROUP if isWindows else 0
+sigint = signal.CTRL_BREAK_EVENT if isWindows else signal.SIGINT
+popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, creationflags=creationflag)
 popenText = lambda command: sp.Popen(command, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
 insert1 = lambda t, s: ''.join((t[0], s, *t[1:]))
 suffix = lambda p, s: insert1(os.path.splitext(p), s)
+commandVideoSkip = lambda command: command[:13] + command[23:]
 
 def removeFile(path):
   try:
@@ -45,13 +52,15 @@ def getVideoInfo(videoPath, procIn, width, height, frameRate):
   ]
   matchInfo = not (width and height and frameRate)
   matchFrame = not bool(procIn)
+  matchOutput = True
   error = RuntimeError('Video info not found')
+  videoOnly = True
   try:
     if matchFrame:
       procIn = popenText(commandIn)
     totalFrames = 0
 
-    while matchInfo or matchFrame:
+    while matchInfo or matchOutput or matchFrame:
       line = procIn.stderr.readline()
       if type(line) != str:
         line = str(line, 'utf-8', errors='ignore')
@@ -59,6 +68,10 @@ def getVideoInfo(videoPath, procIn, width, height, frameRate):
       if not line:
         break
       line = line.lstrip()
+      if reMatchOutput.match(line):
+        matchOutput = False
+      elif reMatchAudio.match(line):
+        videoOnly = False
       if matchInfo and reMatchInfo.match(line):
         try:
           videoInfo = reSearchInfo.search(line).groups()
@@ -87,7 +100,7 @@ def getVideoInfo(videoPath, procIn, width, height, frameRate):
   if matchInfo or (matchFrame and not totalFrames):
     raise error
   log.info('Info of video {}: {}x{}@{}fps, {} frames'.format(videoPath, width, height, frameRate, totalFrames))
-  return width, height, frameRate, totalFrames
+  return width, height, frameRate, totalFrames, videoOnly
 
 def enqueueOutput(out, queue):
   try:
@@ -105,7 +118,8 @@ def readSubprocess(q):
   while True:
     try:
       line = q.get_nowait()
-      line = str(line, encoding='utf_8', errors='replace')
+      if not type(line) == str:
+        line = str(line, encoding='utf_8', errors='replace')
     except Empty:
       break
     else:
@@ -174,12 +188,14 @@ def prepare(video, by, steps):
   ] + encodec.split(' ') + [outputPath]
   if by:
     commandVideo[-1] = suffix(outputPath, '-v')
-    commandVideo = commandVideo[:13] + commandVideo[23:]
+    commandVideo = commandVideoSkip(commandVideo)
     commandOut = [
       ffmpegPath,
       '-hide_banner', '-y',
       '-i', commandVideo[-1],
       '-i', dataPath,
+      '-map', '0:v',
+      '-map', '1?',
       '-c:0', 'copy',
       '-c:1', 'copy',
       *metadata,
@@ -189,7 +205,7 @@ def prepare(video, by, steps):
     commandIn = commandIn[:4] + commandIn[9:]
     commandVideo[14] = video
     if start > 0:
-      commandVideo = commandVideo[:13] + commandVideo[23:]
+      commandVideo = commandVideoSkip(commandVideo)
     commandOut = None
   if start > 0:
     commandOut = None
@@ -200,7 +216,7 @@ def prepare(video, by, steps):
   sizes = filter((lambda opt: opt['op'] == 'SR' or opt['op'] == 'resize'), procSteps)
   return outputPath, process, start, stop, root, commandIn, commandVideo, commandOut, slomos, sizes, width, height, frameRate
 
-def setupInfo(root, commandVideo, slomos, sizes, start, width, height, frameRate, totalFrames):
+def setupInfo(root, commandVideo, commandOut, slomos, sizes, start, width, height, frameRate, totalFrames, videoOnly):
   if root.total < 0 and totalFrames > 0:
     root.total = totalFrames - start
   if frameRate:
@@ -216,9 +232,13 @@ def setupInfo(root, commandVideo, slomos, sizes, start, width, height, frameRate
       outHeight = round(outHeight * opt['scaleH']) if 'scaleH' in opt else opt['height']
   commandVideo[8] = f'{outWidth}x{outHeight}'
   commandVideo[10] = str(frameRate)
+  if videoOnly:
+    commandVideo = commandVideoSkip(commandVideo)
+    commandOut = None
   root.multipleLoad(width * height * 3)
   initialETA(root)
   root.reset().trace(0)
+  return commandVideo, commandOut
 
 def cleanAV(command):
   if command:
@@ -228,7 +248,8 @@ def cleanAV(command):
 def mergeAV(command):
   if command:
     procMerge = popenText(command)
-    createEnqueueThread(procMerge.stderr, 1)
+    createEnqueueThread(procMerge.stdout)
+    createEnqueueThread(procMerge.stderr)
     procMerge.communicate()
     return procMerge
 
@@ -249,7 +270,7 @@ def SR_vid(video, by, *steps):
   else:
     width, height, *more = getVideoInfo(video, False, *info)
     procIn = popen(commandIn)
-  setupInfo(root, commandVideo, slomos, sizes, start, width, height, *more)
+  commandVideo, commandOut = setupInfo(root, commandVideo, commandOut, slomos, sizes, start, width, height, *more)
   procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=0, shell=True)
   procMerge = 0
 
@@ -267,10 +288,11 @@ def SR_vid(video, by, *steps):
         p(raw_image)
       i += 1
       idle()
-    procIn.terminate()
+    os.kill(procIn.pid, sigint)
     p()
 
     procOut.communicate(timeout=300)
+    procIn.terminate()
     readSubprocess(qOut)
     procMerge = mergeAV(commandOut)
   finally:
@@ -282,7 +304,7 @@ def SR_vid(video, by, *steps):
     try:
       if not by:
         removeFile(video)
-      cleanAV(commandOut)
+      #cleanAV(commandOut)
     except:
       log.warning('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(video))
   readSubprocess(qOut)
