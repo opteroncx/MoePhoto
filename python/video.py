@@ -15,7 +15,6 @@ from worker import context, begin
 log = logging.getLogger('Moe')
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
 qOut = Queue(256)
-console = [sys.stdout, sys.stderr]
 stepVideo = [dict(op='buffer', bitDepth=16)]
 pix_fmt = 'bgr48le'
 pixBytes = 6
@@ -90,10 +89,10 @@ def getVideoInfo(videoPath, procIn, width, height, frameRate):
   log.info('Info of video {}: {}x{}@{}fps, {} frames'.format(videoPath, width, height, frameRate, totalFrames))
   return width, height, frameRate, totalFrames
 
-def enqueueOutput(out, queue, t):
+def enqueueOutput(out, queue):
   try:
     for line in iter(out.readline, b''):
-      queue.put((t, line))
+      queue.put(line)
     out.flush()
   except: pass
 
@@ -105,12 +104,12 @@ def createEnqueueThread(pipe, *args):
 def readSubprocess(q):
   while True:
     try:
-      t, line = q.get_nowait()
+      line = q.get_nowait()
       line = str(line, encoding='utf_8', errors='replace')
     except Empty:
       break
     else:
-      console[t].write(line)
+      sys.stdout.write(line)
 
 def prepare(video, by, steps):
   optEncode = steps[-1]
@@ -240,7 +239,6 @@ def SR_vid(video, by, *steps):
       for buffer in bufs:
         if buffer:
           procOut.stdin.write(buffer)
-          procOut.stdin.flush()
     if raw_image:
       root.trace()
 
@@ -252,15 +250,15 @@ def SR_vid(video, by, *steps):
     width, height, *more = getVideoInfo(video, False, *info)
     procIn = popen(commandIn)
   setupInfo(root, commandVideo, slomos, sizes, start, width, height, *more)
-  procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, shell=True)
+  procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=0, shell=True)
+  procMerge = 0
 
   try:
-    createEnqueueThread(procOut.stdout, 0)
-    createEnqueueThread(procIn.stderr, 1)
-    createEnqueueThread(procOut.stderr, 1)
+    createEnqueueThread(procOut.stdout)
+    createEnqueueThread(procIn.stderr)
+    createEnqueueThread(procOut.stderr)
     i = 0
     while (stop < 0 or i <= stop) and not context.stopFlag.is_set():
-      print(i)
       raw_image = procIn.stdout.read(width * height * pixBytes) # read width*height*6 bytes (= 1 frame)
       if len(raw_image) == 0:
         break
@@ -278,7 +276,8 @@ def SR_vid(video, by, *steps):
   finally:
     procIn.terminate()
     procOut.terminate()
-    procMerge.terminate()
+    if procMerge:
+      procMerge.terminate()
     clean()
     try:
       if not by:
