@@ -40,10 +40,11 @@ def removeFile(path):
     os.remove(path)
   except FileNotFoundError: pass
 
-def getVideoInfo(videoPath, procIn, width, height, frameRate):
+def getVideoInfo(videoPath, by, width, height, frameRate):
   commandIn = [
     ffmpegPath,
     '-hide_banner',
+    '-t', '1',
     '-i', videoPath,
     '-map', '0:v:0',
     '-c', 'copy',
@@ -51,13 +52,14 @@ def getVideoInfo(videoPath, procIn, width, height, frameRate):
     '-'
   ]
   matchInfo = not (width and height and frameRate)
-  matchFrame = not bool(procIn)
+  matchFrame = not by
   matchOutput = True
   error = RuntimeError('Video info not found')
   videoOnly = True
+  if matchFrame:
+    commandIn = commandIn[:2] + commandIn[4:]
   try:
-    if matchFrame:
-      procIn = popenText(commandIn)
+    procIn = popenText(commandIn)
     totalFrames = 0
 
     while matchInfo or matchOutput or matchFrame:
@@ -91,12 +93,10 @@ def getVideoInfo(videoPath, procIn, width, height, frameRate):
         except:
           log.error(line)
 
-    if matchFrame:
-      procIn.stderr.flush()
-      procIn.stderr.close()
+    procIn.stderr.flush()
+    procIn.stderr.close()
   finally:
-    if matchFrame:
-      procIn.terminate()
+    procIn.terminate()
   if matchInfo or (matchFrame and not totalFrames):
     raise error
   log.info('Info of video {}: {}x{}@{}fps, {} frames'.format(videoPath, width, height, frameRate, totalFrames))
@@ -247,11 +247,12 @@ def cleanAV(command):
 
 def mergeAV(command):
   if command:
+    err = True
     procMerge = popenText(command)
     createEnqueueThread(procMerge.stdout)
     createEnqueueThread(procMerge.stderr)
-    procMerge.communicate()
-    return procMerge
+    _, err = procMerge.communicate()
+    return procMerge, err
 
 def SR_vid(video, by, *steps):
   def p(raw_image=None):
@@ -264,12 +265,8 @@ def SR_vid(video, by, *steps):
       root.trace()
 
   outputPath, process, start, stop, root, commandIn, commandVideo, commandOut, slomos, sizes, *info = prepare(video, by, steps)
-  if by:
-    procIn = popen(commandIn)
-    width, height, *more = getVideoInfo(video, procIn, *info)
-  else:
-    width, height, *more = getVideoInfo(video, False, *info)
-    procIn = popen(commandIn)
+  width, height, *more = getVideoInfo(video, by, *info)
+  procIn = popen(commandIn)
   commandVideo, commandOut = setupInfo(root, commandVideo, commandOut, slomos, sizes, start, width, height, *more)
   procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=0, shell=True)
   procMerge = 0
@@ -294,7 +291,7 @@ def SR_vid(video, by, *steps):
     procOut.communicate(timeout=300)
     procIn.terminate()
     readSubprocess(qOut)
-    procMerge = mergeAV(commandOut)
+    procMerge, err = mergeAV(commandOut)
   finally:
     procIn.terminate()
     procOut.terminate()
@@ -304,8 +301,11 @@ def SR_vid(video, by, *steps):
     try:
       if not by:
         removeFile(video)
-      #cleanAV(commandOut)
     except:
       log.warning('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(video))
+    if err:
+      log.warning('Unable to merge video and other tracks.')
+    else:
+      cleanAV(commandOut)
   readSubprocess(qOut)
   return outputPath, i
