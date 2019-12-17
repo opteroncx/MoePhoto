@@ -25,7 +25,7 @@ reMatchInfo = re.compile(r'Stream #.*: Video:')
 reSearchInfo = re.compile(r',[\s]*([\d]+)x([\d]+)[\s]*.+,[\s]*([.\d]+)[\s]*fps')
 reMatchFrame = re.compile(r'frame=')
 reSearchFrame = re.compile(r'frame=[\s]*([\d]+) ')
-reMatchAudio = re.compile(r'Stream #0:1:')
+reMatchAudio = re.compile(r'Stream #0:1')
 reMatchOutput = re.compile(r'Output #0,')
 creationflag = sp.CREATE_NEW_PROCESS_GROUP if isWindows else 0
 sigint = signal.CTRL_BREAK_EVENT if isWindows else signal.SIGINT
@@ -39,6 +39,8 @@ def removeFile(path):
   try:
     os.remove(path)
   except FileNotFoundError: pass
+  except PermissionError as e:
+    log.error(str(e))
 
 def getVideoInfo(videoPath, by, width, height, frameRate):
   commandIn = [
@@ -253,6 +255,8 @@ def mergeAV(command):
     err, msg = procMerge.communicate()
     sys.stdout.write(msg)
     return procMerge, err
+  else:
+    return 0, 0
 
 def SR_vid(video, by, *steps):
   def p(raw_image=None):
@@ -268,8 +272,9 @@ def SR_vid(video, by, *steps):
   width, height, *more = getVideoInfo(video, by, *info)
   procIn = popen(commandIn)
   commandVideo, commandOut = setupInfo(root, commandVideo, commandOut, slomos, sizes, start, width, height, *more)
-  procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=0, shell=True)
+  procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=0)
   procMerge = 0
+  err = 0
 
   try:
     createEnqueueThread(procOut.stdout)
@@ -293,6 +298,7 @@ def SR_vid(video, by, *steps):
     readSubprocess(qOut)
     procMerge, err = mergeAV(commandOut)
   finally:
+    log.info('Video processing end at frame #{}'.format(i))
     procIn.terminate()
     procOut.terminate()
     if procMerge:
