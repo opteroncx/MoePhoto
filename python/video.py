@@ -249,9 +249,9 @@ def mergeAV(command):
   if command:
     err = True
     procMerge = popenText(command)
-    createEnqueueThread(procMerge.stdout)
     createEnqueueThread(procMerge.stderr)
-    _, err = procMerge.communicate()
+    err, msg = procMerge.communicate()
+    sys.stdout.write(msg)
     return procMerge, err
 
 def SR_vid(video, by, *steps):
@@ -304,7 +304,7 @@ def SR_vid(video, by, *steps):
     except:
       log.warning('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(video))
     if err:
-      log.warning('Unable to merge video and other tracks.')
+      log.warning('Unable to merge video and other tracks with exit code {}.'.format(err))
     else:
       cleanAV(commandOut)
   readSubprocess(qOut)
