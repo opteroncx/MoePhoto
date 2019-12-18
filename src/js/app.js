@@ -50,15 +50,15 @@ const setup = opt => {
 
   const messager = newMessager('/msg', opt.session)
   const onMessage = event => {
+    clearInterval(intervalId)
     if (!event.data) {
       messager.abort()
       running && openMessager() && (running = 0)
       runButton.attr('disabled', false)
     } else {
-      clearInterval(intervalId)
       let result = event.data.result
-      if (result === 'Fail') onError(0, 400, event.data.exception)
-      else if (result != null) onSuccess(event.data)
+      if (result === 'Fail' && !onError(0, 400, event.data.exception)) return
+      if (result != null) onSuccess(event.data)
       else running || ((running = 1) && runButton.attr('disabled', true))
     }
   }
@@ -98,6 +98,7 @@ const setup = opt => {
 
   const onError = (xhr, status, error) => {
     console.error(xhr, status, error)
+    if (opt.ignoreError) return 1
     running = 0
     clearInterval(intervalId)
     loading.hide()
@@ -116,7 +117,7 @@ const setup = opt => {
     runButton.bind('click', _ => {
       var fdata = new FormData()
       opt.beforeSend && opt.beforeSend(fdata)
-      if (!(opt.noCheckFile || fdata.get('file').size)) {
+      if (!(opt.noCheckFile || fdata.noCheckFile || (fdata.get('file') && fdata.get('file').size))) {
         return opt.setMessage ? opt.setMessage(texts.noFileMsg) : alert(texts.noFileMsg)
       }
       $.post({

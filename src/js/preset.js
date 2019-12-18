@@ -103,20 +103,19 @@ const genPresetArgs = (path, presetSelectName = 'preset', presetListName = 'pres
       t != null || (presetNotesEditor.value = getByName(presetNotesName).value)
     }
   }
+  var applyPreset = name =>
+    fetch(`${url}&name=${name}`)
+    .then(response => response.json())
+    .then(data => cache[name] = data)
+    .then(data => data.steps)
+    .then(context.loadOptions)
+    .catch(console.error.bind(console))
   var applyPresetButton = {
     type: 'button',
     value: '应用',
     ignore: true,
     text: '',
-    click: () => {
-      var name = getByName(presetSelectName).value
-      fetch(`${url}&name=${name}`)
-        .then(response => response.json())
-        .then(data => cache[name] = data)
-        .then(data => data.steps)
-        .then(context.loadOptions)
-        .catch(console.error.bind(console))
-    },
+    click: () => applyPreset(getByName(presetSelectName).value),
     disabled: true
   }
   var savePresetButton = {
@@ -149,6 +148,6 @@ const genPresetArgs = (path, presetSelectName = 'preset', presetListName = 'pres
     },
     disabled: true
   }
-  return [loadPresetArg, savePresetArg, applyPresetButton, savePresetButton]
+  return [loadPresetArg, savePresetArg, applyPresetButton, savePresetButton, applyPreset]
 }
 export { genPresetArgs, presetNotesEditor }

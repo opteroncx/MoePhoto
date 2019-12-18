@@ -39,6 +39,7 @@ const addPanel = (panelName, panel) => {
   eventTypes.forEach(type => listeners[type] = [])
   for (let argName in panel.args) {
     let arg = panel.args[argName], typify = identity
+    if (argName.startsWith('_') || !arg.type) continue
     arg.name || (arg.name = argName)
     let selector = `${tags[arg.type] ? tags[arg.type] : 'input'}[name=${arg.name}]`
     arg.bindFlag = 0
@@ -91,6 +92,7 @@ const endPoint = _ => ''
 const getAttributes = next => (item, opt) => (item.attributes ? ' ' + item.attributes.join(' ') : '') + next(item, opt)
 const getValue = (item, opt) => opt[item.name] != null ? opt[item.name] : item.value
 const getClassAttr = classes => classes && classes.length ? ` class="${classes.join(' ')}"` : ''
+const getClassList = classes => classes && classes.length ? ' ' + classes.join(' ') : ''
 const getValueLabel = next => (item, opt) => item.text ? `<span class="opValue">${item.text}${next(item, opt)}</span>` : ''
 const getOptionLabel = next => (item, opt) => next(item, opt) + (item.text ? `<span class="opValue">${item.text}</span>` : '')
 const getDisabled = next => (item, opt) => (item.disabled ? ' disabled' : '') + next(item, opt)
@@ -129,10 +131,11 @@ const getNotes = item =>
     ['<ul class="visible-md visible-lg description">', ...item.notes.map(getNoteHTML), '</ul>'].join('') : ''
 const getArgHTML = (item, opt, hr = true) =>
   [(hr ? '<hr>' : ''),
-  `<label class="${hr ? 'argName col-sm-2' : 'opValue'}" for="${item.name}">${item.text}</label>`,
+  `<label class="${hr ? 'argName col-sm-2' + getClassList(item.labelClasses) : 'opValue'}" for="${item.name}">${item.text}</label>`,
   elementTypeMapping[item.type](item, opt),
   hr ? getNotes(item, opt) : ''].join('')
-const getCheckedItem = (item, opt) => item.values.filter(isChecked(opt))
+const deduplicate = arr => [...(new Set(arr))]
+const getCheckedItem = (item, opt) => deduplicate(flatArray(item.values.filter(isChecked(opt)).map(v => v.binds || [])))
 const flatArray = arrs => arrs.reduce((res, arr) => res.concat(arr), [])
 const getInputCheck = (item, opt) =>
   item.values.map(v => getInputCheckOption(v, opt))
@@ -152,7 +155,7 @@ const elementTypeMapping = {
 const getArgsHTML = (args, opt) => {
   var res = []
   for (let key in args)
-    if (!args[key].slave)
+    if (!key.startsWith('_') && !args[key].slave)
       res.push(getArgHTML(args[key], opt))
   return res.join('')
 }

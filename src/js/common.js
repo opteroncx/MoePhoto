@@ -77,6 +77,7 @@ const texts = {
   hour: '小时',
   minute: '分钟',
   second: '秒',
+  noFile: '请选择',
   noFileMsg: '缺少输入文件',
   errorMsg: '出错啦',
   empty: '暂时没有',
@@ -93,8 +94,8 @@ const texts = {
   batchSucc: result => [
     result[0] === 'Success' ? texts.finish : '中途被打断了',
     `，处理了${result[1]}张图片`,
-    result[2] ? `，然而有${result[2]}张失败了` : '',
-    `，请<a href="/gallery?dir=${result[3]}">查看这里</a>`
+    result[3] ? `，然而有${result[3]}张失败了，分别是\n${result[4].join('\n')}\n` : '',
+    `，成功的图片请<a href="/gallery?dir=${result[5]}">查看这里</a>`
   ].join(''),
   videoSucc: result => `完成啦，处理到第${result[1]}帧`,
   batchRunning: genOnProgress('张'),

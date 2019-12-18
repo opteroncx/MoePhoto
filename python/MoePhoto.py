@@ -3,9 +3,10 @@ import multiprocessing as mp
 from mmap import mmap
 from defaultConfig import defaultConfig
 sharedMemSize = defaultConfig['sharedMemSize'][0]
-mm = mmap(-1, sharedMemSize, tagname='SharedMemory') if sys.platform[:3] == 'win' else mmap(-1, sharedMemSize)
+isWindows = sys.platform[:3] == 'win'
+mm = mmap(-1, sharedMemSize, tagname='SharedMemory') if isWindows else mmap(-1, sharedMemSize)
 
-if sys.platform[:3] == 'win':
+if isWindows:
   from subprocess import Popen
   Popen(['chcp', '65001'], shell=True).wait()
 
@@ -41,8 +42,8 @@ def main():
 
   return mm, {
     'lockInterface': lock,
-    'image_enhance': enhance(imageEnhance),
-    'batch': enhance(imageEnhance),
+    'image_enhance': enhance(imageEnhance, verbose=False),
+    'batch': enhance(imageEnhance, verbose=False),
     'video_enhance': enhance(SR_vid),
     'systemInfo': enhance(config.system)
   }

@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-	<title>MoePhoto 批量放大</title>
+	<title>MoePhoto {{version}} 批量放大</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<meta name="keywords" content="" />
@@ -88,7 +88,8 @@
 			success: (result, progress) => progress.final(app.texts.batchSucc(result)),
 			path: '/batch_enhance',
 			outputImg: $('#outputImg'),
-			features: ['index', 'inputBatch', 'output', 'SR', 'DN', 'dehaze', 'demoire', 'ednoise', 'resize']
+			features: ['index', 'inputBatch', 'output', 'SR', 'DN', 'dehaze', 'demoire', 'ednoise', 'resize'],
+			ignoreError: true
 		}))
 	</script>
 </body>
