@@ -80,8 +80,8 @@ with open('package.json','r',encoding='utf-8') as manifest:
 
 manifest = {
   'version': version,
-  'releases': 'http://www.may-workshop.com/moephoto/version.html',
-  'ufile': 'http://www.may-workshop.com/moephoto/files/',
+  'releases': 'https://may.moephoto.tech/moephoto/version.html',
+  'ufile': 'https://may.moephoto.tech/moephoto/files/',
   'ffmpeg-win': 'https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-latest-win64-static.zip',
   'ffmpeg-linux': 'https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz'
 }
