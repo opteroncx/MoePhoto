@@ -12,19 +12,17 @@ moe_utils.compile_pyc()
 # os.rename('./build/exe.win-amd64-3.7/lib/scipy/spatial/cKDTree.cp37-win_amd64.pyd','./build/exe.win-amd64-3.7/lib/scipy/spatial/ckdtree.cp37-win_amd64.pyd')
 
 # delete deprecated files
-try:
-    shutil.rmtree('../build/model')
-    shutil.rmtree('../build/pyc')
-    shutil.rmtree('../build/site-packages')
-    shutil.rmtree('../build/ffmpeg')
-    shutil.rmtree('../build/static')
-    shutil.rmtree('../build/templates')
-    shutil.rmtree('../build/download')
-    shutil.rmtree('../build/.user')
-    os.remove('../build/manifest.json')
-    os.remove('../build/update_log.txt')
-except:
-    print('dir not exist')
+
+moe_utils.delete_files('../build/model')
+moe_utils.delete_files('../build/pyc')
+moe_utils.delete_files('../build/site-packages')
+moe_utils.delete_files('../build/ffmpeg')
+moe_utils.delete_files('../build/static')
+moe_utils.delete_files('../build/templates')
+moe_utils.delete_files('../build/manifest.json')
+moe_utils.delete_files('../build/update_log.txt')
+moe_utils.delete_files('../build/download')
+moe_utils.delete_files('../build/.user')
 # copy files
 shutil.copytree(src='./model',dst='../build/model')
 shutil.copytree(src='./pyc',dst='../build/pyc')
