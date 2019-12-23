@@ -32,7 +32,7 @@ def extractAlpha(t):
 def mergeAlpha(t):
   def f(im):
     if len(t):
-      image = torch.empty((4, *im.shape[1:]), dtype=im.dtype)
+      image = torch.empty((4, *im.shape[1:]), dtype=im.dtype, device=im.device)
       image[:3] = im
       image[3] = t['im']
       return image

@@ -229,8 +229,9 @@ const context = (steps => {
       toggleSelected(ele)
     }
   }
-  const removeStep = pos => {
-    steps.splice(pos, 1)
+  const removeStep = p => {
+    steps.splice(p, 1)
+    p > pos || (pos -= 1)
     refreshSteps()
   }
   const compareOp = (a, b) => a.position - b.position
