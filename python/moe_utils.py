@@ -32,5 +32,15 @@ def compile_pyc(path = './python/'):
         os.rename(path+'__pycache__/'+pyc,path+'__pycache__/'+true_name)
         copyfile(path+'__pycache__/'+true_name,'./pyc/'+true_name)
 
+def delete_files(path):
+    if not os.path.exists(path):
+        print('file not exist')
+    else:
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        elif os.path.isfile(path):
+            os.remove(path)
+
+
 if __name__ == '__main__':
     compile_pyc()
