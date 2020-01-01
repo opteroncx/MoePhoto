@@ -3,6 +3,7 @@ import { appendText, texts, getResource } from './common.js'
 import { addPanel, initListeners, submit, context } from './steps.js'
 import { setup } from './progress.js'
 import { genPresetArgs, presetNotesEditor } from './preset.js'
+import { genDiagnoseArgs } from './diagnose.js'
 
 const None = () => void 0
 const setAll = (arr, key) => values => arr.map((o, i) => (o[key] = values[i]))
@@ -35,6 +36,7 @@ const [
   saveImagePresetButton,
   applyImagePreset
 ] = genPresetArgs('image')
+const [diagnose] = genDiagnoseArgs()
 const [
   loadVideoPreset,
   saveVideoPreset,
@@ -127,6 +129,7 @@ const panels = {
     submit: None,
     view: () => '',
     args: {
+      diagnose,
       preset: saveImagePreset,
       notes: presetNotesEditor,
       savePreset: saveImagePresetButton
@@ -400,6 +403,7 @@ const panels = {
           '注意我们只处理视频画面部分，设置了这个之后声音字幕什么的通常就对不上了'
         ]
       },
+      diagnose,
       preset: saveVideoPreset,
       notes: presetNotesEditor,
       savePreset: saveVideoPresetButton
