@@ -25,7 +25,9 @@ startupTime = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime())
 def current():pass
 current.session = None
 current.path = None
+current.key = None
 current.eta = 0
+current.setETA = True
 current.fileSize = 0
 E403 = ('Not authorized.', 403)
 E404 = ('Not Found', 404)
@@ -44,7 +46,7 @@ with open('static/manifest.json') as manifest:
   assetMapping = json.load(manifest)
 vendorsJs = assetMapping['vendors.js'] if 'vendors.js' in assetMapping else None
 commonJs = assetMapping['common.js'] if 'common.js' in assetMapping else None
-getKey = lambda session, request: request.values['path'] + str(session) if 'path' in request.values else ''
+getKey = lambda session, request: request.values['path'] + str(session) if 'path' in request.values else current.key
 toResponse = lambda obj, code=200: (json.dumps(obj, ensure_ascii=False, separators=(',', ':')), code)
 
 def acquireSession(request):
@@ -54,8 +56,9 @@ def acquireSession(request):
     noter.recv()
   current.session = request.values['session']
   current.path = request.values['path'] if 'path' in request.values else request.path
-  current.key = getKey(current.session, request)
-  current.eta = request.values['eta'] if 'eta' in request.values else 10
+  current.key = current.path + str(current.session)
+  current.eta = 1
+  updateETA(request.values)
   return False if current.session else E403
 
 def controlPoint(path, fMatch, fUnmatch, fNoCurrent, check=lambda *_: True):
@@ -84,18 +87,26 @@ def checkMsgMatch(request):
   path = request.values['path']
   return path == current.path
 
+def updateETA(res):
+  if 'eta' in res:
+    current.eta = res['eta']
+
 def onConnect(key):
-  while not current.session is None and not (noter.poll() or (key and cache.peek(key))):
+  while not (current.session is None or noter.poll() or (key and cache.peek(key))):
     idle()
   res = None
-  while not current.session is None and noter.poll():
-    res = noter.recv()
   if key and cache.peek(key):
     res = cache.pop(key)
     return res
+  while not current.session is None and noter.poll():
+    res = noter.recv()
   if res:
-    if 'eta' in res:
-      current.eta = res['eta']
+    if current.setETA:
+      updateETA(res)
+    else:
+      res.pos('total', 0)
+      res.pos('gone', 0)
+      res.pos('eta', 0)
     if 'fileSize' in res:
       current.fileSize = res['fileSize']
       del res['fileSize']
@@ -294,6 +305,7 @@ def batchEnhance():
   total = len(fileList)
   print('batch total: {}'.format(total))
   opt.append(dict(trace=False, op='output'))
+  current.setETA = False
   for image in fileList:
     if current.stopFlag.is_set():
       result = 'Interrupted'
@@ -311,6 +323,7 @@ def batchEnhance():
       'gone': count,
       'total': total
     }
+    updateETA(note)
     if output[1] == 200:
       note['preview'] = name
       done.append(name)
@@ -318,6 +331,7 @@ def batchEnhance():
       fail += 1
       fails.append(name)
     cache.put(current.key, toResponse(note))
+  current.setETA = True
   return endSession(toResponse({'result': (result, count, done, fail, fails, output_path)}))
 
 def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm):

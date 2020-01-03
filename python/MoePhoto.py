@@ -38,7 +38,7 @@ def main():
       outputOpt = {}
     trace = outputOpt['trace'] if 'trace' in outputOpt else True
     process, nodes = genProcess(stepFile + list(args))
-    return begin(imNode, nodes, True if trace else -1).bindFunc(process)(size, name=name)
+    return begin(imNode, nodes, trace).bindFunc(process)(size, name=name)
 
   return mm, {
     'lockInterface': lock,
