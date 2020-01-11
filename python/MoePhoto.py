@@ -36,9 +36,10 @@ def main():
     name = outputOpt['file'] if 'file' in outputOpt else None
     if not ('op' in outputOpt and outputOpt['op'] == 'output'):
       outputOpt = {}
-    trace = outputOpt['trace'] if 'trace' in outputOpt else True
+    bench = outputOpt.get('diagnose', {}).get('bench', False)
+    trace = outputOpt.get('trace', False) or bench
     process, nodes = genProcess(stepFile + list(args))
-    return begin(imNode, nodes, trace).bindFunc(process)(size, name=name)
+    return begin(imNode, nodes, trace, bench).bindFunc(process)(size, name=name)
 
   return mm, {
     'lockInterface': lock,

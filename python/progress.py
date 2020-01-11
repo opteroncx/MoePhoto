@@ -25,22 +25,17 @@ def updateNode(node):
   else:
     node.ett = node.eta = -1
 slideAverage = lambda coef: lambda op, sample: coef * op.weight + (1 - coef) * sample
-setNodeCallback = lambda node, callback, any: node.setCallback(callback) if any or hasattr(node, 'name') else None
-setCallback = lambda node, callback, all=False: recurse(lambda node: setNodeCallback(node, callback, all))(node)
+setNodeCallback = lambda node, callback, any, bench: node.setCallback(callback, bench) if any or hasattr(node, 'name') else None
+setCallback = lambda node, callback, all=False, bench=False: recurse(lambda node: setNodeCallback(node, callback, all, bench))(node)
 getOpKey = lambda op: hash(frozenset(op.items()))
 NullFunc = lambda *args: None
 loadOps = lambda path: spawn(loadInternal, path).start()
+serializeOp = lambda op: dict(op=op.op, weight=op.weight, samples=op.samples)
+serializeOps = lambda: [serializeOp(ops[key]) for key in ops]
 
 def saveInternal(path):
   with open(path, 'w') as fp:
     json.dump(serializeOps(), fp, ensure_ascii=False, indent=2)
-
-def serializeOps():
-  res = []
-  for key in ops:
-    op = ops[key]
-    res.append(dict(op=op.op, weight=op.weight, samples=op.samples))
-  return res
 
 def saveOps(path=None, force=False):
   global needSave
@@ -106,6 +101,7 @@ class Node():
     self.ett = 0
     self.eta = 0
     self.parent = None
+    self.bench = False
     self.learn = learn
     self.callback = callback
     self.nodes = []
@@ -124,8 +120,11 @@ class Node():
     child.parent = self
     return self
 
-  def setCallback(self, callback=NullFunc):
+  def setCallback(self, callback=NullFunc, bench=False):
     self.callback = callback
+    self.bench = bench
+    if bench:
+      self.learn = float('inf')
 
   def multipleLoad(self, scale=1):
     if len(self.nodes):
@@ -148,11 +147,14 @@ class Node():
     if self.learn and progress > 0:
       mark = time.perf_counter()
       delta = mark - self.mark
-      ops[self.op].update(delta / self.load / progress)
-      if ops[self.op].samples >= self.learn:
+      op = ops[self.op]
+      op.update(delta / self.load / progress)
+      if op.samples >= self.learn:
         self.learn = False
         needSave = True
       self.mark = mark
+      if self.bench:
+        kwargs.update(serializeOp(op))
     if progress > 0:
       updateNode(self)
       updateAncestor(self, True)

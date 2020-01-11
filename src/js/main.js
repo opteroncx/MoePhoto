@@ -3,7 +3,11 @@ import { appendText, texts, getResource } from './common.js'
 import { addPanel, initListeners, submit, context } from './steps.js'
 import { setup } from './progress.js'
 import { genPresetArgs, presetNotesEditor } from './preset.js'
-import { genDiagnoseArgs } from './diagnose.js'
+import {
+  genDiagnoseArgs,
+  onDiagnoseMessage,
+  initDiagnoser
+} from './diagnose.js'
 
 const None = () => void 0
 const setAll = (arr, key) => values => arr.map((o, i) => (o[key] = values[i]))
@@ -25,10 +29,20 @@ const scaleModelMapping = {
   lite: [0, 1, 0, 0],
   gan: [1, 1, 0, 1]
 }
-var getResizeView = (by, scale, size) => (by === 'scale' ? scale + '倍' : appendText('pixel')(size))
-const setFile = opt => ({ file: opt.file && opt.file[0] ? opt.file[0].name : texts.noFile })
-const submitFile = (opt, data) => opt.file && opt.file[0] && (data.set('file', opt.file[0]) || (data.noCheckFile = 0))
-const submitUrl = (opt, data) => (data.set('url', opt.url) || (data.noCheckFile = 1)) && void 0
+var getResizeView = (by, scale, size) =>
+  by === 'scale' ? scale + '倍' : appendText('pixel')(size)
+const getFileName = opt => ({
+  file: opt.file && opt.file[0] ? opt.file[0].name : texts.noFile
+})
+const submitFile = (opt, data) =>
+  opt.file &&
+  opt.file[0] &&
+  (data.set('file', opt.file[0]) || (data.noCheckFile = 0))
+const submitUrl = (opt, data) =>
+  (data.set(opt.by, opt[opt.by]) || (data.noCheckFile = 1)) && void 0
+const videoBy = (by, opt) => {
+  return { [by]: opt[by] ? opt[by] : texts.noFile }
+}
 const [
   loadImagePreset,
   saveImagePreset,
@@ -50,7 +64,7 @@ const panels = {
     description: '选择一张你需要放大的图片，开始体验吧！运行完毕请点击保存',
     position: 0,
     submit: submitFile,
-    view: setFile,
+    view: getFileName,
     args: {
       file: {
         type: 'file',
@@ -67,16 +81,23 @@ const panels = {
     text: '输入',
     description: '选择一段需要放大的视频！运行完毕请点击保存',
     position: 0,
-    submit: (opt, data) => (opt.by === 'url' ? submitUrl(opt, data) : submitFile(opt, data)),
-    view: opt => (opt.by === 'url' ? { url: opt.url ? opt.url : texts.noFile } : setFile(opt)),
+    submit: (opt, data) =>
+      opt.by === 'file' ? submitFile(opt, data) : submitUrl(opt, data),
+    view: opt => (opt.by === 'file' ? getFileName(opt) : videoBy(opt.by, opt)),
     args: {
       by: {
         type: 'radio',
         text: '来源',
         labelClasses: ['full-width'],
         values: [
-          { value: 'file', binds: ['file'], classes: ['largeMargin'], checked: 1 },
-          { value: 'url', binds: ['url'], classes: ['largeMargin'] }
+          {
+            value: 'file',
+            binds: ['file'],
+            classes: ['largeMargin'],
+            checked: 1
+          },
+          { value: 'url', binds: ['url'], classes: ['largeMargin'] },
+          { value: 'cmd', binds: ['cmd'], classes: ['largeMargin'] }
         ]
       },
       file: {
@@ -85,11 +106,18 @@ const panels = {
         text: '视频文件',
         classes: ['inputfile-6', 'imgInp'],
         attributes: ['required', 'accept="video/*,application/octet-stream"'],
-        notes: ['视频会复制一份上传，存放在程序的upload目录下']
+        notes: ['输入若为视频文件则会复制一份上传，存放在程序的upload目录下']
       },
       url: {
         type: 'text',
         text: 'URL',
+        value: '',
+        classes: ['input-text', 'full-width'],
+        attributes: ['required', 'spellcheck="false"']
+      },
+      cmd: {
+        type: 'text',
+        text: 'FFMpeg生成源',
         value: '',
         classes: ['input-text', 'full-width'],
         attributes: ['required', 'spellcheck="false"']
@@ -105,10 +133,15 @@ const panels = {
     submit: (opt, data) =>
       opt.file &&
       opt.file.length &&
-      [...opt.file].forEach(f => data.append && data.append('file', f, f.name)) &&
+      [...opt.file].forEach(
+        f => data.append && data.append('file', f, f.name)
+      ) &&
       void 0,
     view: opt => ({
-      file: opt.file && opt.file.length ? [opt.file[0].name, '等', opt.file.length, '个'].join('') : '请选择'
+      file:
+        opt.file && opt.file.length
+          ? [opt.file[0].name, '等', opt.file.length, '个'].join('')
+          : '请选择'
     }),
     args: {
       file: {
@@ -161,12 +194,17 @@ const panels = {
           {
             value: 'lite',
             text: '快速',
-            notes: ['快速模型仅能放大2、4、8倍，可以在后面添加“缩放”步骤配合使用']
+            notes: [
+              '快速模型仅能放大2、4、8倍，可以在后面添加“缩放”步骤配合使用'
+            ]
           },
           {
             value: 'gan',
             text: 'GAN',
-            notes: ['GAN模型仅适用于RGB图像', 'GAN模型仅能放大4倍，可以在后面添加“缩放”步骤配合使用']
+            notes: [
+              'GAN模型仅适用于RGB图像',
+              'GAN模型仅能放大4倍，可以在后面添加“缩放”步骤配合使用'
+            ]
           }
         ]
       },
@@ -185,12 +223,15 @@ const panels = {
   },
   resize: {
     text: '缩放',
-    description: '以插值方法缩放图像，对图像的宽高可以分别设定长度大小或者缩放比例',
+    description:
+      '以插值方法缩放图像，对图像的宽高可以分别设定长度大小或者缩放比例',
     draggable: 1,
     submit: opt => {
       let res = { method: opt.method }
       opt.byW === 'scale' ? (res.scaleW = opt.scaleW) : (res.width = opt.width)
-      opt.byH === 'scale' ? (res.scaleH = opt.scaleH) : (res.height = opt.height)
+      opt.byH === 'scale'
+        ? (res.scaleH = opt.scaleH)
+        : (res.height = opt.height)
       return res
     },
     load: opt => {
@@ -199,7 +240,9 @@ const panels = {
       return opt
     },
     view: opt => {
-      let res = { method: panels.resize.args.method.values.find(item => item.value === opt.method).text }
+      let res = {
+        method: opt.method
+      }
       res.byW = getResizeView(opt.byW, opt.scaleW, opt.width)
       res.byH = getResizeView(opt.byH, opt.scaleH, opt.height)
       return res
@@ -208,12 +251,18 @@ const panels = {
       method: {
         type: 'radio',
         text: '插值方法',
-        values: [{ value: 'nearest', text: '最近邻' }, { value: 'bilinear', text: '双线性', checked: 1 }]
+        values: [
+          { value: 'nearest', text: '最近邻' },
+          { value: 'bilinear', text: '双线性', checked: 1 }
+        ]
       },
       byW: {
         type: 'radio',
         text: '宽度',
-        values: [{ value: 'scale', binds: ['scaleW'] }, { value: 'pixel', binds: ['width'], checked: 1 }]
+        values: [
+          { value: 'scale', binds: ['scaleW'] },
+          { value: 'pixel', binds: ['width'], checked: 1 }
+        ]
       },
       scaleW: {
         type: 'number',
@@ -233,7 +282,10 @@ const panels = {
       byH: {
         type: 'radio',
         text: '高度',
-        values: [{ value: 'scale', binds: ['scaleH'] }, { value: 'pixel', binds: ['height'], checked: 1 }],
+        values: [
+          { value: 'scale', binds: ['scaleH'] },
+          { value: 'pixel', binds: ['height'], checked: 1 }
+        ],
         notes: ['按比例缩放图像长宽的小数部分四舍五入为整数']
       },
       scaleH: {
@@ -272,7 +324,8 @@ const panels = {
   ednoise: {
     op: 'DN',
     text: '强力降噪',
-    description: '这里的降噪非常强，涂抹效果显著，可以试试制作油画风格的照片或者galgame的背景图~',
+    description:
+      '这里的降噪非常强，涂抹效果显著，可以试试制作油画风格的照片或者galgame的背景图~',
     draggable: 1,
     args: {
       model: {
@@ -300,13 +353,17 @@ const panels = {
       model: {
         type: 'radio',
         text: '模型',
-        values: [{ value: 'sun', text: '小模型', checked: 1 }, { value: 'mddm', text: '大模型', disabled: 1 }]
+        values: [
+          { value: 'sun', text: '小模型', checked: 1 },
+          { value: 'mddm', text: '大模型', disabled: 1 }
+        ]
       }
     }
   },
   decode: {
     text: '输入解码',
-    description: '传入ffmpeg的解码参数设定，跟命令行使用是一样的，默认不做额外的解码处理',
+    description:
+      '传入ffmpeg的解码参数设定，跟命令行使用是一样的，默认不做额外的解码处理',
     position: 1,
     submit: copyTruly,
     view: copyTruly,
@@ -317,7 +374,10 @@ const panels = {
         value: '',
         classes: ['input-text'],
         attributes: ['spellcheck="false"'],
-        notes: ['请不要在这里设置颜色格式', '注意无论下一步的开始于设定为多少，解码都是从视频头开始的']
+        notes: [
+          '请不要在这里设置颜色格式',
+          '注意无论下一步的开始于设定为多少，解码都是从视频头开始的'
+        ]
       },
       width: {
         type: 'number',
@@ -367,13 +427,16 @@ const panels = {
         view: html => `第${html}帧`,
         classes: ['input-number'],
         attributes: ['min="0"'],
-        notes: ['输出不包括上述编号的帧，即输出帧数为结束减开始，若该值小于等于开始则忽略并处理到视频结尾']
+        notes: [
+          '输出不包括上述编号的帧，即输出帧数为结束减开始，若该值小于等于开始则忽略并处理到视频结尾'
+        ]
       }
     }
   },
   encode: {
     text: '输出编码',
-    description: '传入ffmpeg的编码参数设定，跟命令行使用是一样的，这里通常指定常见的编码器和颜色格式',
+    description:
+      '传入ffmpeg的编码参数设定，跟命令行使用是一样的，这里通常指定常见的编码器和颜色格式',
     position: -1,
     submit: copyTruly,
     view: copyTruly,
@@ -432,11 +495,18 @@ const panels = {
 const setupMain = opt => {
   opt.progress = $('#progress')
   opt.beforeSend = submit
+  opt.context = context
   for (let key of opt.features) if (key !== 'index') addPanel(key, panels[key])
-  setup(opt)
+  let progress = setup(opt)
+  opt.features.length > 2 &&
+    progress.on('message', onDiagnoseMessage) &&
+    initDiagnoser(panels, document.getElementById('progress'))
   initListeners()
   context.setFeatures(opt.features)
-  let applyPreset = opt.features.indexOf('inputVideo') > -1 ? applyVideoPreset : applyImagePreset
+  let applyPreset =
+    opt.features.indexOf('inputVideo') > -1
+      ? applyVideoPreset
+      : applyImagePreset
   let preset = new URLSearchParams(location.search).get('preset')
   preset && applyPreset(preset)
 }

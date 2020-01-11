@@ -1,7 +1,7 @@
 import $ from 'jquery'
 import { getResource, getSession, texts } from './common.js'
 import { setup } from './app.js'
-const bindProgress = $ele => {
+const bindProgress = ($ele, context) => {
   var intervalId = 0,
     remain = 0,
     nowStage = 0,
@@ -9,7 +9,7 @@ const bindProgress = $ele => {
     statusBox = $ele.find('.status'),
     msgBox = $ele.find('.message'),
     timeBox = $ele.find('.time'),
-    $steps = $('#steps .step'),
+    $steps = $('#steps'),
     progress
   const elapse = _ => {
     bar[0].value += 1
@@ -48,18 +48,19 @@ const bindProgress = $ele => {
     return progress
   }
   const setStage = data => {
-    let stage = data.stage || 0
+    let stage = (data && data.stage) || 0
     if (stage !== nowStage) {
-      $steps.removeClass('running')
-      stage && $steps[stage].classList.add('running')
+      let ss = $steps.find('.step')
+      ss.removeClass('running')
+      !context.changed && stage && ss[stage].classList.add('running')
       nowStage = stage
     }
     return progress
   }
   return (progress = { show, hide, setMessage, setStatus, setTime, setStage })
 }
-const bindMessager = ($ele, messager) => {
-  const progress = bindProgress($ele)
+const bindMessager = ($ele, messager, context) => {
+  const progress = bindProgress($ele, context)
   const onMessage = event => {
     if (!event.data) {
       progress.hide().setStatus(texts.idle)
@@ -79,9 +80,11 @@ const bindMessager = ($ele, messager) => {
   }
   progress.begin = msg => {
     progress.status = 1
+    context && (context.changed = false)
     return progress.show().setMessage(msg)
   }
   progress.beforeSend = messager.beforeSend
+  progress.on = messager.on
   return progress
 }
 const setupProgress = opt => {
@@ -120,7 +123,7 @@ const setupProgress = opt => {
   }
   const messager = setup(opt)
   messager.on('message', onMessage).on('open', onMessage)
-  const progress = bindMessager(opt.progress, messager)
+  const progress = bindMessager(opt.progress, messager, opt.context)
   opt.onErrorMsg = data =>
     progress.setStatus(texts.onBusy(data.gone, total, data))
   opt.setStatus = progress.setTime

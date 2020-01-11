@@ -275,16 +275,16 @@ makeHandler('image_enhance', getReqFile(imageEnhancePrep), responseEnhance)
 app.route('/preset', methods=['GET', 'POST'], endpoint='preset')(preset)
 
 def videoEnhancePrep(req):
-  url = req.values.get('url', None)
   if not os.path.exists(uploadDir):
     os.mkdir(uploadDir)
-  if url:
-    return (url, True, *readOpt(req))
-  else:
-    vidfile = req.files['file']
-    path ='{}/{}'.format(uploadDir, vidfile.filename)
-    vidfile.save(path)
-    return (path, False, *setOutputName(readOpt(req), vidfile))
+  for k in ('url', 'cmd'):
+    v = req.values.get(k, None)
+    if v:
+    return (v, k, *readOpt(req))
+  vidfile = req.files['file']
+  path ='{}/{}'.format(uploadDir, vidfile.filename)
+  vidfile.save(path)
+  return (path, False, *setOutputName(readOpt(req), vidfile))
 makeHandler('video_enhance', videoEnhancePrep, responseEnhance)
 
 @app.route('/batch_enhance', methods=['POST'])

@@ -21,14 +21,14 @@ def filterOpt(item):
   else:
     return item
 
-def begin(root, nodes=[], setAllCallback=True):
+def begin(root, nodes=[], setAllCallback=True, bench=False):
   context.root = root
   root.nodes = []
   for n in nodes:
     root.append(n)
   if setAllCallback:
     if not setAllCallback < 0:
-      setCallback(root, onProgress, True)
+      setCallback(root, onProgress, True, bench)
   else:
     root.setCallback(onProgress)
   initialETA(root)

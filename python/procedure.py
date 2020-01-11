@@ -53,9 +53,9 @@ def procSR(opt, out, *_):
   SRopt = opt['opt']
   if not scale > 1:
     raise TypeError('Invalid scale setting for SR.')
-  out['load'] = load * scale * scale
+  out['load'] = load * scale * scale * (SRopt.ensemble + 1)
   fs, ns = convertChannel(out) if out['channel'] and mode == 'gan' else ([], [])
-  ns.append(appendFuncs(runSR.sr(SRopt), Node(dict(op='SR', model=mode), load), fs))
+  ns.append(appendFuncs(runSR.sr(SRopt), Node(dict(op='SR', model=mode, scale=scale), load), fs))
   if 'name' in opt:
     ns[-1].name = opt['name']
   return fs, ns, out

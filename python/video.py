@@ -136,9 +136,10 @@ def prepare(video, by, steps):
   start = int(optRange['start']) if 'start' in optRange else 0
   outDir = config.outDir  # pylint: disable=E1101
   procSteps = stepVideo + list(steps[2:-1])
+  bench = optEncode.get('diagnose', {}).get('bench', False)
   process, nodes = genProcess(procSteps)
-  traceDetail = config.progressDetail  # pylint: disable=E1101
-  root = begin(Node({'op': 'video', 'encodec': encodec}, 1, 2, 0), nodes, traceDetail)
+  traceDetail = config.progressDetail or bench  # pylint: disable=E1101
+  root = begin(Node({'op': 'encode', 'encodec': encodec}, 1, 2, 0), nodes, traceDetail, bench)
   context.root = root
   slomos = [*filter((lambda opt: opt['op'] == 'slomo'), procSteps)]
   if start < 0:
