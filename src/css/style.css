@@ -2895,3 +2895,20 @@ input[type="file"] {
     float: left;
     min-width: 120px
 }
+#steps .running {
+	background: linear-gradient(-45deg, #aaee52, #ec3f81, #23d5cc, #23d54f);
+	background-size: 400% 400%;
+	animation: gradientBG 7s ease infinite;
+}
+
+@keyframes gradientBG {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
+}

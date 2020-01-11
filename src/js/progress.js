@@ -2,8 +2,15 @@ import $ from 'jquery'
 import { getResource, getSession, texts } from './common.js'
 import { setup } from './app.js'
 const bindProgress = $ele => {
-  var intervalId = 0, remain = 0, bar = $ele.find('.progress-bar'), statusBox = $ele.find('.status'),
-    msgBox = $ele.find('.message'), timeBox = $ele.find('.time'), progress
+  var intervalId = 0,
+    remain = 0,
+    nowStage = 0,
+    bar = $ele.find('.progress-bar'),
+    statusBox = $ele.find('.status'),
+    msgBox = $ele.find('.message'),
+    timeBox = $ele.find('.time'),
+    $steps = $('#steps .step'),
+    progress
   const elapse = _ => {
     bar[0].value += 1
     remain -= 1
@@ -27,8 +34,7 @@ const bindProgress = $ele => {
     return progress
   }
   const setMessage = data => {
-    if (typeof data === 'string')
-      msgBox.html(data)
+    if (typeof data === 'string') msgBox.html(data)
     return progress
   }
   const setStatus = str => statusBox.html(str) && progress
@@ -41,7 +47,16 @@ const bindProgress = $ele => {
     } else timeBox.text('')
     return progress
   }
-  return progress = { show, hide, setMessage, setStatus, setTime }
+  const setStage = data => {
+    let stage = data.stage || 0
+    if (stage !== nowStage) {
+      $steps.removeClass('running')
+      stage && $steps[stage].classList.add('running')
+      nowStage = stage
+    }
+    return progress
+  }
+  return (progress = { show, hide, setMessage, setStatus, setTime, setStage })
 }
 const bindMessager = ($ele, messager) => {
   const progress = bindProgress($ele)
@@ -54,8 +69,7 @@ const bindMessager = ($ele, messager) => {
       data && data.eta && progress.setTime(+data.eta)
     }
   }
-  messager.on('message', onMessage)
-    .on('open', onMessage)
+  messager.on('message', onMessage).on('open', onMessage)
   progress.final = msg => {
     progress.status = 0
     messager.abort()
@@ -71,17 +85,21 @@ const bindMessager = ($ele, messager) => {
   return progress
 }
 const setupProgress = opt => {
-  var stopButton = $('#StopButton').hide(), runButton = $('#RunButton'), total = 0
-  const setPreview = opt.outputImg ? (_ => {
-    let idle = true
-    opt.outputImg.on('load', _ => idle = true)
-    return path => {
-      if (idle) {
-        idle = false
-        opt.outputImg.attr('src', path)
-      }
-    }
-  })() : _ => _
+  var stopButton = $('#StopButton').hide(),
+    runButton = $('#RunButton'),
+    total = 0
+  const setPreview = opt.outputImg
+    ? (_ => {
+        let idle = true
+        opt.outputImg.on('load', _ => (idle = true))
+        return path => {
+          if (idle) {
+            idle = false
+            opt.outputImg.attr('src', path)
+          }
+        }
+      })()
+    : _ => _
   if (!opt.session) opt.session = getSession()
   if (!opt.onProgress) opt.onProgress = texts.onBusy
   const onMessage = e => {
@@ -92,14 +110,19 @@ const setupProgress = opt => {
       stopButton.attr('disabled', false).show()
     }
     data.preview ? setPreview(getResource(data.preview)) : 0
-    data.total ? total = data.total : 0
-    data.gone ? progress.setStatus(opt.onProgress(data.gone, total, data))
-      : data.eta ? progress.setStatus(texts.onBusy(null)) : 0
+    data.total ? (total = data.total) : 0
+    data.gone
+      ? progress.setStatus(opt.onProgress(data.gone, total, data))
+      : data.eta
+      ? progress.setStatus(texts.onBusy(null))
+      : 0
+    data.stage ? progress.setStage(data) : 0
   }
   const messager = setup(opt)
   messager.on('message', onMessage).on('open', onMessage)
   const progress = bindMessager(opt.progress, messager)
-  opt.onErrorMsg = data => progress.setStatus(texts.onBusy(data.gone, total, data))
+  opt.onErrorMsg = data =>
+    progress.setStatus(texts.onBusy(data.gone, total, data))
   opt.setStatus = progress.setTime
   opt.setMessage = progress.setMessage
   let beforeSend = opt.beforeSend
@@ -109,16 +132,19 @@ const setupProgress = opt => {
     progress.begin(texts.running)
     beforeSend && beforeSend(data)
   }
-  let success = opt.success, error = opt.error
+  let success = opt.success,
+    error = opt.error
   opt.success = result => {
     runButton.show()
     stopButton.hide()
+    progress.setStage()
     success && success(result, progress)
   }
   opt.error = (msg, xhr) => {
     progress.final(msg)
     runButton.show()
     stopButton.hide()
+    progress.setStage()
     error && error(xhr)
   }
   stopButton.click(_ => {

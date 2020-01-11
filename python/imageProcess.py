@@ -5,6 +5,8 @@ from functools import reduce
 import itertools
 import torch
 import torch.nn.functional as F
+import PIL
+PIL.PILLOW_VERSION = PIL.__version__
 from torchvision.transforms.functional import to_tensor
 import numpy as np
 from PIL import Image

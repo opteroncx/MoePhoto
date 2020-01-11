@@ -121,6 +121,8 @@ def genProcess(steps, root=True, outType=None):
   last = identity
   rf = lambda im: reduce(apply, funcs, im)
   if root:
+    for i, opt in enumerate(steps):
+      opt['name'] = i
     for opt in filter((lambda opt: opt['op'] == 'SR'), steps):
       toInt(opt, ['scale', 'ensemble'])
       opt['opt'] = runSR.getOpt(opt)
