@@ -118,7 +118,7 @@ const panels = {
       cmd: {
         type: 'text',
         text: 'FFMpeg生成源',
-        value: '',
+        value: '-f lavfi -i testsrc=duration=10:size=1280x720:rate=30',
         classes: ['input-text', 'full-width'],
         attributes: ['required', 'spellcheck="false"']
       },
