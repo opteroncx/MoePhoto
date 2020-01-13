@@ -240,7 +240,7 @@ def setupInfo(by, outputPath, root, commandIn, commandVideo, commandOut, slomos,
     commandIn = clipList(commandIn, i, i + 5)
     commandOut = None
   root.multipleLoad(width * height * 3)
-  eta = initialETA(root)
+  initialETA(root)
   root.reset().trace(0)
   return commandIn, commandVideo, commandOut
 
