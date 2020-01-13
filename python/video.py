@@ -22,7 +22,7 @@ pixBytes = 6
 bufsize = 10 ** 8
 isWindows = sys.platform[:3] == 'win'
 reMatchInfo = re.compile(r'Stream #.*: Video:')
-reSearchInfo = re.compile(r',[\s]*([\d]+)x([\d]+)[\s]*.+,[\s]*([.\d]+)[\s]*fps')
+reSearchInfo = re.compile(r',[\s]*([\d]+)x([\d]+)[\s]*.+,[\s]*([.\d]+)[\s]*(fps|tbr)')
 reMatchFrame = re.compile(r'frame=')
 reSearchFrame = re.compile(r'frame=[\s]*([\d]+) ')
 reMatchAudio = re.compile(r'Stream #0:1')
@@ -33,7 +33,8 @@ popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsiz
 popenText = lambda command: sp.Popen(command, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
 insert1 = lambda t, s: ''.join((t[0], s, *t[1:]))
 suffix = lambda p, s: insert1(os.path.splitext(p), s)
-commandVideoSkip = lambda command: command[:13] + command[23:]
+clipList = lambda l, start, end: l[:start] + l[end:]
+commandVideoSkip = lambda command: clipList(command, 13, 23)
 
 def removeFile(path):
   try:
@@ -47,6 +48,7 @@ def getVideoInfo(videoPath, by, width, height, frameRate):
     ffmpegPath,
     '-hide_banner',
     '-t', '1',
+    '-f', 'lavfi',
     '-i', videoPath,
     '-map', '0:v:0',
     '-c', 'copy',
@@ -54,12 +56,14 @@ def getVideoInfo(videoPath, by, width, height, frameRate):
     '-'
   ]
   matchInfo = not (width and height and frameRate)
-  matchFrame = not by
+  matchFrame = by == 'file'
   matchOutput = True
   error = RuntimeError('Video info not found')
   videoOnly = True
+  if by != 'cmd':
+    commandIn = clipList(commandIn + commandIn, 4, 6)
   if matchFrame:
-    commandIn = commandIn[:2] + commandIn[4:]
+    commandIn = clipList(commandIn + commandIn, 2, 4)
   try:
     procIn = popenText(commandIn)
     totalFrames = 0
@@ -139,7 +143,7 @@ def prepare(video, by, steps):
   bench = optEncode.get('diagnose', {}).get('bench', False)
   process, nodes = genProcess(procSteps)
   traceDetail = config.progressDetail or bench  # pylint: disable=E1101
-  root = begin(Node({'op': 'encode', 'encodec': encodec}, 1, 2, 0), nodes, traceDetail, bench)
+  root = begin(Node({'op': 'video'}, 1, 2, 0), nodes, traceDetail, bench)
   context.root = root
   slomos = [*filter((lambda opt: opt['op'] == 'slomo'), procSteps)]
   if start < 0:
@@ -148,12 +152,8 @@ def prepare(video, by, steps):
     start -= 1
     for opt in slomos:
       opt['opt'].firstTime = 0
-  stop = None
-  if 'stop' in optRange:
-    stop = int(optRange['stop'])
-    if stop <= start:
-      stop = -1
-  else:
+  stop = int(optRange.get('stop', -1))
+  if stop <= start:
     stop = -1
   root.total = -1 if stop < 0 else stop - start
   outputPath = optEncode.get('file', '') or outDir + '/' + config.getPath()
@@ -161,6 +161,7 @@ def prepare(video, by, steps):
   commandIn = [
     ffmpegPath,
     '-hide_banner',
+    '-f', 'lavfi',
     '-i', video,
     '-vn',
     '-c', 'copy',
@@ -169,6 +170,8 @@ def prepare(video, by, steps):
     '-map', '0:v',
     '-f', 'rawvideo',
     '-pix_fmt', pix_fmt]
+  if by != 'cmd':
+    commandIn = clipList(commandIn, 2, 4)
   if len(decodec):
     commandIn.extend(decodec.split(' '))
   commandIn.append('-')
@@ -188,10 +191,12 @@ def prepare(video, by, steps):
     '-c:1', 'copy',
     *metadata,
     '-c:v:0'
-  ] + encodec.split(' ') + [outputPath]
-  if by:
+  ] + encodec.split(' ') + ['']
+  commandOut = None
+  if by == 'file':
+    commandVideo[14] = video
+  else:
     commandVideo[-1] = suffix(outputPath, '-v')
-    commandVideo = commandVideoSkip(commandVideo)
     commandOut = [
       ffmpegPath,
       '-hide_banner', '-y',
@@ -204,22 +209,13 @@ def prepare(video, by, steps):
       *metadata,
       outputPath
     ]
-  else:
-    commandIn = commandIn[:4] + commandIn[9:]
-    commandVideo[14] = video
-    if start > 0:
-      commandVideo = commandVideoSkip(commandVideo)
-    commandOut = None
-  if start > 0:
-    commandOut = None
-    commandVideo[-1] = outputPath
   frameRate = optEncode.get('frameRate', 0)
   width = optDecode.get('width', 0)
   height = optDecode.get('height', 0)
   sizes = filter((lambda opt: opt['op'] == 'SR' or opt['op'] == 'resize'), procSteps)
   return outputPath, process, start, stop, root, commandIn, commandVideo, commandOut, slomos, sizes, width, height, frameRate
 
-def setupInfo(root, commandVideo, commandOut, slomos, sizes, start, width, height, frameRate, totalFrames, videoOnly):
+def setupInfo(by, outputPath, root, commandIn, commandVideo, commandOut, slomos, sizes, start, width, height, frameRate, totalFrames, videoOnly):
   if root.total < 0 and totalFrames > 0:
     root.total = totalFrames - start
   if frameRate:
@@ -235,13 +231,18 @@ def setupInfo(root, commandVideo, commandOut, slomos, sizes, start, width, heigh
       outHeight = round(outHeight * opt['scaleH']) if 'scaleH' in opt else opt['height']
   commandVideo[8] = f'{outWidth}x{outHeight}'
   commandVideo[10] = str(frameRate)
-  if videoOnly:
+  videoOnly |= start > 0
+  if videoOnly or by != 'file':
     commandVideo = commandVideoSkip(commandVideo)
+  if videoOnly or by == 'file':
+    commandVideo[-1] = outputPath
+    i = commandIn.index('-vn')
+    commandIn = clipList(commandIn, i, i + 5)
     commandOut = None
   root.multipleLoad(width * height * 3)
-  initialETA(root)
+  eta = initialETA(root)
   root.reset().trace(0)
-  return commandVideo, commandOut
+  return commandIn, commandVideo, commandOut
 
 def cleanAV(command):
   if command:
@@ -269,10 +270,11 @@ def SR_vid(video, by, *steps):
     if raw_image:
       root.trace()
 
-  outputPath, process, start, stop, root, commandIn, commandVideo, commandOut, slomos, sizes, *info = prepare(video, by, steps)
-  width, height, *more = getVideoInfo(video, by, *info)
+  outputPath, process, *args = prepare(video, by, steps)
+  start, stop, root = args[:3]
+  width, height, *more = getVideoInfo(video, by, *args[-3:])
+  commandIn, commandVideo, commandOut = setupInfo(by, outputPath, *args[2:8], start, width, height, *more)
   procIn = popen(commandIn)
-  commandVideo, commandOut = setupInfo(root, commandVideo, commandOut, slomos, sizes, start, width, height, *more)
   procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=0)
   procMerge = 0
   err = 0

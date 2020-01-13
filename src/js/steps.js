@@ -347,7 +347,7 @@ const context = (steps => {
     addibleFeatures,
     tops,
     bottoms
-  const getOpt = _ => steps[pos].opt
+  const getOpt = p => steps[p == null ? pos : getCorrectedPos(p)].opt
   const getCorrectedPos = p => (p > index ? p - 1 : p)
   const addStep = panelName => {
     steps.splice(index, 0, newStep(panels[panelName]))
@@ -404,6 +404,8 @@ const context = (steps => {
     let files = steps
       .filter(step => step.panel.position != null)
       .map(step => (step.opt ? step.opt.file : void 0))
+    options = [steps[0].opt].concat(options)
+    options[0].op = steps[0].panel.name
     steps.splice(0, steps.length)
     var j = 0,
       k = options.length - 1,

@@ -52,7 +52,7 @@ def loadInternal(path):
   for op in res:
     loadedOps[getOpKey(op['op'])] = (op['weight'], op['samples'])
 
-def newOp(define={}, updater=slideAverage(.5)):
+def newOp(define={}, updater=slideAverage(.9)):
   def op():pass
   key = getOpKey(define)
   op.op = define
@@ -102,7 +102,7 @@ class Node():
     self.eta = 0
     self.parent = None
     self.bench = False
-    self.learn = learn
+    self.learn = learn or 0
     self.callback = callback
     self.nodes = []
     key = getOpKey(op)
@@ -111,9 +111,6 @@ class Node():
       self.name = name
     if not key in ops:
       ops[key] = newOp(op)
-    else:
-      if not learn or ops[key].samples >= learn:
-        self.learn = False
 
   def append(self, child):
     self.nodes.append(child)
@@ -122,8 +119,8 @@ class Node():
 
   def setCallback(self, callback=NullFunc, bench=False):
     self.callback = callback
-    self.bench = bench
-    if bench:
+    self.bench = bench and self.learn
+    if self.bench:
       self.learn = float('inf')
 
   def multipleLoad(self, scale=1):
@@ -144,10 +141,10 @@ class Node():
   def trace(self, progress=1, **kwargs):
     global needSave
     self.gone += progress
-    if self.learn and progress > 0:
+    op = ops[self.op]
+    if self.learn > op.samples and progress > 0:
       mark = time.perf_counter()
       delta = mark - self.mark
-      op = ops[self.op]
       op.update(delta / self.load / progress)
       if op.samples >= self.learn:
         self.learn = False

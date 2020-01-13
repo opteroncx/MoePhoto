@@ -60,10 +60,13 @@ $(document).ready($ => {
     easingType: 'easeOutQuart'
   })
 })
+const urlParams = new URLSearchParams(location.search)
 const getResource = path => [path, '?', new Date().getTime()].join('')
 const processingMsg = '处理中'
 const genOnProgress = (unit, msg = processingMsg) => (gone, total) =>
-  `${msg}，共${total}${unit}，已处理${gone}${unit}`
+  total > 0
+    ? `${msg}，共${total}${unit}，已处理${gone}${unit}`
+    : `${msg}，已处理${gone}${unit}`
 const toHMS = s => {
   if (s == null || !isFinite(s)) return ''
   let h = (s / 3600) | 0,
@@ -140,5 +143,6 @@ export {
   setLanguage,
   registryLanguageListener,
   VERSION,
-  compareVersion
+  compareVersion,
+  urlParams
 }

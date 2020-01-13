@@ -12,6 +12,7 @@ from worker import context
 
 applyNonNull = lambda v, f: NonNullWrap(f)(v)
 NonNullWrap = lambda f: lambda x: f(x) if not x is None else None
+newNode = lambda opt, op, load=1, total=1: Node(op, load, total, name=opt.get('name', None))
 
 def appendFuncs(f, node, funcs, wrap=True):
   g = node.bindFunc(f)
@@ -36,9 +37,7 @@ def procInput(source, bitDepth, fs, out):
 
 def procDN(opt, out, *_):
   DNopt = opt['opt']
-  node = Node(dict(op='DN', model=opt['model']), out['load'])
-  if 'name' in opt:
-    node.name = opt['name']
+  node = newNode(opt, dict(op='DN', model=opt['model']), out['load'])
   return [NonNullWrap(node.bindFunc(ensemble(DNopt)))], [node], out
 
 def convertChannel(out):
@@ -51,19 +50,18 @@ def procSR(opt, out, *_):
   scale = opt['scale']
   mode = opt['model']
   SRopt = opt['opt']
+  es = SRopt.ensemble + 1
   if not scale > 1:
     raise TypeError('Invalid scale setting for SR.')
-  out['load'] = load * scale * scale * (SRopt.ensemble + 1)
+  out['load'] = load * scale * scale
   fs, ns = convertChannel(out) if out['channel'] and mode == 'gan' else ([], [])
-  ns.append(appendFuncs(runSR.sr(SRopt), Node(dict(op='SR', model=mode, scale=scale), load), fs))
-  if 'name' in opt:
-    ns[-1].name = opt['name']
+  ns.append(appendFuncs(runSR.sr(SRopt), newNode(opt, dict(op='SR', model=mode, scale=scale), load * es), fs))
   return fs, ns, out
 
 def procSlomo(opt, out, *_):
   load = out['load']
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
-  node = Node(dict(op='slomo'), load, opt['sf'], name=opt['name'] if 'name' in opt else None)
+  node = newNode(opt, dict(op='slomo'), load, opt['sf'])
   return fs + [runSlomo.doSlomo], ns + [node], out
 
 def procDehaze(opt, out, *_):
@@ -71,19 +69,20 @@ def procDehaze(opt, out, *_):
   dehazeOpt = opt['opt']
   model = opt.get('model', 'dehaze')
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
-  node = Node(dict(op=model), load, name=opt['name'] if 'name' in opt else None)
+  node = newNode(opt, dict(op=model), load)
   ns.append(appendFuncs(lambda im: dehaze.Dehaze(dehazeOpt, im), node, fs))
   return fs, ns, out
 
 def procResize(opt, out, nodes):
-  node = Node(dict(op='resize', mode=opt['method']), 1, name=opt['name'] if 'name' in opt else None)
+  load = out['load']
+  node = newNode(opt, dict(op='resize', mode=opt['method']), load)
   return [node.bindFunc(NonNullWrap(resize(opt, out, len(nodes), nodes)))], [node], out
 
 def procOutput(opt, out, *_):
   load = out['load']
   node0 = Node(dict(op='toFloat'), load)
   bitDepthOut = out['bitDepth']
-  node1 = Node(dict(op='toOutput', bits=bitDepthOut), load, name=opt['name'] if 'name' in opt else None)
+  node1 = newNode(opt, dict(op='toOutput', bits=bitDepthOut), load)
   fOutput = node1.bindFunc(toOutput(bitDepthOut))
   fs = [NonNullWrap(node0.bindFunc(toFloat)), NonNullWrap(fOutput)]
   ns = [node0, node1]
@@ -122,7 +121,7 @@ def genProcess(steps, root=True, outType=None):
   rf = lambda im: reduce(apply, funcs, im)
   if root:
     for i, opt in enumerate(steps):
-      opt['name'] = i
+      opt['name'] = i + (0 if steps[0]['op'] == 'file' else 2)
     for opt in filter((lambda opt: opt['op'] == 'SR'), steps):
       toInt(opt, ['scale', 'ensemble'])
       opt['opt'] = runSR.getOpt(opt)

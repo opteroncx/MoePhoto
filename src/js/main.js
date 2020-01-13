@@ -1,5 +1,5 @@
 import $ from 'jquery'
-import { appendText, texts, getResource } from './common.js'
+import { appendText, texts, getResource, urlParams } from './common.js'
 import { addPanel, initListeners, submit, context } from './steps.js'
 import { setup } from './progress.js'
 import { genPresetArgs, presetNotesEditor } from './preset.js'
@@ -117,8 +117,8 @@ const panels = {
       },
       cmd: {
         type: 'text',
-        text: 'FFMpeg生成源',
-        value: '-f lavfi -i testsrc=duration=10:size=1280x720:rate=30',
+        text: 'FFmpeg生成源',
+        value: 'testsrc=size=1280x720:rate=30',
         classes: ['input-text', 'full-width'],
         attributes: ['required', 'spellcheck="false"']
       },
@@ -162,7 +162,6 @@ const panels = {
     submit: None,
     view: () => '',
     args: {
-      diagnose,
       preset: saveImagePreset,
       notes: presetNotesEditor,
       savePreset: saveImagePresetButton
@@ -498,16 +497,14 @@ const setupMain = opt => {
   opt.context = context
   for (let key of opt.features) if (key !== 'index') addPanel(key, panels[key])
   let progress = setup(opt)
+  initListeners()
+  context.setFeatures(opt.features)
   opt.features.length > 2 &&
     progress.on('message', onDiagnoseMessage) &&
     initDiagnoser(panels, document.getElementById('progress'))
-  initListeners()
-  context.setFeatures(opt.features)
-  let applyPreset =
-    opt.features.indexOf('inputVideo') > -1
-      ? applyVideoPreset
-      : applyImagePreset
-  let preset = new URLSearchParams(location.search).get('preset')
+  let isVideo = opt.features.indexOf('inputVideo') > -1,
+    applyPreset = isVideo ? applyVideoPreset : applyImagePreset,
+    preset = urlParams.get('preset')
   preset && applyPreset(preset)
 }
 const exportApp = { setup: setupMain, texts, getResource }

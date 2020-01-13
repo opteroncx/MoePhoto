@@ -1,15 +1,17 @@
-import { texts } from './common.js'
+import { texts, urlParams } from './common.js'
+import { context } from './steps.js'
 const ops = {
   SR: ['model', 'scale'],
   DN: ['model'],
+  resize: ['mode'],
   dehaze: [],
   sun: [],
-  encode: ['encodec'],
+  mddm: [],
   slomo: []
 }
-const weights = { encode: 100 }
+const weights = { resize: 1e-6 }
 const names = {}
-const context = { d: new Map() }
+const diag = { d: new Map() }
 const joinByKeys = (o, keys) =>
   keys.length ? ':' + keys.map(key => o[key]).join(', ') : ''
 const restrictLength = str => str.slice(0, 32)
@@ -31,33 +33,44 @@ const initDiagnoser = (panels, ele) => {
   panels.demoire.args.model.values.forEach(
     v => (names[v.value] = panels.demoire.text + v.text)
   )
-  context.t = document.getElementById('benchmark')
-  if (!context.t) {
-    context.t = document.createElement('table')
-    context.t.setAttribute('id', 'benchmark')
-    ele.appendChild(context.t)
+  let by = urlParams.get('by')
+  if (by) {
+    context.getOpt(0).by = by
+    context.refreshSteps()
   }
-  context.t.hidden = true
-  context.t.innerHTML = `<th><td>${texts.item}</td><td>${texts.samples}</td><td>${texts.mark}</td></th>`
+  diag.t = document.getElementById('benchmark')
+  if (!diag.t) {
+    let table = document.createElement('table')
+    diag.t = document.createElement('tbody')
+    diag.t.setAttribute('id', 'benchmark')
+    diag.t.hidden = true
+    diag.t.innerHTML = `<th>${texts.item}</th><th>${texts.samples}</th><th>${texts.mark}</th>`
+    table.appendChild(diag.t)
+    ele.appendChild(document.createElement('hr'))
+    ele.appendChild(table)
+  }
   return ele
 }
 
-const newItem = (op, samples, mark) =>
-  context.d
-    .set(op, setItem(document.createElement('tr'), op, samples, mark))
-    .get(op)
+const newItem = (op, samples, mark) => {
+  let item = setItem(document.createElement('tr'), op, samples, mark)
+  diag.d.set(op, item)
+  return item
+}
 
-const setItem = (tr, op, samples, mark) =>
-  (tr.innerHTML = `<td>${op}</td><td>${samples}</td><td>${mark}</td>`) && tr
+const setItem = (tr, op, samples, mark) => {
+  tr.innerHTML = `<td>${op}</td><td>${samples}</td><td>${mark.toFixed(3)}</td>`
+  return tr
+}
 
 const showBench = (op, weight, samples) => {
   if (!op || !ops[op.op]) return
   let mark = (weights[op.op] || 1e-3) / weight
   op = restrictLength(names[op.op] + joinByKeys(op, ops[op.op]))
-  context.d.has(op)
-    ? setItem(context.d.get(op), op, samples, mark)
-    : context.t.appendChild(newItem(op, samples, mark))
-  context.t.hidden = false
+  diag.d.has(op)
+    ? setItem(diag.d.get(op), op, samples, mark)
+    : diag.t.appendChild(newItem(op, samples, mark))
+  diag.t.hidden = false
 }
 
 const onDiagnoseMessage = ({ data }) =>
