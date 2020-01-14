@@ -52,6 +52,16 @@ def loadInternal(path):
   for op in res:
     loadedOps[getOpKey(op['op'])] = (op['weight'], op['samples'])
 
+def initOp(op):
+  op.weight = 1e-6
+  op.samples = 0
+
+def clearOps(flag=True):
+  if flag:
+    loadedOps.clear()
+    for key in ops:
+      initOp(ops[key])
+
 def newOp(define={}, updater=slideAverage(.9)):
   def op():pass
   key = getOpKey(define)
@@ -60,8 +70,7 @@ def newOp(define={}, updater=slideAverage(.9)):
     op.weight = loadedOps[key][0]
     op.samples = loadedOps[key][1]
   else:
-    op.weight = 1
-    op.samples = 0
+    initOp(op)
   def f(sample):
     global needSave
     if not op.samples:

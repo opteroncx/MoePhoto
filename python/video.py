@@ -133,17 +133,19 @@ def readSubprocess(q):
 
 def prepare(video, by, steps):
   optEncode = steps[-1]
-  encodec = optEncode['codec'] if 'codec' in optEncode else config.defaultEncodec  # pylint: disable=E1101
+  encodec = optEncode.get('codec', config.defaultEncodec)  # pylint: disable=E1101
   optDecode = steps[0]
-  decodec = optDecode['codec'] if 'codec' in optDecode else config.defaultDecodec  # pylint: disable=E1101
+  decodec = optDecode.get('codec', config.defaultDecodec)  # pylint: disable=E1101
   optRange = steps[1]
-  start = int(optRange['start']) if 'start' in optRange else 0
+  start = int(optRange.get('start', 0))
   outDir = config.outDir  # pylint: disable=E1101
   procSteps = stepVideo + list(steps[2:-1])
-  bench = optEncode.get('diagnose', {}).get('bench', False)
+  diagnose = optEncode.get('diagnose', {})
+  bench = diagnose.get('bench', False)
+  clear = diagnose.get('clear', False)
   process, nodes = genProcess(procSteps)
   traceDetail = config.progressDetail or bench  # pylint: disable=E1101
-  root = begin(Node({'op': 'video'}, 1, 2, 0), nodes, traceDetail, bench)
+  root = begin(Node({'op': 'video'}, 1, 2, 0), nodes, traceDetail, bench, clear)
   context.root = root
   slomos = [*filter((lambda opt: opt['op'] == 'slomo'), procSteps)]
   if start < 0:
@@ -301,7 +303,7 @@ def SR_vid(video, by, *steps):
     readSubprocess(qOut)
     procMerge, err = mergeAV(commandOut)
   finally:
-    log.info('Video processing end at frame #{}'.format(i))
+    log.info('Video processing end at frame #{}.'.format(i))
     procIn.terminate()
     procOut.terminate()
     if procMerge:

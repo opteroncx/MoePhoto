@@ -22,7 +22,10 @@ const genDiagnoseArgs = () => {
       type: 'checkbox',
       text: texts.diagnose,
       classes: ['input-text', 'input-short'],
-      values: [{ value: 'bench', text: texts.bench }]
+      values: [
+        { value: 'bench', text: texts.bench },
+        { value: 'clear', text: texts.clearMetric }
+      ]
     }
   ]
 }

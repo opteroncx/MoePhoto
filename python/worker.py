@@ -2,7 +2,7 @@ import json
 from io import BytesIO
 from traceback import format_exc
 from gevent import idle
-from progress import setCallback, initialETA, saveOps, loadOps
+from progress import setCallback, initialETA, saveOps, loadOps, clearOps
 from config import config
 from logger import initLogging
 
@@ -21,7 +21,7 @@ def filterOpt(item):
   else:
     return item
 
-def begin(root, nodes=[], setAllCallback=True, bench=False):
+def begin(root, nodes=[], setAllCallback=True, bench=False, clear=False):
   context.root = root
   root.nodes = []
   for n in nodes:
@@ -31,6 +31,7 @@ def begin(root, nodes=[], setAllCallback=True, bench=False):
       setCallback(root, onProgress, True, bench)
   else:
     root.setCallback(onProgress)
+  clearOps(clear)
   initialETA(root)
   return root
 

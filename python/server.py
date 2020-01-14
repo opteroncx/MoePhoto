@@ -280,7 +280,7 @@ def videoEnhancePrep(req):
   for k in ('url', 'cmd'):
     v = req.values.get(k, None)
     if v:
-    return (v, k, *readOpt(req))
+      return (v, k, *readOpt(req))
   vidfile = req.files['file']
   path ='{}/{}'.format(uploadDir, vidfile.filename)
   vidfile.save(path)

@@ -100,6 +100,7 @@ const texts = {
   item: '项目',
   samples: '样本数',
   mark: '得分',
+  clearMetric: '清除以往测速结果',
   processing: processingMsg,
   stopping: '等待保存已处理部分',
   logWritten: '日志已写入浏览器控制台，请按<kbd>F12</kbd>查看',
