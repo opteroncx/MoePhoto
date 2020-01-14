@@ -20,7 +20,8 @@ site-packages/nvidia-ml-py/t*
 # ignore user files
 /download/
 /upload/
-/.user/
+/.user/**/*.json
+/.user/*.txt
 
 # ignore generated static files
 /static/bg/
@@ -62,4 +63,4 @@ install.exe
 *.exe
 
 # include default presets
-!.user/preset_video/benchmark.json
+!/.user/preset_video/benchmark.json

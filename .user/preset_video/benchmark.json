@@ -1,0 +1,32 @@
+{
+  "version": "5.0",
+  "name": "benchmark",
+  "notes": [
+    "默认的测速跑分过程",
+    "以testsrc生成源测试30帧"
+  ],
+  "path": "video",
+  "steps": [
+    {
+      "op": "decode"
+    },
+    {
+      "op": "range",
+      "stop": 30
+    },
+    {
+      "method": "bilinear",
+      "scaleW": 0.5,
+      "scaleH": 0.5,
+      "op": "resize"
+    },
+    {
+      "codec": "libx264 -preset ultrafast -threads 0 -pix_fmt yuv420p",
+      "diagnose": {
+        "bench": true,
+        "clear": true
+      },
+      "op": "encode"
+    }
+  ]
+}
