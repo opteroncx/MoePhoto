@@ -9,7 +9,13 @@ const ops = {
   mddm: [],
   slomo: []
 }
-const weights = { resize: 1e-6 }
+const weights = {
+  resize: 1e-6,
+  SR: 1e-3,
+  DN: 2e-5,
+  slomo: 3e-5,
+  dehaze: 5e-4
+}
 const names = {}
 const diag = { d: new Map() }
 const joinByKeys = (o, keys) =>

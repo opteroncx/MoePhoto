@@ -118,7 +118,7 @@ const panels = {
       cmd: {
         type: 'text',
         text: 'FFmpeg生成源',
-        value: 'testsrc=size=1280x720:rate=30',
+        value: 'testsrc=size=1280x720:rate=10',
         classes: ['input-text', 'full-width'],
         attributes: ['required', 'spellcheck="false"']
       },

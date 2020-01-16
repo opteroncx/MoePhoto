@@ -7,6 +7,7 @@ from gevent import spawn
 ops = {}
 loadedOps = {}
 needSave = False
+noNotify = { 'toFloat', 'toOutput', 'Channel', 'toBuffer', 'toTorch' }
 
 def recurse(f):
   def r(node):
@@ -52,17 +53,16 @@ def loadInternal(path):
   for op in res:
     loadedOps[getOpKey(op['op'])] = (op['weight'], op['samples'])
 
-def initOp(op):
-  op.weight = 1e-6
+def initOp(op, learn=True):
+  op.weight = 1e-6 if learn else 1
   op.samples = 0
 
-def clearOps(flag=True):
+def clearOps(node, flag=True):
   if flag:
     loadedOps.clear()
-    for key in ops:
-      initOp(ops[key])
+    recurse(lambda n: initOp(ops[n.op], n.learn))(node)
 
-def newOp(define={}, updater=slideAverage(.9)):
+def newOp(learn, define={}, updater=slideAverage(.9)):
   def op():pass
   key = getOpKey(define)
   op.op = define
@@ -70,7 +70,7 @@ def newOp(define={}, updater=slideAverage(.9)):
     op.weight = loadedOps[key][0]
     op.samples = loadedOps[key][1]
   else:
-    initOp(op)
+    initOp(op, learn)
   def f(sample):
     global needSave
     if not op.samples:
@@ -83,14 +83,12 @@ def newOp(define={}, updater=slideAverage(.9)):
 def updateAncestor(node, eta=False):
   p = node.parent
   while p:
-    i = 0
-    while not (p.nodes[i] is node):
-      i += 1
+    i = p.nodes.index(node)
     updateNode(p)
     if eta and p.total >= 0:
       p.eta += node.eta - sum(map(lambda n: n.ett, p.nodes[:i + 1]))
       if p.eta < 0:
-        p.eta = 0
+        p.eta = p.ett * (p.total - p.gone) / p.total
     node = p
     p = p.parent
 
@@ -119,7 +117,7 @@ class Node():
     if name:
       self.name = name
     if not key in ops:
-      ops[key] = newOp(op)
+      ops[key] = newOp(learn, op)
 
   def append(self, child):
     self.nodes.append(child)
@@ -127,7 +125,7 @@ class Node():
     return self
 
   def setCallback(self, callback=NullFunc, bench=False):
-    self.callback = callback
+    self.callback = NullFunc if ops[self.op].op.get('op', '') in noNotify else callback
     self.bench = bench and self.learn
     if self.bench:
       self.learn = float('inf')

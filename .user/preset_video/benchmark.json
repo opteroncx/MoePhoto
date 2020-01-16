@@ -1,5 +1,5 @@
 {
-  "version": "5.0",
+  "version": "4.6",
   "name": "benchmark",
   "notes": [
     "默认的测速跑分过程",
@@ -11,17 +11,40 @@
       "op": "decode"
     },
     {
-      "op": "range",
-      "stop": 30
+      "stop": 30,
+      "op": "range"
     },
     {
       "method": "bilinear",
-      "scaleW": 0.5,
-      "scaleH": 0.5,
+      "width": 480,
+      "height": 270,
       "op": "resize"
     },
     {
-      "codec": "libx264 -preset ultrafast -threads 0 -pix_fmt yuv420p",
+      "scale": 2,
+      "model": "lite",
+      "ensemble": 0,
+      "op": "SR"
+    },
+    {
+      "model": "lite5",
+      "op": "DN"
+    },
+    {
+      "scale": 2,
+      "model": "a",
+      "ensemble": 0,
+      "op": "SR"
+    },
+    {
+      "op": "dehaze"
+    },
+    {
+      "sf": "2",
+      "op": "slomo"
+    },
+    {
+      "codec": "copy -f null",
       "diagnose": {
         "bench": true,
         "clear": true

@@ -31,7 +31,7 @@ def begin(root, nodes=[], setAllCallback=True, bench=False, clear=False):
       setCallback(root, onProgress, True, bench)
   else:
     root.setCallback(onProgress)
-  clearOps(clear)
+  clearOps(root, clear)
   initialETA(root)
   return root
 
@@ -43,10 +43,11 @@ def onProgress(node, kwargs={}):
   } if context.root else {}
   res.update(kwargs)
   saveOps(opsPath)
-  if hasattr(node, 'name'):
+  if hasattr(node, 'name') and node.gone < node.total:
     res['stage'] = node.name
-    res['stageProgress'] = node.gone
-    res['stageTotal'] = node.total
+    if node.total > 1:
+      res['stageProgress'] = node.gone
+      res['stageTotal'] = node.total
   context.notifier.send(res)
 
 def enhance(f, verbose=True):
