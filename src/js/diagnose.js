@@ -10,11 +10,11 @@ const ops = {
   slomo: []
 }
 const weights = {
-  resize: 1e-6,
-  SR: 1e-3,
+  resize: 3e-7,
+  SR: 3e-5,
   DN: 2e-5,
-  slomo: 3e-5,
-  dehaze: 5e-4
+  slomo: 15e-6,
+  dehaze: 3e-4
 }
 const names = {}
 const diag = { d: new Map() }

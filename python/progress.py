@@ -2,7 +2,7 @@ import time
 import json
 from os.path import exists
 from functools import partial
-from gevent import spawn
+from gevent import spawn, sleep
 
 ops = {}
 loadedOps = {}
@@ -76,7 +76,7 @@ def newOp(learn, define={}, updater=slideAverage(.9)):
     if not op.samples:
       needSave = True
     op.samples += 1
-    op.weight = updater(op, sample) if op.samples > 1 else sample
+    op.weight = updater(op, sample) if op.samples > 2 else sample
   op.update = f
   return op
 
@@ -107,6 +107,7 @@ class Node():
     self.gone = 0
     self.ett = 0
     self.eta = 0
+    self.mark = 0
     self.parent = None
     self.bench = False
     self.learn = learn or 0
@@ -141,24 +142,23 @@ class Node():
     self.gone = 0
     self.ett = getETT(self)
     self.eta = self.ett
-    if self.learn:
-      self.mark = time.perf_counter()
     return self
 
   def trace(self, progress=1, **kwargs):
     global needSave
     self.gone += progress
     op = ops[self.op]
-    if self.learn > op.samples and progress > 0:
+    if self.learn > op.samples:
       mark = time.perf_counter()
-      delta = mark - self.mark
-      op.update(delta / self.load / progress)
-      if op.samples >= self.learn:
-        self.learn = False
-        needSave = True
+      if progress > 0:
+        delta = mark - self.mark
+        op.update(delta / self.load / progress)
+        if op.samples >= self.learn:
+          self.learn = False
+          needSave = True
+        if self.bench:
+          kwargs.update(serializeOp(op))
       self.mark = mark
-      if self.bench:
-        kwargs.update(serializeOp(op))
     if progress > 0:
       updateNode(self)
       updateAncestor(self, True)
@@ -167,6 +167,8 @@ class Node():
   def bindFunc(self, f):
     def g(*args, **kwargs):
       self.reset()
+      if self.bench:
+        sleep(.1) # leave time handling client connection
       self.trace(0)
       res = f(*args, **kwargs)
       self.trace()

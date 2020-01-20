@@ -3,7 +3,8 @@
   "name": "benchmark",
   "notes": [
     "默认的测速跑分过程",
-    "以testsrc生成源测试30帧"
+    "以testsrc生成源测试50帧",
+    "处理顺序会影响得分"
   ],
   "path": "video",
   "steps": [
@@ -11,20 +12,20 @@
       "op": "decode"
     },
     {
-      "stop": 30,
+      "stop": 50,
       "op": "range"
-    },
-    {
-      "method": "bilinear",
-      "width": 480,
-      "height": 270,
-      "op": "resize"
     },
     {
       "scale": 2,
       "model": "lite",
       "ensemble": 0,
       "op": "SR"
+    },
+    {
+      "method": "bilinear",
+      "width": 1280,
+      "height": 720,
+      "op": "resize"
     },
     {
       "model": "lite5",
