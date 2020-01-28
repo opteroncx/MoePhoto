@@ -104,9 +104,9 @@ def onConnect(key):
     if current.setETA:
       updateETA(res)
     else:
-      res.pos('total', 0)
-      res.pos('gone', 0)
-      res.pos('eta', 0)
+      res.pop('total', 0)
+      res.pop('gone', 0)
+      res.pop('eta', 0)
     if 'fileSize' in res:
       current.fileSize = res['fileSize']
       del res['fileSize']
