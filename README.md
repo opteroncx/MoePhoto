@@ -4,10 +4,10 @@
 [![Badge](https://img.shields.io/badge/link-may--workshop-blueviolet.svg)](http://may-workshop.com/?page_id=373)
 [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 
-MoePhoto Image Toolbox 萌图工具箱
-一个基于深度学习的 AI 图像/视频修复软件
-A deep learning based AI Image/Video resotration software
-感兴趣的加 QQ 群 320785467 讨论
+MoePhoto Image Toolbox 萌图工具箱  
+一个基于深度学习的 AI 图像/视频修复软件  
+A deep learning based AI Image/Video resotration software  
+感兴趣的加 QQ 群 320785467 讨论  
 ![image](https://github.com/opteroncx/MoePhoto/blob/master/images/example1s.png)
 
 ### 基本功能[Image/Video]
