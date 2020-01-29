@@ -33,7 +33,8 @@ A deep learning based AI Image/Video resotration software
 ### 安装 (Installation)
 
 > 下载并安装文件 (Download prebuild files)  
-> 下载地址 [百度云](http://pan.baidu.com/s/1W5DQTepe6jT6TGu4QFAPXg) 密码：k4s1  
+> 下载地址1 [百度云](http://pan.baidu.com/s/1W5DQTepe6jT6TGu4QFAPXg) 密码：k4s1
+> 下载地址2 [萌图网站](https://pan.moephoto.tech:2233/index.php/s/B3o74e6AXHGxEjQ) 
 
 ### 协助开发 (Development)
 
