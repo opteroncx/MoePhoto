@@ -32,23 +32,23 @@ A deep learning based AI Image/Video resotration software
 
 ### 安装 (Installation)
 
-> 下载并安装文件 (Download prebuild files)
-> 下载地址 [百度云](http://pan.baidu.com/s/1W5DQTepe6jT6TGu4QFAPXg) 密码：k4s1
+> 下载并安装文件 (Download prebuild files)  
+> 下载地址 [百度云](http://pan.baidu.com/s/1W5DQTepe6jT6TGu4QFAPXg) 密码：k4s1  
 
 ### 协助开发 (Development)
 
-> 需要安装以下软件 (Build requirements)
-> Python3 / Anaconda3
-> CUDA 10
-> 以及 python 依赖包（python packages）：
-> Flask
-> Pytorch
-> scikit-image
-> opencv-python
-> numpy
+> 需要安装以下软件 (Build requirements)  
+> Python3 / Anaconda3  
+> CUDA 10  
+> 以及 python 依赖包（python packages）：  
+> Flask  
+> Pytorch  
+> scikit-image  
+> opencv-python  
+> numpy  
 
 ### 商业化及许可 (Licence)
 
-> 非商业化使用请注明来源
-> 学术使用请添加到参考文献
-> 商业化请加群联系群主
+> 非商业化使用请注明来源  
+> 学术使用请添加到参考文献  
+> 商业化请加群联系群主  
