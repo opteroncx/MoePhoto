@@ -20,14 +20,14 @@ A deep learning based AI Image/Video resotration software
 
 ### 硬件需求
 
-> CPU 模式 (CPU mode)
-> 系统内存大于 4GB
-> RAM > 4GB
-> GPU 模式 (GPU mode)
-> 仅支持 NVIDIA 显卡
-> 显存不小于 2GB
-> Only support NVIDIA cards
-> VRAM should > 2GB
+- CPU 模式 (CPU mode)  
+> 系统内存大于 4GB  
+> RAM > 4GB  
+- GPU 模式 (GPU mode)  
+> 仅支持 NVIDIA 显卡  
+> 显存不小于 2GB  
+> Only support NVIDIA cards  
+> VRAM should > 2GB  
 
 ### 安装 (Installation)
 
