@@ -1,6 +1,8 @@
 import os
+import json
 from python import moe_utils
 import shutil
+manifestPath = './manifest.json'
 
 # recompile files
 os.system('npm install --no-save --no-audit')
@@ -12,6 +14,20 @@ moe_utils.compile_pyc()
 # os.rename('./build/exe.win-amd64-3.7/lib/scipy/spatial/cKDTree.cp37-win_amd64.pyd','./build/exe.win-amd64-3.7/lib/scipy/spatial/ckdtree.cp37-win_amd64.pyd')
 
 # delete deprecated files
+
+with open('package.json','r',encoding='utf-8') as manifest:
+  version = json.load(manifest)['version'].split('-')[0]
+
+manifest = {
+  'version': version,
+  'releases': 'https://moephoto.tech/moephoto/version.html',
+  'ufile': 'https://moephoto.tech/moephoto/files/',
+  'ffmpeg-win': 'https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-latest-win64-static.zip',
+  'ffmpeg-linux': 'https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz'
+}
+
+with open(manifestPath, 'w') as f:
+  json.dump(manifest, f, ensure_ascii=False)
 
 moe_utils.delete_files('../build/model')
 moe_utils.delete_files('../build/pyc')
