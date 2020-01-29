@@ -14,6 +14,7 @@ A deep learning based AI Image/Video resotration software
 
 - 降噪 Denoising
 - 超分辨率 Super resolution
+- 去摩尔纹 Demoireing 
 - 去雾 Dehaze
 - 涂抹及风格化 Force denoise
 - 高帧率和慢动作 High FPS and Slow motion
