@@ -14,17 +14,18 @@ A deep learning based AI Image/Video resotration software
 
 - 降噪 Denoising
 - 超分辨率 Super resolution
+- 去摩尔纹 Demoireing
 - 去雾 Dehaze
 - 涂抹及风格化 Force denoise
 - 高帧率和慢动作 High FPS and Slow motion
 
 ### 硬件需求
 
-> CPU 模式 (CPU mode)
+- CPU 模式 (CPU mode)
 > 系统内存大于 4GB
 > RAM > 4GB
-> GPU 模式 (GPU mode)
-> 仅支持 NVIDIA 显卡
+- GPU 模式 (GPU mode)
+> 仅支持 NVIDIA 显卡(>=GTX 750Ti)
 > 显存不小于 2GB
 > Only support NVIDIA cards
 > VRAM should > 2GB
@@ -32,7 +33,8 @@ A deep learning based AI Image/Video resotration software
 ### 安装 (Installation)
 
 > 下载并安装文件 (Download prebuild files)
-> 下载地址 [百度云](http://pan.baidu.com/s/1W5DQTepe6jT6TGu4QFAPXg) 密码：k4s1
+> 下载地址1 [百度云](http://pan.baidu.com/s/1W5DQTepe6jT6TGu4QFAPXg) 密码：k4s1
+> 下载地址2 [萌图网站](https://pan.moephoto.tech:2233/index.php/s/B3o74e6AXHGxEjQ)
 
 ### 协助开发 (Development)
 
