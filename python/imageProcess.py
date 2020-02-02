@@ -61,9 +61,12 @@ def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
   elif stepH > 1:
     padImage = padImageReflect((0, aw - w, 0, 0))
     unpad = lambda im: im[:, :, :outw]
-  else:
+  elif stepW > 1:
     padImage = padImageReflect((0, 0, 0, ah - h))
     unpad = lambda im: im[:, :outh]
+  else:
+    padImage = padImageReflect((0, aw - w, 0, ah - h))
+    unpad = lambda im: im[:, :outh, :outw]
   b = ((torch.arange(padSc, dtype=config.dtype(), device=config.device()) / padSc - .5) * 9).sigmoid().view(1, -1)
   def iterClip():
     for i in range(stepH):
