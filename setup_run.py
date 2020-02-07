@@ -40,6 +40,8 @@ moe_utils.delete_files('../build/update_log.txt')
 moe_utils.delete_files('../build/download')
 moe_utils.delete_files('../build/.user')
 # copy files
+print('copying presets')
+shutil.copytree(src='./.user',dst='../build/.user')
 print('copying model')
 shutil.copytree(src='./model',dst='../build/model')
 print('copying python scripts')
