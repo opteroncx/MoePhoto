@@ -56,14 +56,14 @@ def getVideoInfo(videoPath, by, width, height, frameRate):
     '-'
   ]
   matchInfo = not (width and height and frameRate)
-  matchFrame = by == 'file'
+  matchFrame = not by
   matchOutput = True
   error = RuntimeError('Video info not found')
   videoOnly = True
   if by != 'cmd':
-    commandIn = clipList(commandIn + commandIn, 4, 6)
+    commandIn = clipList(commandIn, 4, 6)
   if matchFrame:
-    commandIn = clipList(commandIn + commandIn, 2, 4)
+    commandIn = clipList(commandIn, 2, 4)
   try:
     procIn = popenText(commandIn)
     totalFrames = 0
@@ -246,10 +246,19 @@ def setupInfo(by, outputPath, root, commandIn, commandVideo, commandOut, slomos,
   root.reset().trace(0)
   return commandIn, commandVideo, commandOut
 
-def cleanAV(command):
+def cleanAV(command, path):
   if command:
-    removeFile(command[4])
+    try:
+      stat = os.stat(path)
+    except Exception:
+      stat = False
     removeFile(command[6])
+    video = command[4]
+    if stat:
+      removeFile(video)
+      return path
+    else:
+      return video
 
 def mergeAV(command):
   if command:
@@ -317,6 +326,6 @@ def SR_vid(video, by, *steps):
     if err:
       log.warning('Unable to merge video and other tracks with exit code {}.'.format(err))
     else:
-      cleanAV(commandOut)
+      outputPath = cleanAV(commandOut, outputPath)
   readSubprocess(qOut)
   return outputPath, i
