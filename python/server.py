@@ -352,7 +352,7 @@ def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm):
   def f(host, port):
     app.debug = False
     app.config['SERVER_NAME'] = None
-    server = pywsgi.WSGIServer((host, port), app)
+    server = pywsgi.WSGIServer((host, port), app, environ={'SERVER_NAME': ''})
     print('Current working directory: {}'.format(cwd))
     print('Server starts to listen on http://{}:{}/, press Ctrl+C to exit.'.format(host, port))
     server.serve_forever()
