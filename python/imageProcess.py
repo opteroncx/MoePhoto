@@ -264,11 +264,13 @@ def readFile(nodes=[]):
   def f(file):
     image = Image.open(file)
     image = np.array(image)
-    for n in nodes[1:]:
+    for n in nodes:
       n.multipleLoad(image.size)
       updateNode(n)
     if len(nodes):
-      updateNode(nodes[0].parent)
+      p = nodes[0].parent
+      updateNode(p)
+      p.callback(p)
     if len(image.shape) == 2:
       return image.reshape(*image.shape, 1)
     if image.shape[2] == 3 or image.shape[2] == 4:
@@ -358,4 +360,4 @@ getTransposedOpt = lambda opt: opt.transposedOpt
 trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, flip), combine(transpose, flip, transpose), combine(flip2, transpose)]
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
 which = [getTransposedOpt, identity, identity, getTransposedOpt, getTransposedOpt, identity, getTransposedOpt]
-ensemble = lambda opt: lambda x: reduce((lambda v, t: v + t[2](doCrop(t[3](opt), t[1](x)))), zip(range(opt.ensemble), trans, transInv, which), doCrop(opt, x)).detach()
+ensemble = lambda opt: lambda x: reduce((lambda v, t: (v + t[2](doCrop(t[3](opt), t[1](x)))).detach()), zip(range(opt.ensemble), trans, transInv, which), doCrop(opt, x))

@@ -195,9 +195,7 @@ def prepare(video, by, steps):
     '-c:v:0'
   ] + encodec.split(' ') + ['']
   commandOut = None
-  if by == 'file':
-    commandVideo[14] = video
-  else:
+  if by:
     commandVideo[-1] = suffix(outputPath, '-v')
     commandOut = [
       ffmpegPath,
@@ -211,6 +209,8 @@ def prepare(video, by, steps):
       *metadata,
       outputPath
     ]
+  else:
+    commandVideo[14] = video
   frameRate = optEncode.get('frameRate', 0)
   width = optDecode.get('width', 0)
   height = optDecode.get('height', 0)
@@ -234,9 +234,9 @@ def setupInfo(by, outputPath, root, commandIn, commandVideo, commandOut, slomos,
   commandVideo[8] = f'{outWidth}x{outHeight}'
   commandVideo[10] = str(frameRate)
   videoOnly |= start > 0
-  if videoOnly or by != 'file':
+  if videoOnly or by:
     commandVideo = commandVideoSkip(commandVideo)
-  if videoOnly or by == 'file':
+  if videoOnly or not by:
     commandVideo[-1] = outputPath
     i = commandIn.index('-vn')
     commandIn = clipList(commandIn, i, i + 5)
