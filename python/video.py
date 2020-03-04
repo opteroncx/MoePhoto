@@ -256,9 +256,9 @@ def cleanAV(command, path):
     video = command[4]
     if stat:
       removeFile(video)
-      return path
     else:
       return video
+  return path
 
 def mergeAV(command):
   if command:
