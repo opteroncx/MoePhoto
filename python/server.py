@@ -112,7 +112,7 @@ def onConnect(key):
       del res['fileSize']
     return toResponse(res)
   else:
-    return OK
+    return toResponse({}) if current.session else OK
 
 def endSession(result=None):
   cache.put(current.key, result)
