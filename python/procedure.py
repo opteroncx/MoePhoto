@@ -25,7 +25,7 @@ fPreview = [
   toOutput8,
   (lambda im: im.astype(np.uint8)),
   0,
-  lambda im: writeFile(im, context.shared, previewFormat),
+  lambda im: writeFile(im, context.shared, context, previewFormat),
   lambda *_: context.root.trace(0, preview=previewPath, fileSize=context.shared.tell())]
 funcPreview = lambda im: reduce(applyNonNull, fPreview, im)
 
@@ -170,4 +170,6 @@ def genProcess(steps, root=True, outType=None):
     n = Node({'op': 'write'}, outType['load'])
     nodes.append(n)
     last = n.bindFunc(writeFile)
+  else:
+    context.imageMode = 'RGB'
   return process, nodes
