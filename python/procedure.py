@@ -108,7 +108,7 @@ def procOutput(opt, out, *_):
 
 procs = dict(
   file=(lambda _, _0, nodes:
-    procInput('file', 8, [context.getFile, readFile(nodes)], dict(bitDepth=8, channel=0, source=0))),
+    procInput('file', 8, [context.getFile, readFile(nodes, context)], dict(bitDepth=8, channel=0, source=0))),
   buffer=(lambda opt, *_:
     procInput('buffer', opt['bitDepth'], [toNumPy(opt['bitDepth'])], dict(bitDepth=opt['bitDepth'], channel=1, source=1))),
   DN=procDN, SR=procSR, output=procOutput, slomo=procSlomo, dehaze=procDehaze, resize=procResize
@@ -144,7 +144,7 @@ def genProcess(steps, root=True, outType=None):
     if steps[-1]['op'] != 'output':
       steps.append(dict(op='output'))
     config.getFreeMem(True)
-    process = lambda im, name=None: last(rf(im), name)
+    process = lambda im, name=None: last(rf(im), name, context)
   else:
     process = rf
   for i, opt in enumerate(steps):

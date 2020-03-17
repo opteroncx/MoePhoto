@@ -281,6 +281,7 @@ def SR_vid(video, by, *steps):
     if raw_image:
       root.trace()
 
+  context.stopFlag.clear()
   outputPath, process, *args = prepare(video, by, steps)
   start, stop, root = args[:3]
   width, height, *more = getVideoInfo(video, by, *args[-3:])

@@ -1,6 +1,7 @@
 import os
 import json
 from python import moe_utils
+from python.updater import update_ffmpeg
 import shutil
 manifestPath = './manifest.json'
 
@@ -39,6 +40,7 @@ moe_utils.delete_files('../build/manifest.json')
 moe_utils.delete_files('../build/update_log.txt')
 moe_utils.delete_files('../build/download')
 moe_utils.delete_files('../build/.user')
+update_ffmpeg(manifest)
 # copy files
 print('copying presets')
 shutil.copytree(src='./.user',dst='../build/.user')
