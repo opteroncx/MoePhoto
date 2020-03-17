@@ -259,7 +259,7 @@ def writeFile(image, name, context, *args):
     image = image.squeeze(2)
   image = Image.fromarray(image)
   if context.imageMode == 'P':
-    image.putpalette(context.palette)
+    image = image.quantize(palette=context.palette)
   image.save(name, *args)
   return name
 
@@ -268,7 +268,8 @@ def readFile(nodes=[], context=None):
     image = Image.open(file)
     context.imageMode = image.mode
     if image.mode == 'P':
-      context.palette = image.getpalette()
+      context.palette = image
+      image = image.convert('RGB')
     image = np.array(image)
     for n in nodes:
       n.multipleLoad(image.size)
