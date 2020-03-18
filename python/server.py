@@ -49,6 +49,27 @@ commonJs = assetMapping['common.js'] if 'common.js' in assetMapping else None
 getKey = lambda session, request: request.values['path'] + str(session) if 'path' in request.values else current.key
 toResponse = lambda obj, code=200: (json.dumps(obj, ensure_ascii=False, separators=(',', ':')), code)
 
+def pollNote():
+  key = current.key
+  while current.key:
+    while current.key and not noter.poll():
+      idle()
+    res = None
+    while noter.poll():
+      res = noter.recv()
+    if res and len(res):
+      if current.setETA:
+        updateETA(res)
+      else:
+        res.pop('total', 0)
+        res.pop('gone', 0)
+        res.pop('eta', 0)
+      if 'fileSize' in res:
+        current.fileSize = res['fileSize']
+        del res['fileSize']
+      if len(res):
+        cache.put(key, toResponse(res))
+
 def acquireSession(request):
   if current.session:
     return busy()
@@ -57,6 +78,7 @@ def acquireSession(request):
   current.session = request.values['session']
   current.path = request.values['path'] if 'path' in request.values else request.path
   current.key = current.path + str(current.session)
+  spawn(pollNote)
   current.eta = 1
   updateETA(request.values)
   return False if current.session else E403
@@ -92,27 +114,14 @@ def updateETA(res):
     current.eta = res['eta']
 
 def onConnect(key):
-  while not (current.session is None or noter.poll() or (key and cache.peek(key))):
+  while not (current.session is None or (key and cache.peek(key))):
     idle()
   res = None
   if key and cache.peek(key):
     res = cache.pop(key)
     return res
-  while not current.session is None and noter.poll():
-    res = noter.recv()
-  if res:
-    if current.setETA:
-      updateETA(res)
-    else:
-      res.pop('total', 0)
-      res.pop('gone', 0)
-      res.pop('eta', 0)
-    if 'fileSize' in res:
-      current.fileSize = res['fileSize']
-      del res['fileSize']
-    return toResponse(res)
   else:
-    return toResponse({}) if current.session else OK
+    return OK
 
 def endSession(result=None):
   cache.put(current.key, result)
@@ -292,6 +301,7 @@ def batchEnhance():
   c = acquireSession(request)
   if c:
     return c
+  current.stopFlag.clear()
   count = 0
   fail = 0
   fails = []

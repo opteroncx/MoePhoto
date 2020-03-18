@@ -250,19 +250,26 @@ def toTorch(bitDepth, dtype, device):
   quant = 1 << bitDepth
   return lambda image: (to_tensor(image).to(dtype=torch.float, device=device) / quant).to(dtype=dtype)
 
-def writeFile(image, name, *args):
+def writeFile(image, name, context, *args):
   if not name:
     name = genNameByTime()
   elif hasattr(name, 'seek'):
     name.seek(0)
   if image.shape[2] == 1:
     image = image.squeeze(2)
-  Image.fromarray(image).save(name, *args)
+  image = Image.fromarray(image)
+  if context.imageMode == 'P':
+    image = image.quantize(palette=context.palette)
+  image.save(name, *args)
   return name
 
-def readFile(nodes=[]):
+def readFile(nodes=[], context=None):
   def f(file):
     image = Image.open(file)
+    context.imageMode = image.mode
+    if image.mode == 'P':
+      context.palette = image
+      image = image.convert('RGB')
     image = np.array(image)
     for n in nodes:
       n.multipleLoad(image.size)

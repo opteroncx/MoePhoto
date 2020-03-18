@@ -50,12 +50,8 @@ const setup = opt => {
 
   const messager = newMessager('/msg', opt.session)
   const onMessage = event => {
-    clearInterval(intervalId)
-    if (!event.data) {
-      messager.abort()
-      running && openMessager() && (running = 0)
-      runButton.attr('disabled', false)
-    } else {
+    if (event.data) {
+      clearInterval(intervalId)
       let result = event.data.result
       if (result === 'Fail' && !onError(0, 400, event.data.exception)) return
       if (result != null) onSuccess(event.data)
@@ -92,6 +88,7 @@ const setup = opt => {
     clearInterval(intervalId)
     loading.hide()
     downloader.show()
+    messager.abort()
     runButton.attr('disabled', false)
     opt.success && opt.success(result.result)
   }
