@@ -7,6 +7,7 @@ import tarfile
 import requests
 import shutil
 import json
+sys.path.append('./python')
 from moe_utils import compile_pyc
 from moe_utils import copyfile
 from mt_download import download_file
