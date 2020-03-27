@@ -42,8 +42,6 @@ const setup = opt => {
 
   var runButton = $('#RunButton')
 
-  var intervalId
-
   var running = 0
   loading.hide()
   downloader.hide()
@@ -51,11 +49,13 @@ const setup = opt => {
   const messager = newMessager('/msg', opt.session)
   const onMessage = event => {
     if (event.data) {
-      clearInterval(intervalId)
       let result = event.data.result
       if (result === 'Fail' && !onError(0, 400, event.data.exception)) return
       if (result != null) onSuccess(event.data)
       else running || ((running = 1) && runButton.attr('disabled', true))
+    } else {
+      messager.abort()
+      running && setTimeout(openMessager, 200)
     }
   }
   messager
@@ -64,11 +64,10 @@ const setup = opt => {
     .on('error', event => {
       console.error(event)
       running = 0
-      clearInterval(intervalId)
       runButton.attr('disabled', true)
       let eta = 0
+      messager.abort()
       if (event.data) {
-        messager.abort()
         eta = +event.data.eta
         opt.onErrorMsg && opt.onErrorMsg(0, eta, event.data)
       } else eta = reconnectPeriod
@@ -85,7 +84,6 @@ const setup = opt => {
   const onSuccess = result => {
     console.log(result)
     running = 0
-    clearInterval(intervalId)
     loading.hide()
     downloader.show()
     messager.abort()
@@ -97,7 +95,6 @@ const setup = opt => {
     console.error(xhr, status, error)
     if (opt.ignoreError) return 1
     running = 0
-    clearInterval(intervalId)
     loading.hide()
     opt.error ? opt.error(texts.errorMsg, xhr) : alert(texts.errorMsg)
   }
@@ -105,7 +102,6 @@ const setup = opt => {
   const beforeSend = (messager.beforeSend = _ => {
     running = 1
     loading.show()
-    intervalId = setInterval(openMessager, 200)
     openMessager()
     return messager
   })

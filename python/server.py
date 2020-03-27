@@ -123,9 +123,9 @@ def onConnect(key):
   else:
     return OK
 
-def endSession(result=None):
+def endSession(result):
   cache.put(current.key, result)
-  current.key = ''
+  current.key = None
   current.session = None
   return OK
 
@@ -137,8 +137,9 @@ def makeHandler(name, prepare, final, methods=['POST']):
     try:
       args = prepare(request)
     except Exception as e:
-      endSession()
-      return (str(e), 400)
+      res = (str(e), 400)
+      endSession(res)
+      return res
     sender.send((name, *args))
     while not receiver.poll():
       idle()
@@ -357,7 +358,9 @@ def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm):
   current.getPreview = preview
   def writeFile(file):
     mm.seek(0)
-    return file._file.readinto(mm)
+    res = file._file.readinto(mm)
+    print('writeFile, size: {}'.format(res))
+    return res
   current.writeFile = writeFile
   def f(host, port):
     app.debug = False

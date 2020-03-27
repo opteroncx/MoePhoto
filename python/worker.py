@@ -8,7 +8,11 @@ from logger import initLogging
 
 def context(): pass
 context.root = None
-context.getFile = lambda size: BytesIO(context.sharedView[:size])
+def getFile(size):
+  print('getFile, size: {}'.format(size))
+  return BytesIO(context.sharedView[:size])
+context.getFile = getFile
+#context.getFile = lambda size: BytesIO(context.sharedView[:size])
 log = initLogging(config.logPath).getLogger('Moe') # pylint: disable=E1101
 opsPath = config.opsPath # pylint: disable=E1101
 getInfo = lambda f, args: [f.__name__] + [filterOpt(arg) for arg in args]
