@@ -55,7 +55,7 @@ const setup = opt => {
       else running || ((running = 1) && runButton.attr('disabled', true))
     } else {
       messager.abort()
-      running && setTimeout(openMessager, 200)
+      running && setTimeout(_ => running && openMessager(), 200)
     }
   }
   messager
@@ -63,10 +63,9 @@ const setup = opt => {
     .on('open', onMessage)
     .on('error', event => {
       console.error(event)
-      running = 0
+      endSession(1)
       runButton.attr('disabled', true)
       let eta = 0
-      messager.abort()
       if (event.data) {
         eta = +event.data.eta
         opt.onErrorMsg && opt.onErrorMsg(0, eta, event.data)
@@ -83,19 +82,22 @@ const setup = opt => {
 
   const onSuccess = result => {
     console.log(result)
-    running = 0
-    loading.hide()
+    endSession()
     downloader.show()
-    messager.abort()
     runButton.attr('disabled', false)
     opt.success && opt.success(result.result)
+  }
+
+  const endSession = retry => {
+    running = 0
+    retry || loading.hide()
+    messager.abort()
   }
 
   const onError = (xhr, status, error) => {
     console.error(xhr, status, error)
     if (opt.ignoreError) return 1
-    running = 0
-    loading.hide()
+    endSession()
     opt.error ? opt.error(texts.errorMsg, xhr) : alert(texts.errorMsg)
   }
 

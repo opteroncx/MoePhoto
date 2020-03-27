@@ -127,7 +127,7 @@ def endSession(result):
   cache.put(current.key, result)
   current.key = None
   current.session = None
-  return OK
+  return result
 
 def makeHandler(name, prepare, final, methods=['POST']):
   def f():
