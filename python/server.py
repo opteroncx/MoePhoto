@@ -4,6 +4,7 @@ import json
 import codecs
 import re
 import psutil
+from io import BytesIO
 from flask import Flask, render_template, request, jsonify, send_from_directory, make_response, Response, send_file
 from gevent import pywsgi, idle, spawn
 from userConfig import setConfig, VERSION
@@ -345,22 +346,19 @@ def batchEnhance():
   current.setETA = True
   return endSession(toResponse({'result': (result, count, done, fail, fails, output_path)}))
 
-def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm):
+def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm, isWindows):
   global sender, receiver, noter
   sender = taskInSender
   receiver = taskOutReceiver
   noter = noteReceiver
   current.stopFlag = stopEvent
-  def preview():
-    mm.seek(0)
-    buffer = mm.read(current.fileSize)
-    return buffer
-  current.getPreview = preview
+  mmView = memoryview(mm) if isWindows else mm.buf
+  current.getPreview = lambda: BytesIO(mmView[:current.fileSize])
+  if not isWindows:
+    mm = mm.buf.obj
   def writeFile(file):
     mm.seek(0)
-    res = file._file.readinto(mm)
-    print('writeFile, size: {}'.format(res))
-    return res
+    return file._file.readinto(mm)
   current.writeFile = writeFile
   def f(host, port):
     app.debug = False

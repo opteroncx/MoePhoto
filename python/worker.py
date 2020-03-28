@@ -8,11 +8,7 @@ from logger import initLogging
 
 def context(): pass
 context.root = None
-def getFile(size):
-  print('getFile, size: {}'.format(size))
-  return BytesIO(context.sharedView[:size])
-context.getFile = getFile
-#context.getFile = lambda size: BytesIO(context.sharedView[:size])
+context.getFile = lambda size: BytesIO(context.sharedView[:size])
 log = initLogging(config.logPath).getLogger('Moe') # pylint: disable=E1101
 opsPath = config.opsPath # pylint: disable=E1101
 getInfo = lambda f, args: [f.__name__] + [filterOpt(arg) for arg in args]
@@ -77,12 +73,16 @@ def enhance(f, verbose=True):
     return res, code
   return g
 
-def worker(main, taskIn, taskOut, notifier, stopEvent):
+def worker(main, taskIn, taskOut, notifier, stopEvent, isWindows):
   global clean, routes
   mm, routes = main()
-  mm.seek(0)
-  context.sharedView = memoryview(mm)
-  context.shared = mm
+  if isWindows:
+    context.sharedView = memoryview(mm)
+    context.shared = mm
+  else:
+    context.sharedView = mm.buf
+    context.shared = mm.buf.obj
+  context.shared.seek(0)
   import imageProcess
   clean = imageProcess.clean
   context.notifier = notifier

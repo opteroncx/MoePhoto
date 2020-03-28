@@ -28,7 +28,9 @@ class Config():
       log.warning(e)
     self.cuda &= Config.cudaAvailable()
     try:
-      readgpu.init()
+      if self.cuda:
+        readgpu.init()
+        print('{} bytes of graphical memory available.'.format(self.getFreeMem()))
     except Exception as e:
       log.warning(e)
     if self.cuda and self.deviceId >= torch.cuda.device_count():
