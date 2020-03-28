@@ -28,11 +28,14 @@ reSearchFrame = re.compile(r'frame=[\s]*([\d]+) ')
 reMatchAudio = re.compile(r'Stream #0:1')
 reMatchOutput = re.compile(r'Output #0,')
 creationflag = sp.CREATE_NEW_PROCESS_GROUP if isWindows else 0
+formats = {'.mp4', '.ts', '.mkv'}
 sigint = signal.CTRL_BREAK_EVENT if isWindows else signal.SIGINT
 popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, creationflags=creationflag)
 popenText = lambda command: sp.Popen(command, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
 insert1 = lambda t, s: ''.join((t[0], s, *t[1:]))
-suffix = lambda p, s: insert1(os.path.splitext(p), s)
+splitext = lambda p: os.path.splitext(p)
+fixExt = lambda t: ''.join((*t[:-1], t[-1] if t[-1] in formats else '.mkv'))
+suffix = lambda p, s: insert1(splitext(p), s)
 clipList = lambda l, start, end: l[:start] + l[end:]
 commandVideoSkip = lambda command: clipList(command, 13, 23)
 
@@ -158,7 +161,7 @@ def prepare(video, by, steps):
   if stop <= start:
     stop = -1
   root.total = -1 if stop < 0 else stop - start
-  outputPath = optEncode.get('file', '') or outDir + '/' + config.getPath()
+  outputPath = fixExt(splitext(optEncode.get('file', '') or outDir + '/' + config.getPath()))
   dataPath = suffix(outputPath, '-a')
   commandIn = [
     ffmpegPath,
