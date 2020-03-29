@@ -4,12 +4,13 @@ import torch
 ss = lambda f: lambda *args: str(f(*args), encoding='ascii')
 def init():
   global devices, getGPUName, pynvml
-  sys.path.append('site-packages/nvidia-ml-py')
-  import pynvml  # pylint: disable=E0401
-  sys.path.pop()
-  pynvml.nvmlInit()
-  devices = [pynvml.nvmlDeviceGetHandleByIndex(i) for i in range(pynvml.nvmlDeviceGetCount())]
-  getGPUName = ss(pynvml.nvmlDeviceGetName)
+  if not 'pynvml' in globals():
+    sys.path.append('site-packages/nvidia-ml-py')
+    import pynvml  # pylint: disable=E0401
+    sys.path.pop()
+    pynvml.nvmlInit()
+    devices = [pynvml.nvmlDeviceGetHandleByIndex(i) for i in range(pynvml.nvmlDeviceGetCount())]
+    getGPUName = ss(pynvml.nvmlDeviceGetName)
 
 def getGPUProperty(i):
   prop = torch.cuda.get_device_properties(i)

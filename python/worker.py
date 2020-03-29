@@ -73,12 +73,16 @@ def enhance(f, verbose=True):
     return res, code
   return g
 
-def worker(main, taskIn, taskOut, notifier, stopEvent):
+def worker(main, taskIn, taskOut, notifier, stopEvent, isWindows):
   global clean, routes
   mm, routes = main()
-  mm.seek(0)
-  context.sharedView = memoryview(mm)
-  context.shared = mm
+  if isWindows:
+    context.sharedView = memoryview(mm)
+    context.shared = mm
+  else:
+    context.sharedView = mm.buf
+    context.shared = mm.buf.obj
+  context.shared.seek(0)
   import imageProcess
   clean = imageProcess.clean
   context.notifier = notifier

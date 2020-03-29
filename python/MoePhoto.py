@@ -1,10 +1,18 @@
 import sys
 import multiprocessing as mp
-from mmap import mmap
 from defaultConfig import defaultConfig
 sharedMemSize = defaultConfig['sharedMemSize'][0]
 isWindows = sys.platform[:3] == 'win'
-mm = mmap(-1, sharedMemSize, tagname='SharedMemory') if isWindows else mmap(-1, sharedMemSize)
+mmName = 'SharedMemory'
+
+def getMM(size, create=True):
+  if isWindows:
+    from mmap import mmap
+    return mmap(-1, size, tagname=mmName)
+  else: # requires Python >= 3.8
+    from multiprocessing.shared_memory import SharedMemory
+    shm = SharedMemory(mmName, create, size)
+    return shm
 
 if isWindows:
   from subprocess import Popen
@@ -41,6 +49,8 @@ def main():
     process, nodes = genProcess(stepFile + list(args))
     return begin(imNode, nodes, trace, bench).bindFunc(process)(size, name=name)
 
+  mm = getMM(sharedMemSize, False)
+
   return mm, {
     'lockInterface': lock,
     'image_enhance': enhance(imageEnhance, verbose=False),
@@ -50,15 +60,16 @@ def main():
   }
 
 if __name__ == '__main__':
-  mp.freeze_support()
+  mp.set_start_method('spawn')
   from worker import worker
   taskInReceiver, taskInSender = mp.Pipe(False)
   taskOutReceiver, taskOutSender = mp.Pipe(False)
   noter, notifier = mp.Pipe(False)
   stopEvent = mp.Event()
-  mp.Process(target=worker, args=(main, taskInReceiver, taskOutSender, notifier, stopEvent), daemon=True).start()
+  mp.Process(target=worker, args=(main, taskInReceiver, taskOutSender, notifier, stopEvent, isWindows), daemon=True).start()
   from server import runserver, config
-  run = runserver(taskInSender, taskOutReceiver, noter, stopEvent, mm)
+  mm = getMM(sharedMemSize)
+  run = runserver(taskInSender, taskOutReceiver, noter, stopEvent, mm, isWindows)
   host = '127.0.0.1'
   port = config['port']
   if len(sys.argv) > 1:
