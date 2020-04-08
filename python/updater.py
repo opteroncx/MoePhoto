@@ -103,4 +103,5 @@ if __name__ == '__main__':
     manifest = loadManifest()
     v = getVersion(manifest)
     print(v)
-    update_ffmpeg(manifest)
+    update(manifest)
+    # update_ffmpeg(manifest)
