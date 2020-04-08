@@ -71,7 +71,7 @@ def update(manifest):
         print('已是最新版本')
         result = '已是最新版本'
     else:
-        url_new_version = manifest['ufile']+v+'.zip'
+        url_new_version = manifest['ufile']+'MoePhoto-'+v+'_update.zip'
         # download zip
         print('downloading from ',url_new_version)
         url = url_new_version 
