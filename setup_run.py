@@ -40,10 +40,10 @@ moe_utils.delete_files('../build/manifest.json')
 moe_utils.delete_files('../build/update_log.txt')
 moe_utils.delete_files('../build/download')
 moe_utils.delete_files('../build/.user')
-try:
-  update_ffmpeg(manifest)
-except:
-  print('update ffmpeg failed')
+# try:
+#   update_ffmpeg(manifest)
+# except:
+#   print('update ffmpeg failed')
 # copy files
 print('copying presets')
 shutil.copytree(src='./.user',dst='../build/.user')
