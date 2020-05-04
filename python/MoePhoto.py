@@ -1,5 +1,7 @@
 import sys
 import multiprocessing as mp
+sys.path.append('./python')
+sys.path.append('./pyc')
 from defaultConfig import defaultConfig
 sharedMemSize = defaultConfig['sharedMemSize'][0]
 isWindows = sys.platform[:3] == 'win'
