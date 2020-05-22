@@ -71,13 +71,16 @@ const setup = opt => {
         opt.onErrorMsg && opt.onErrorMsg(0, eta, event.data)
       } else eta = reconnectPeriod
       if (eta) {
+        console.log('error', eta)
         eta += Math.random()
         eta = Math.min(Math.max(eta, 0.1), 2147483)
         setTimeout(openMessager, eta * 1000)
       }
       return opt.setStatus && opt.setStatus(eta)
     })
-  const openMessager = _ => messager.open({ path: opt.path })
+  const openMessager = _ => {
+    return messager.open({ path: opt.path })
+  }
   openMessager()
 
   const onSuccess = result => {
@@ -112,8 +115,16 @@ const setup = opt => {
     runButton.bind('click', _ => {
       var fdata = new FormData()
       opt.beforeSend && opt.beforeSend(fdata)
-      if (!(opt.noCheckFile || fdata.noCheckFile || (fdata.get('file') && fdata.get('file').size))) {
-        return opt.setMessage ? opt.setMessage(texts.noFileMsg) : alert(texts.noFileMsg)
+      if (
+        !(
+          opt.noCheckFile ||
+          fdata.noCheckFile ||
+          (fdata.get('file') && fdata.get('file').size)
+        )
+      ) {
+        return opt.setMessage
+          ? opt.setMessage(texts.noFileMsg)
+          : alert(texts.noFileMsg)
       }
       $.post({
         url: `${opt.path}?session=${opt.session}`,
@@ -124,7 +135,8 @@ const setup = opt => {
       })
     })
   } else {
-    let errorMsg = 'Session invailid, please try clear browser data and refresh this page.'
+    let errorMsg =
+      'Session invailid, please try clear browser data and refresh this page.'
     opt.error ? opt.error(errorMsg) : alert(errorMsg)
   }
   return messager
