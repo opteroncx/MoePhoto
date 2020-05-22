@@ -22,8 +22,8 @@ def compile_pyc(path = './python/'):
     except:
         print('No deprecated old files')
     print(items)
-    for item in items:    
-        py_compile.compile(path+item)
+    for item in items:
+        py_compile.compile(path+item, doraise=True, optimize=2)
 
     pycs = os.listdir(path+'__pycache__')
     for pyc in pycs:

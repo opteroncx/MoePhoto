@@ -25,19 +25,19 @@ def loadManifest(path='manifest.json'):
 def update_model(manifest=None):
     print('更新模型文件', manifest)
 
-def update_ffmpeg(manifest):
+def update_ffmpeg(manifest, platform=isWindows):
     print('更新FFMPEG')
     # first time, check path
     if not os.path.exists(ffmpeg_home):
         os.makedirs(ffmpeg_home)
     # download files
-    url = manifest['ffmpeg-win' if isWindows else 'ffmpeg-linux']
+    url = manifest['ffmpeg-win' if platform else 'ffmpeg-linux']
     print('downloading from ',url)
     fname = '{}{}'.format(ffmpeg_home, ffname)
     outPath = '{}{}'.format(ffmpeg_home, outfname)
     download_file(url,fname=fname)
 
-    if isWindows:
+    if platform:
         # extract zip
         ndir = 'ffmpeg-latest-win64-static'
         z = zipfile.ZipFile(fname, 'r')
