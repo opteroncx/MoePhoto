@@ -78,4 +78,7 @@ if args.copy:
   for key in cleanFiles:
     print('copying {}'.format(key))
     v = cleanFiles[key]
-    shutil.copytree(src=getDev(v),dst=getBuild(v))
+    try:
+      shutil.copytree(src=getDev(v),dst=getBuild(v))
+    except: 
+      shutil.copy(src=getDev(v),dst=getBuild(v))
