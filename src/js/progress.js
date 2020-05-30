@@ -20,9 +20,11 @@ const bindProgress = ($ele, context) => {
   const show = _ => {
     intervalId && clearInterval(intervalId)
     bar[0].value = 0
-    intervalId = setInterval(elapse, 1000)
-    timeBox.show()
-    bar.show()
+    if (eta >= 0) {
+      intervalId = setInterval(elapse, 1000)
+      timeBox.show()
+      bar.show()
+    }
     return progress
   }
   const hide = _ => {
@@ -39,7 +41,7 @@ const bindProgress = ($ele, context) => {
   }
   const setStatus = str => statusBox.html(str) && progress
   const setTime = eta => {
-    intervalId || show()
+    intervalId || show(eta)
     if (eta >= 0) {
       bar[0].max = eta + +bar[0].value
       remain = eta
@@ -93,15 +95,15 @@ const setupProgress = opt => {
     total = 0
   const setPreview = opt.outputImg
     ? (_ => {
-        let idle = true
-        opt.outputImg.on('load', _ => (idle = true))
-        return path => {
-          if (idle) {
-            idle = false
-            opt.outputImg.attr('src', path)
-          }
+      let idle = true
+      opt.outputImg.on('load', _ => (idle = true))
+      return path => {
+        if (idle) {
+          idle = false
+          opt.outputImg.attr('src', path)
         }
-      })()
+      }
+    })()
     : _ => _
   if (!opt.session) opt.session = getSession()
   if (!opt.onProgress) opt.onProgress = texts.onBusy
@@ -117,8 +119,8 @@ const setupProgress = opt => {
     data.gone
       ? progress.setStatus(opt.onProgress(data.gone, total, data))
       : data.eta
-      ? progress.setStatus(texts.onBusy(null))
-      : 0
+        ? progress.setStatus(texts.onBusy(null))
+        : 0
     data.stage ? progress.setStage(data) : 0
   }
   const messager = setup(opt)
