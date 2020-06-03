@@ -37,7 +37,8 @@ const getFileName = opt => ({
 const submitFile = (opt, data) =>
   opt.file &&
   opt.file[0] &&
-  (data.set('file', opt.file[0]) || (data.noCheckFile = 0))
+  (data.set('file', opt.file[0]) || (data.noCheckFile = 0)) &&
+  void 0
 const submitUrl = (opt, data) =>
   (data.set(opt.by, opt[opt.by]) || (data.noCheckFile = 1)) && void 0
 const videoBy = (by, opt) => {

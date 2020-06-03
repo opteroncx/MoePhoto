@@ -404,6 +404,7 @@ const context = (steps => {
     let files = steps
       .filter(step => step.panel.position != null)
       .map(step => (step.opt ? step.opt.file : void 0))
+    options[0].op === steps[0].panel.name && (options = options.slice(1))
     options = [steps[0].opt].concat(options)
     options[0].op = steps[0].panel.name
     steps.splice(0, steps.length)
@@ -539,6 +540,7 @@ const serializeSteps = (toFile, data = new Map()) =>
         }
         opt = panel.submit(opt, data)
       }
+      console.log(opt)
       opt && (opt.op = toFile == null && panel.op ? panel.op : panel.name)
       return opt
     })
