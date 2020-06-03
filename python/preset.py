@@ -8,7 +8,7 @@ version = VERSION
 cache = {}
 
 getFilePath = lambda path, filename, ext='.json': '{}/{}{}'.format(path, filename, ext)
-getBrief = lambda item: dict(name=item['name'], notes=item['notes'])
+getBrief = lambda item: dict(name=item['name'], notes=item.get('notes', []))
 
 def loadPreset(path):
   def f(filename, raw=False):

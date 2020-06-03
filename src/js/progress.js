@@ -17,12 +17,14 @@ const bindProgress = ($ele, context) => {
     if (remain < 1) remain = 1
     timeBox.text(texts.timeFormatter(remain))
   }
-  const show = _ => {
+  const show = eta => {
     intervalId && clearInterval(intervalId)
     bar[0].value = 0
-    intervalId = setInterval(elapse, 1000)
-    timeBox.show()
-    bar.show()
+    if (eta >= 0) {
+      intervalId = setInterval(elapse, 1000)
+      timeBox.show()
+      bar.show()
+    }
     return progress
   }
   const hide = _ => {
@@ -39,7 +41,7 @@ const bindProgress = ($ele, context) => {
   }
   const setStatus = str => statusBox.html(str) && progress
   const setTime = eta => {
-    intervalId || show()
+    intervalId || show(eta)
     if (eta >= 0) {
       bar[0].max = eta + +bar[0].value
       remain = eta
