@@ -1,37 +1,10 @@
 import torch
 import torch.nn as nn
-from functools import reduce
+from imageProcess import apply, reduce
+from models import FRM
 
-apply = lambda v, f: f(v)
-
-class upsample_block_v1(nn.Module):
-  def __init__(self,in_channels,out_channels):
-    super(upsample_block_v1,self).__init__()
-    self.conv = nn.Conv2d(in_channels,out_channels,1,stride=1,padding=0)
-    self.shuffler = nn.PixelShuffle(2)
-    self.prelu = nn.PReLU()
-
-  def forward(self,x):
-    return self.prelu(self.shuffler(self.conv(x)))
-
-class FRM(nn.Module):
-  '''The feature recalibration module'''
-  def __init__(self, channel, reduction=16):
-    super(FRM, self).__init__()
-    # global average pooling: feature --> point
-    self.avg_pool = nn.AdaptiveAvgPool2d(1)
-    # feature channel downscale and upscale --> channel weight
-    self.conv_du = nn.Sequential(
-      nn.Conv2d(channel, channel // reduction, 1, padding=0, bias=True),
-      nn.ReLU(inplace=True),
-      nn.Conv2d(channel // reduction, channel, 1, padding=0, bias=True),
-      nn.Sigmoid()
-    )
-
-  def forward(self, x):
-    y = self.avg_pool(x)
-    y = self.conv_du(y)
-    return x * y
+upsample_block_v1 = lambda in_channels, out_channels:\
+  nn.Sequential(nn.Conv2d(in_channels,out_channels,1,stride=1,padding=0), nn.PixelShuffle(2), nn.PReLU())
 
 class LB(nn.Module):
   def __init__(self, inChannels,outChannels):
