@@ -321,7 +321,7 @@ class _NonLocalBlockND(nn.Module):
       inter_channels = max(1, in_channels // 2)
     self.inter_channels = inter_channels
 
-    conv_nd, max_pool, bn = fsND(dimension - 1)
+    conv_nd, max_pool, bn = fsND[dimension - 1]
     convF = conv110(conv_nd)
 
     g = convF(in_channels, inter_channels)
@@ -340,7 +340,7 @@ class _NonLocalBlockND(nn.Module):
       )
 
     self.operation_function = operation_function[mode]
-    pool = lambda: max_pool(kernel_size=2) if sub_sample else lambda: None
+    pool = (lambda: max_pool(kernel_size=2)) if sub_sample else lambda: None
     self.g = seriresM(g, pool())
     self.phi = seriresM(phi, pool())
     if not self.phi:
@@ -360,7 +360,7 @@ class _NonLocalBlockND(nn.Module):
 
   def forward(self, x):
     '''
-    :param x: (b, c, t, h, w)
+    :param x: (b, c, d0, [d1, [d2]])
     :return:
     '''
     batch_size, _, *size = x.shape
@@ -370,7 +370,7 @@ class _NonLocalBlockND(nn.Module):
     theta_x = self.theta(x).view(batch_size, self.inter_channels, -1)
     theta_x = theta_x.permute(0, 2, 1)
     phi_x = self.phi(x).view(batch_size, self.inter_channels, -1)
-    f_div_C = self.operation_function(self, theta_x, phi_x) # (batch, feature, feature)
+    f_div_C = self.operation_function(self, theta_x, phi_x) # (batch, feature, normalized feature)
     y = torch.matmul(f_div_C, g_x)
     y = y.permute(0, 2, 1).contiguous()
     y = y.view(batch_size, self.inter_channels, *size)
@@ -386,7 +386,7 @@ class Nonlocal_CA(nn.Module):
   def __init__(self, in_feat=64, inter_feat=32, reduction=8,sub_sample=False, bn_layer=True):
     super(Nonlocal_CA, self).__init__()
     # nonlocal module
-    self.non_local = (NONLocalBlock2D(in_channels=in_feat,inter_channels=inter_feat, sub_sample=sub_sample,bn_layer=bn_layer))
+    self.non_local = NONLocalBlock2D(in_channels=in_feat,inter_channels=inter_feat, sub_sample=sub_sample,bn_layer=bn_layer)
     self.sigmoid = nn.Sigmoid()
   def forward(self,x):
     ## divide feature map into 4 part

@@ -42,13 +42,25 @@ def getPad(aw, w, ah, h):
   else:
     return padImageReflect((0, aw - w, 0, ah - h))
 
+def memoryError(ram):
+  raise MemoryError('Free memory space is {} bytes, which is not enough.'.format(ram))
+
+def solveRam(m, c, k):
+  if type(k) is float or k.ndim < 1:
+    return m / c * k
+  elif m < k[0]:
+    memoryError(m)
+  else: # solve k_0+k_1*x+k_2*x^2=m, where k_2>0, k_1>=0
+    v = m  / c - k[0]
+    return (np.sqrt(k[1] * k[1] + 4 * k[2] * v) - k[1]) / 2 / k[2]
+
 def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
   *_, c, h, w = shape
-  n = ram * ramCoef / c
+  n = solveRam(ram, c, ramCoef)
   af = alignF[align]
   s = af(minSize + pad * 2)
   if n < s * s:
-    raise MemoryError('Free memory space is {} bytes, which is not enough.'.format(ram))
+    memoryError(ram)
   ph, pw = max(1, h - pad * 3), max(1, w - pad * 3)
   ns = np.arange(s / align, int(n / (align * s)) + 1, dtype=np.int)
   ms = (n / (align * align) / ns).astype(int)
@@ -362,7 +374,7 @@ ceilBy = lambda d: lambda x: (-int(x) & -d ^ -1) + 1 # d needed to be a power of
 ceilBy32 = ceilBy(32)
 minSize = 28
 alignF = { 1: identity }
-alignF.update((1 << k, ceilBy(1 << k)) for k in (3, 5, 6, 8, 9))
+alignF.update((1 << k, ceilBy(1 << k)) for k in (3, 5, 6, 7, 9))
 resizeByTorch = lambda x, width, height, mode='bilinear':\
   F.interpolate(x.unsqueeze(0), size=(height, width), mode=mode, align_corners=False).squeeze()
 clean = lambda: torch.cuda.empty_cache()

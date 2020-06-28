@@ -33,7 +33,7 @@ Branch1 = lambda: namedSequential(
   ('relu', nn.PReLU()),
   ('conv_input2', Conv3x3(3, 3)))
 
-couplePath = lambda feat, s: din(feat, s), s
+couplePath = lambda feat, s: (din(feat, s), s)
 forwardPath = lambda xs, fs: couplePath(fs[0](xs[0]), fs[1](xs[1]))
 class Branch(nn.Module):
   def __init__(self, scaleLayers, strides, non_local=True):
@@ -47,7 +47,7 @@ class Branch(nn.Module):
 
     self.non_local = Nonlocal_CA(in_feat=64, inter_feat=64//8, reduction=8,sub_sample=False, bn_layer=False) if non_local else identity
 
-    self.u = nn.Sequential(upsample_block(64, 256) for _ in range(scaleLayers))
+    self.u = nn.Sequential(*(upsample_block(64, 256) for _ in range(scaleLayers)))
     self.convt_shape1 = Conv3x3(64, 3)
 
     initConvParameters(self)
@@ -81,4 +81,4 @@ class Net(nn.Module):
     initConvParameters(self)
 
   def forward(self, x):
-    return reduce((lambda a, fs: fs[0](a[0]), fs[2](fs[1](a[0])) + a[1]), zip(self.down2, self.branches, self.scales), (x, 0))
+    return reduce((lambda a, fs: (fs[0](a[0]), fs[2](fs[1](a[0])) + a[1])), zip(self.down2, self.branches, self.scales), (x, 0))

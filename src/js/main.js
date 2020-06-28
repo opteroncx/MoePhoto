@@ -354,8 +354,24 @@ const panels = {
         type: 'radio',
         text: '模型',
         values: [
-          { value: 'sun', text: '小模型', checked: 1 },
-          { value: 'mddm', text: '大模型', disabled: 1 }
+          {
+            value: 'sun', text: '小模型',
+            notes: [
+              '小模型比较节约资源'
+            ]
+          },
+          {
+            value: 'moire_obj', text: '自然模型', checked: 1,
+            notes: [
+              '自然模型比较擅长保留对象的纹理'
+            ]
+          },
+          {
+            value: 'moire_screen_gan', text: '屏幕模型',
+            notes: [
+              '屏幕模型比较强力地抹掉摩尔纹'
+            ]
+          }
         ]
       }
     }
