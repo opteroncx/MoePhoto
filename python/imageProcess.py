@@ -32,13 +32,35 @@ def getAnchors(s, ns, l, pad, af, sc):
   # clip = [0:l, pad:l - pad, ..., end[-2] - s:l]
   return start.tolist(), end.tolist(), clip, step, endSc.tolist()
 
+def getPad(aw, w, ah, h):
+  if aw > 2 * w - 1 or ah > 2 * h - 1:
+    tw = max(0, min(w - 1, aw - w))
+    th = max(0, min(h - 1, ah - h))
+    rw = aw - tw
+    rh = ah - th
+    return lambda x: F.pad(F.pad(x, (0, tw, 0, th), mode='reflect'), (0, rw, 0, rh))
+  else:
+    return padImageReflect((0, aw - w, 0, ah - h))
+
+def memoryError(ram):
+  raise MemoryError('Free memory space is {} bytes, which is not enough.'.format(ram))
+
+def solveRam(m, c, k):
+  if type(k) is float or k.ndim < 1:
+    return m / c * k
+  elif m < k[0]:
+    memoryError(m)
+  else: # solve k_0+k_1*x+k_2*x^2=m, where k_2>0, k_1>=0
+    v = m  / c - k[0]
+    return (np.sqrt(k[1] * k[1] + 4 * k[2] * v) - k[1]) / 2 / k[2]
+
 def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
   *_, c, h, w = shape
-  n = ram * ramCoef / c
+  n = solveRam(ram, c, ramCoef)
   af = alignF[align]
   s = af(minSize + pad * 2)
   if n < s * s:
-    raise MemoryError('Free memory space is {} bytes, which is not enough.'.format(ram))
+    memoryError(ram)
   ph, pw = max(1, h - pad * 3), max(1, w - pad * 3)
   ns = np.arange(s / align, int(n / (align * s)) + 1, dtype=np.int)
   ms = (n / (align * align) / ns).astype(int)
@@ -59,13 +81,13 @@ def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
     padImage = identity
     unpad = identity
   elif stepH > 1:
-    padImage = padImageReflect((0, aw - w, 0, 0))
+    padImage = getPad(aw, w, 0, 0)
     unpad = lambda im: im[:, :, :outw]
   elif stepW > 1:
-    padImage = padImageReflect((0, 0, 0, ah - h))
+    padImage = getPad(0, 0, ah, h)
     unpad = lambda im: im[:, :outh]
   else:
-    padImage = padImageReflect((0, aw - w, 0, ah - h))
+    padImage = getPad(aw, w, ah, h)
     unpad = lambda im: im[:, :outh, :outw]
   b = ((torch.arange(padSc, dtype=config.dtype(), device=config.device()) / padSc - .5) * 9).sigmoid().view(1, -1)
   def iterClip():
@@ -225,7 +247,7 @@ def toBuffer(bitDepth):
 
 def toFloat(image):
   if len(image.shape) == 3:  # to shape (H, W, C)
-    image = image.transpose(0, 1).transpose(1, 2)
+    image = image.permute(1, 2, 0)
   else:
     image = image.squeeze(0)
   return image.to(dtype=torch.float)
@@ -351,7 +373,8 @@ identity = lambda x, *_: x
 ceilBy = lambda d: lambda x: (-int(x) & -d ^ -1) + 1 # d needed to be a power of 2
 ceilBy32 = ceilBy(32)
 minSize = 28
-alignF = { 1: identity, 8: ceilBy(8), 32: ceilBy(32) }
+alignF = { 1: identity }
+alignF.update((1 << k, ceilBy(1 << k)) for k in (3, 5, 6, 7, 9))
 resizeByTorch = lambda x, width, height, mode='bilinear':\
   F.interpolate(x.unsqueeze(0), size=(height, width), mode=mode, align_corners=False).squeeze()
 clean = lambda: torch.cuda.empty_cache()
