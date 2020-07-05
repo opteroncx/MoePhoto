@@ -14,15 +14,15 @@ const identity = x => x
 const toNumber = x => +x
 const setSubText = target => (item, key) =>
   isType('object')(target[key]) &&
-  (isType('object')(item) || isType('string')(item))
+    (isType('object')(item) || isType('string')(item))
     ? setPanelTexts(target[key], item)
     : (target[key] = item)
 const setPanelTexts = (target, t) => {
   Array.isArray(t)
     ? t.forEach(setSubText(target))
     : isType('string')(t)
-    ? (target.text = t)
-    : (_ => {
+      ? (target.text = t)
+      : (_ => {
         for (let key in t) setSubText(target)(t[key], key)
       })()
 }
@@ -51,7 +51,7 @@ const addPanel = (panelName, panel) => {
     arg.name || (arg.name = argName)
     let selector = `${tags[arg.type] ? tags[arg.type] : 'input'}[name=${
       arg.name
-    }]`
+      }]`
     arg.bindFlag = 0
     if (optionType[arg.type]) {
       arg.values.forEach(v => {
@@ -69,29 +69,29 @@ const addPanel = (panelName, panel) => {
     arg.bindFlag |= !!arg.binds
     arg.binds = arg.binds && arg.binds.map(bindChild(panel))
     let changeOpt = arg.ignore
-        ? None
-        : arg.type === 'checkbox'
+      ? None
+      : arg.type === 'checkbox'
         ? (ev, opt) => {
-            opt[argName] || (opt[argName] = {})
-            opt[argName][ev.target.value] = ev.target.checked
-          }
+          opt[argName] || (opt[argName] = {})
+          opt[argName][ev.target.value] = ev.target.checked
+        }
         : arg.type === 'file'
-        ? (ev, opt) => (opt[argName] = ev.target.files)
-        : (ev, opt) => (opt[argName] = typify(ev.target.value)),
+          ? (ev, opt) => (opt[argName] = ev.target.files)
+          : (ev, opt) => (opt[argName] = typify(ev.target.value)),
       _c = arg.change ? arg.change.bind(arg) : _ => 0,
       changeBinds =
         arg.type === 'checkbox'
           ? ev =>
-              setBinds(
-                arg.values.find(v => v.value === ev.target.value).binds,
-                !ev.target.checked
-              )
+            setBinds(
+              arg.values.find(v => v.value === ev.target.value).binds,
+              !ev.target.checked
+            )
           : arg.type === 'radio'
-          ? ev =>
+            ? ev =>
               arg.values.forEach(v =>
                 setBinds(v.binds, v.value !== ev.target.value)
               )
-          : None
+            : None
     arg.change = (ev, opt) => {
       changeOpt(ev, opt)
       changeBinds(ev)
@@ -141,13 +141,13 @@ const getChecked = next => (item, opt) =>
 const getOptions = item =>
   item.options
     ? item.options
-        .map(
-          o =>
-            `<option value="${o.value}"${getDisabled(endPoint)(o)}>${
-              o.value
-            }</option>`
-        )
-        .join('')
+      .map(
+        o =>
+          `<option value="${o.value}"${getDisabled(endPoint)(o)}>${
+          o.value
+          }</option>`
+      )
+      .join('')
     : ''
 const getInputTag = (next, getValue = item => item.value) => (item, opt) =>
   `<input type="${item.type}" name="${item.name}" value="${getValue(item, opt)}"
@@ -200,16 +200,16 @@ const getNoteHTML = text => `<li>${text}</li>`
 const getNotes = item =>
   item.notes && item.notes.length
     ? [
-        '<ul class="visible-md visible-lg description">',
-        ...item.notes.map(getNoteHTML),
-        '</ul>'
-      ].join('')
+      '<ul class="visible-md visible-lg description">',
+      ...item.notes.map(getNoteHTML),
+      '</ul>'
+    ].join('')
     : ''
 const getArgHTML = (item, opt, hr = true) =>
   [
     hr ? '<hr>' : '',
     `<label class="${
-      hr ? 'argName col-sm-2' + getClassList(item.labelClasses) : 'opValue'
+    hr ? 'argName col-sm-2' + getClassList(item.labelClasses) : 'opValue'
     }" for="${item.name}">${item.text}</label>`,
     elementTypeMapping[item.type](item, opt),
     hr ? getNotes(item, opt) : ''
@@ -217,7 +217,7 @@ const getArgHTML = (item, opt, hr = true) =>
 const deduplicate = arr => [...new Set(arr)]
 const getCheckedItem = (item, opt) =>
   deduplicate(
-    flatArray(item.values.filter(isChecked(opt)).map(v => v.binds || []))
+    flatArray(item.values.filter(isChecked(opt)).map(v => v.binds || [v]))
   )
 const flatArray = arrs => arrs.reduce((res, arr) => res.concat(arr), [])
 const getInputCheck = (item, opt) =>
@@ -248,8 +248,8 @@ const getArgsHTML = (args, opt) => {
 const getPanelTitle = (pos, text) =>
   pos != null
     ? `<header>${texts.step}<span class="order">${context.getCorrectedPos(
-        pos
-      )}</span>
+      pos
+    )}</span>
     <span class="op">${text}</span></header>`
     : `<header>${$('#options header').html()}</header>`
 const getPanelView = next => (panel, opt, pos) =>
@@ -309,8 +309,8 @@ const getStepInnerHTML = (step, pos) =>
     pos
   )}</span><span class="op">${step.panel.text}</span>
     ${getDelete(
-      step
-    )}</header><div class="configs visible-md visible-lg">${getStepOpt(
+    step
+  )}</header><div class="configs visible-md visible-lg">${getStepOpt(
     step
   )}</div>`
 const getPureStepHTML = (step, pos, selected = 0) =>
