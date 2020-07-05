@@ -353,6 +353,7 @@ const panels = {
       model: {
         type: 'radio',
         text: '模型',
+        change: _ => 1,
         values: [
           {
             value: 'sun', text: '小模型',
