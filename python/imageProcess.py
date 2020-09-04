@@ -2,7 +2,7 @@
 import time
 from copy import copy
 from functools import reduce
-import itertools
+from itertools import chain
 import torch
 import torch.nn.functional as F
 import PIL
@@ -391,3 +391,5 @@ trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, fl
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
 which = [getTransposedOpt, identity, identity, getTransposedOpt, getTransposedOpt, identity, getTransposedOpt]
 ensemble = lambda opt: lambda x: reduce((lambda v, t: (v + t[2](doCrop(t[3](opt), t[1](x)))).detach()), zip(range(opt.ensemble), trans, transInv, which), doCrop(opt, x))
+split = lambda *ps: lambda x: tuple(split(*ps[1:])(c) for c in x.split(ps[0], x.ndim - len(ps))) if len(ps) else x
+flat = lambda x: tuple(chain(*(flat(t) for t in x))) if len(x) and type(x[0]) is tuple else x
