@@ -1,6 +1,13 @@
 import { newMessager, texts } from './common.js'
 import $ from 'jquery'
 const reconnectPeriod = 5
+const setComparison = opt =>
+  opt.outputImg &&
+  opt.inputImg &&
+  opt.inputImg.length &&
+  $('.twentytwenty-container').twentytwenty({
+    no_overlay: true
+  })
 const setup = opt => {
   var options = $('#options')
   if (opt.inputImg && opt.inputImg.length) {
@@ -13,6 +20,7 @@ const setup = opt => {
     }
     options.on('change', '.imgInp', readURL)
   }
+  setComparison(opt)
   if (opt.dropZone && opt.dropZone.length) {
     var dropZone = opt.dropZone[0]
     dropZone.addEventListener(

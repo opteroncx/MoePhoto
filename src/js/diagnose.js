@@ -17,7 +17,7 @@ const weights = {
   dehaze: 3e-4
 }
 const names = {}
-const diag = { d: new Map() }
+const diag = { d: new Map(), marks: {} }
 const joinByKeys = (o, keys) =>
   keys.length ? ':' + keys.map(key => o[key]).join(', ') : ''
 const restrictLength = str => str.slice(0, 32)
@@ -48,12 +48,14 @@ const initDiagnoser = (panels, ele) => {
     context.refreshSteps()
   }
   diag.t = document.getElementById('benchmark')
+  diag.marks = {}
   if (!diag.t) {
     let table = document.createElement('table')
     diag.t = document.createElement('tbody')
     diag.t.setAttribute('id', 'benchmark')
     diag.t.hidden = true
     diag.t.innerHTML = `<th>${texts.item}</th><th>${texts.samples}</th><th>${texts.mark}</th>`
+    diag.t.appendChild(newItem(texts.totalMark, '', 0))
     table.appendChild(diag.t)
     ele.appendChild(document.createElement('hr'))
     ele.appendChild(table)
@@ -75,6 +77,10 @@ const setItem = (tr, op, samples, mark) => {
 const showBench = (op, weight, samples) => {
   if (!op || !ops[op.op]) return
   let mark = (weights[op.op] || 1e-3) / weight
+  diag.marks[op.op] = mark
+  let s = 0
+  for (k in diag.marks) s += diag.marks[k]
+  setItem(diag.d.get(texts.totalMark), texts.totalMark, '', s)
   op = restrictLength(names[op.op] + joinByKeys(op, ops[op.op]))
   diag.d.has(op)
     ? setItem(diag.d.get(op), op, samples, mark)

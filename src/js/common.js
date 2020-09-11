@@ -1,5 +1,6 @@
 const VERSION = '4.6'
 import('bootstrap/dist/css/bootstrap.min.css')
+import('zurb-twentytwenty/css/twentytwenty.css')
 import('../css/style.css')
 import('../css/font-awesome.css')
 import('../css/loader.css')
@@ -12,6 +13,8 @@ import $ from 'jquery'
 window.$ = $
 import 'bootstrap'
 import { jarallax } from 'jarallax'
+import 'zurb-twentytwenty/js/jquery.event.move.js'
+import 'zurb-twentytwenty/js/jquery.twentytwenty.js'
 import './jquery.totemticker.js'
 import './move-top.min.js'
 import './easing.js'
@@ -97,6 +100,7 @@ const texts = {
   running: '正在处理您的任务',
   diagnose: '诊断配置',
   bench: '显示跑分',
+  totalMark: '总分',
   item: '项目',
   samples: '样本数',
   mark: '得分',

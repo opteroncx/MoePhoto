@@ -1,97 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <title>MoePhoto {{version}} 批量放大</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="keywords" content="" />
+  </head>
 
-<head>
-	<title>MoePhoto {{version}} 批量放大</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<meta name="keywords" content="" />
-</head>
-
-<body>
-	<!-- banner -->
-	{% autoescape true %} {{header| safe}} {% endautoescape %}
-	<!-- //banner -->
-	<!-- features -->
-	<div class="features">
-		<div class="container">
-			<br>
-			<br>
-			<h2 class="agileits-title">批量放大</h2>
-			<p class="pagile-text">将所有需要放大的图片放置到一个文件夹内，并在下方选择路径</p>
-			<div class="features-row">
-				<div class="col-md-6 features-right">
-
-				</div>
-				<div class="col-md-6 features-left">
-					<div id="FG" style="position: relative;top: 64px;left: 20%;">
-						<div id="fountainG_1" class="fountainG"></div>
-						<div id="fountainG_2" class="fountainG"></div>
-						<div id="fountainG_3" class="fountainG"></div>
-						<div id="fountainG_4" class="fountainG"></div>
-						<div id="fountainG_5" class="fountainG"></div>
-						<div id="fountainG_6" class="fountainG"></div>
-						<div id="fountainG_7" class="fountainG"></div>
-						<div id="fountainG_8" class="fountainG"></div>
-					</div>
-					<img id='outputImg' class="img-responsive" src="http://placehold.it/500x120?text=Output+Image" alt="">
-				</div>
-				<div class="clearfix"> </div>
-			</div>
-		</div>
-	</div>
-	<!-- //features -->
-	<!-- Stats -->
-	<div class="news-w3layouts">
-		<div class="container">
-			<hr>
-			<div class="features-grid">
-				<i class="fa fa-cogs" aria-hidden="true"></i> 属性设置
-			</div>
-			<div class="stats-agileinfo agileits-w3layouts">
-				<div id="steps" class="col-sm-4 col-md-4 settings"></div>
-				<div id="options" class="col-sm-8 col-md-8 settings"></div>
-				<div class="clearfix"></div>
-				<div class="col-md-12">
-					<hr>
-					<button id="RunButton" type="button" class="btn btn-primary btn-lg">开始</button>
-					<button id="StopButton" type="button" class="btn btn-warning btn-lg">中止</button>
-				</div>
-				<div class="col-md-12">
-					<br>
-					<br>
-				</div>
-
-			</div>
-		</div>
-	</div>
-	<!-- //Stats -->
-	<div class="container" id="progress">
-		<p><span class="message"></span></p>
-		<p><span class="status"></span><span class="time"></span></p>
-		<meter class="progress-bar" value=0 max=100></meter>
-		<div class="col-md-12">
-			<br>
-		</div>
-	</div>
-	<!-- footer start here -->
-	{% autoescape true %} {{footer| safe}} {% endautoescape %}
-	<!-- //footer end here -->
-	<!-- js -->
-	<script src="{{vendorsJs}}"></script>
-	<script src="{{commonJs}}"></script>
-	<script src="static/js/main.js"></script>
-	<script>
-		const app = window.app
-		$(document).ready(_ => app.setup({
-			onProgress: app.texts.batchRunning,
-			success: (result, progress) => progress.final(app.texts.batchSucc(result)),
-			path: '/batch_enhance',
-			outputImg: $('#outputImg'),
-			features: ['index', 'inputBatch', 'output', 'SR', 'DN', 'dehaze', 'demoire', 'ednoise', 'resize'],
-			ignoreError: true
-		}))
-	</script>
-</body>
-
+  <body>
+    <!-- banner -->
+    {% autoescape true %} {{header| safe}} {% endautoescape %}
+    <!-- //banner -->
+    <!-- features -->
+    <div class="features">
+      <div class="container">
+        <br />
+        <br />
+        <h2 class="agileits-title">批量放大</h2>
+        <p class="pagile-text">
+          将所有需要放大的图片放置到一个文件夹内，并在下方选择路径
+        </p>
+        <hr />
+        <div class="features-grid">
+          <i class="fa fa-cogs" aria-hidden="true"></i> 属性设置
+        </div>
+        <div class="stats-agileinfo agileits-w3layouts">
+          <div id="steps" class="col-sm-4 col-md-4 settings"></div>
+          <div id="options" class="col-sm-8 col-md-8 settings"></div>
+          <div class="clearfix"></div>
+          <div class="col-md-12">
+            <hr />
+            <button id="RunButton" type="button" class="btn btn-primary btn-lg">
+              开始
+            </button>
+            <button
+              id="StopButton"
+              type="button"
+              class="btn btn-warning btn-lg"
+            >
+              中止
+            </button>
+          </div>
+          <div class="col-md-12">
+            <br />
+            <br />
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- //features -->
+    <!-- Stats -->
+    <div class="news-w3layouts">
+      <div class="container">
+        <div class="features-row">
+          <div id="FG" style="position: relative;top: 64px;left: 20%;">
+            <div id="fountainG_1" class="fountainG"></div>
+            <div id="fountainG_2" class="fountainG"></div>
+            <div id="fountainG_3" class="fountainG"></div>
+            <div id="fountainG_4" class="fountainG"></div>
+            <div id="fountainG_5" class="fountainG"></div>
+            <div id="fountainG_6" class="fountainG"></div>
+            <div id="fountainG_7" class="fountainG"></div>
+            <div id="fountainG_8" class="fountainG"></div>
+          </div>
+          <div id="comparison" class="twentytwenty-container">
+            <img
+              id="inputImg"
+              class="img-responsive"
+              src="http://placehold.it/1140x120?text=Input+Image"
+            />
+            <img
+              id="outputImg"
+              class="img-responsive"
+              src="http://placehold.it/1140x120?text=Output+Image"
+              alt=""
+            />
+          </div>
+          <div class="clearfix"></div>
+        </div>
+      </div>
+    </div>
+    <!-- //Stats -->
+    <div class="container" id="progress">
+      <p><span class="message"></span></p>
+      <p><span class="status"></span><span class="time"></span></p>
+      <meter class="progress-bar" value="0" max="100"></meter>
+      <div class="col-md-12">
+        <br />
+      </div>
+    </div>
+    <!-- footer start here -->
+    {% autoescape true %} {{footer| safe}} {% endautoescape %}
+    <!-- //footer end here -->
+    <!-- js -->
+    <script src="{{vendorsJs}}"></script>
+    <script src="{{commonJs}}"></script>
+    <script src="static/js/main.js"></script>
+    <script>
+      const app = window.app
+      $(document).ready(_ =>
+        app.setup({
+          onProgress: app.texts.batchRunning,
+          success: (result, progress) =>
+            progress.final(app.texts.batchSucc(result)),
+          path: '/batch_enhance',
+          inputImg: $('#inputImg'),
+          outputImg: $('#outputImg'),
+          features: [
+            'index',
+            'inputBatch',
+            'output',
+            'SR',
+            'DN',
+            'dehaze',
+            'demoire',
+            'ednoise',
+            'resize'
+          ],
+          ignoreError: true
+        })
+      )
+    </script>
+  </body>
 </html>

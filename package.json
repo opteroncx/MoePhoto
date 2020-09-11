@@ -1,6 +1,6 @@
 {
   "name": "moephoto",
-  "version": "5.4.2",
+  "version": "5.5.0",
   "description": "MoePhoto Image Toolbox萌图工具箱   一个基于深度学习的AI图像修复软件（更新中...）   感兴趣的加QQ群320785467讨论   ### 基本功能 * 图像降噪 * 超分辨率 * 去雾 * 涂抹及风格化",
   "directories": {
     "test": "test"
@@ -26,6 +26,7 @@
     "css-loader": "^2",
     "cssnano": "^4",
     "file-loader": "^3",
+    "is-obj": "^2",
     "mini-css-extract-plugin": "^0",
     "postcss-import": "^12",
     "postcss-loader": "^3",
@@ -38,6 +39,8 @@
   "dependencies": {
     "bootstrap": "^3",
     "jarallax": "^1",
-    "jquery": "^3.5.1"
+    "jquery": "^3.5",
+    "jquery.event.move": "^1",
+    "zurb-twentytwenty": ">=0"
   }
 }

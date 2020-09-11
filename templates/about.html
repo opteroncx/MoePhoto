@@ -1,122 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <title>MoePhoto {{version}} 关于</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="keywords" content="" />
+    <script type="application/x-javascript">
+      addEventListener("load", function () {
+      	setTimeout(hideURLbar, 0);
+      }, false);
 
-<head>
-	<title>MoePhoto {{version}} 关于</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<meta name="keywords" content="" />
-	<script type="application/x-javascript">
-		addEventListener("load", function () {
-			setTimeout(hideURLbar, 0);
-		}, false);
+      function hideURLbar() {
+      	window.scrollTo(0, 1);
+      }
+    </script>
+  </head>
 
-		function hideURLbar() {
-			window.scrollTo(0, 1);
-		}
-	</script>
-</head>
+  <body>
+    <!-- banner -->
+    {% autoescape true %} {{header| safe}} {% endautoescape %}
+    <!-- //banner -->
+    <!-- about -->
+    <div class="about agileinfo">
+      <div class="container">
+        <h3 class="agileits-title">关于软件</h3>
+        <div class="col-sm-6 about-w3right">
+          <img src="static/images/img1.jpg" alt="" />
+        </div>
+        <div class="col-sm-6 about-w3left">
+          <h4>
+            Moe Photo Image Toolbox <br />
+            萌图工具箱
+          </h4>
+          <p>
+            萌图修复工具箱是一个由May-workshop开发的开源图像修复软件，
+            算法基于深度学习，通过复杂的网络拓扑达到更好的图像修复效果，在超分任务上各项数据指标上都要优于waifu2x。
+            此外我们还引入了去雾，视频插帧与慢动作，降噪等更多炫酷的功能，在未来萌图工具箱也会变得越来越强大。
+            如果你对背后的算法原理感兴趣可以去社长OPT的博客看看。
+          </p>
+          <a href="http://blog.may-workshop.com" class="button button-isi">
+            <span>去博客看看</span>
+            <i class="icon glyphicon glyphicon-arrow-right"></i>
+          </a>
+          <a
+            href="http://may-workshop.com?page_id=373"
+            class="button button-isi"
+          >
+            <span>检查更新</span>
+            <i class="icon glyphicon glyphicon-arrow-right"></i>
+          </a>
+          <p>更新日志</p>
+          <textarea rows="25" cols="70">
+{% autoescape true %} {{log| safe}} {% endautoescape %}</textarea
+          >
+          <div class="clearfix"></div>
+        </div>
+        <div class="clearfix"></div>
+      </div>
+    </div>
+    <!-- //about -->
+    <!-- about-slid -->
+    <div class="about-slid jarallax">
+      <div class="container">
+        <h4>QQ群</h4>
+        <h5>群号码 : 320785467</h5>
+        <p>欢迎感兴趣的大佬们加群讨论</p>
+      </div>
+    </div>
+    <!-- //about-slid -->
+    <!-- about-team -->
+    <div class="team">
+      <div class="container">
+        <h3 class="agileits-title">Our Team</h3>
+        <div class="team-row-agileinfo">
+          <div class="col-md-3 col-xs-6 team-grids">
+            <div class="thumbnail team-agileits">
+              <img
+                src="http://blog.moephoto.tech/wp-content/uploads/2018/06/74.jpg"
+                class="img-responsive"
+                alt=""
+              />
+              <div class="w3agile-caption ">
+                <h4>Opteroncx</h4>
+                <p>社长</p>
+                <div class="social-icon social-w3lsicon">
+                  <a
+                    href="https://github.com/opteroncx"
+                    class="social-button drb1"
+                  >
+                    <i class="fa fa-github"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 col-xs-6 team-grids">
+            <div class="thumbnail team-agileits">
+              <img
+                src="https://avatars2.githubusercontent.com/u/1401674?s=460&v=4"
+                class="img-responsive"
+                alt="喵"
+              />
+              <div class="w3agile-caption ">
+                <h4>lotress</h4>
+                <p>开发者</p>
+                <div class="social-icon social-w3lsicon">
+                  <a
+                    href="https://github.com/lotress"
+                    class="social-button drb1"
+                  >
+                    <i class="fa fa-github"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
 
-<body>
-	<!-- banner -->
-	{% autoescape true %} {{header| safe}} {% endautoescape %}
-	<!-- //banner -->
-	<!-- about -->
-	<div class="about agileinfo">
-		<div class="container">
-			<h3 class="agileits-title">关于软件</h3>
-			<div class="col-sm-6 about-w3right">
-				<img src="static/images/img1.jpg" alt="" />
-			</div>
-			<div class="col-sm-6 about-w3left">
-				<h4>Moe Photo Image Toolbox
-					<br> 萌图工具箱</h4>
-				<p>萌图修复工具箱是一个由May-workshop开发的开源图像修复软件，
-					算法基于深度学习，通过复杂的网络拓扑达到更好的图像修复效果，在超分任务上各项数据指标上都要优于waifu2x。
-					此外我们还引入了去雾，视频插帧与慢动作，降噪等更多炫酷的功能，在未来萌图工具箱也会变得越来越强大。
-					如果你对背后的算法原理感兴趣可以去社长OPT的博客看看。
-				</p>
-				<a href="http://blog.may-workshop.com" class="button button-isi">
-					<span>去博客看看</span>
-					<i class="icon glyphicon glyphicon-arrow-right"></i>
-				</a>
-				<a href="http://may-workshop.com?page_id=373" class="button button-isi">
-					<span>检查更新</span>
-					<i class="icon glyphicon glyphicon-arrow-right"></i>
-				</a>
-				<p>更新日志</p>
-				<textarea rows="25" cols="70">{% autoescape true %} {{log| safe}} {% endautoescape %}</textarea>
-				<div class="clearfix"> </div>
-			</div>
-			<div class="clearfix"> </div>
-		</div>
-	</div>
-	<!-- //about -->
-	<!-- about-slid -->
-	<div class="about-slid jarallax">
-		<div class="container">
-			<h4>QQ群</h4>
-			<h5>群号码 : 320785467 </h5>
-			<p>欢迎感兴趣的大佬们加群讨论 </p>
-		</div>
-	</div>
-	<!-- //about-slid -->
-	<!-- about-team -->
-	<div class="team">
-		<div class="container">
-			<h3 class="agileits-title">Our Team</h3>
-			<div class="team-row-agileinfo">
-				<div class="col-md-3 col-xs-6 team-grids">
-					<div class="thumbnail team-agileits">
-						<img src="http://blog.moephoto.tech/wp-content/uploads/2018/06/74.jpg" class="img-responsive" alt="" />
-						<div class="w3agile-caption ">
-							<h4>Opteroncx</h4>
-							<p>社长</p>
-							<div class="social-icon social-w3lsicon">
-								<a href="https://github.com/opteroncx" class="social-button drb1">
-									<i class="fa fa-github"></i>
-								</a>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="col-md-3 col-xs-6 team-grids">
-					<div class="thumbnail team-agileits">
-						<img src="https://avatars2.githubusercontent.com/u/1401674?s=460&v=4" class="img-responsive" alt="喵" />
-						<div class="w3agile-caption ">
-							<h4>lotress</h4>
-							<p>开发者</p>
-							<div class="social-icon social-w3lsicon">
-								<a href="https://github.com/lotress" class="social-button drb1">
-									<i class="fa fa-github"></i>
-								</a>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<div class="clearfix"> </div>
-			</div>
-		</div>
-	</div>
-	<!-- //about-team -->
-	<!-- about-supporter -->
-	<div class="team">
-		<div class="container">
-			<h3 class="agileits-title">赞助者</h3>
-			<div id="supporters"></div>
-			<div class="clearfix"> </div>
-		</div>
-	</div>
-	<!-- //about-supporter -->
-	<!-- footer start here -->
-	{% autoescape true %} {{footer| safe}} {% endautoescape %}
-	<!-- //footer end here -->
-	<!-- js -->
-	<script src="{{vendorsJs}}"></script>
-	<script src="{{commonJs}}"></script>
-	<script src="static/js/about.js"></script>
-
-</body>
-
+          <div class="clearfix"></div>
+        </div>
+      </div>
+    </div>
+    <!-- //about-team -->
+    <!-- about-supporter -->
+    <div class="team">
+      <div class="container">
+        <h3 class="agileits-title">赞助者</h3>
+        <div id="supporters"></div>
+        <div class="clearfix"></div>
+      </div>
+    </div>
+    <!-- //about-supporter -->
+    <!-- footer start here -->
+    {% autoescape true %} {{footer| safe}} {% endautoescape %}
+    <!-- //footer end here -->
+    <!-- js -->
+    <script src="{{vendorsJs}}"></script>
+    <script src="{{commonJs}}"></script>
+    <script src="static/js/about.js"></script>
+  </body>
 </html>

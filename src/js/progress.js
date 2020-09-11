@@ -93,18 +93,20 @@ const setupProgress = opt => {
   var stopButton = $('#StopButton').hide(),
     runButton = $('#RunButton'),
     total = 0
-  const setPreview = opt.outputImg
-    ? (_ => {
-        let idle = true
-        opt.outputImg.on('load', _ => (idle = true))
-        return path => {
-          if (idle) {
-            idle = false
-            opt.outputImg.attr('src', path)
+  const setPreview =
+    opt.outputImg && opt.outputImg.length
+      ? (_ => {
+          let idle = true
+          opt.outputImg.on('load', _ => (idle = true))
+          return (path, old) => {
+            if (idle && path) {
+              idle = false
+              opt.outputImg.attr('src', getResource(path))
+              old && opt.inputImg.attr('src', getResource(old))
+            }
           }
-        }
-      })()
-    : _ => _
+        })()
+      : _ => _
   if (!opt.session) opt.session = getSession()
   if (!opt.onProgress) opt.onProgress = texts.onBusy
   const onMessage = e => {
@@ -114,7 +116,7 @@ const setupProgress = opt => {
       runButton.hide()
       stopButton.attr('disabled', false).show()
     }
-    data.preview ? setPreview(getResource(data.preview)) : 0
+    data.preview ? setPreview(data.preview, data.old) : 0
     data.total ? (total = data.total) : 0
     data.gone
       ? progress.setStatus(opt.onProgress(data.gone, total, data))
@@ -152,7 +154,7 @@ const setupProgress = opt => {
     progress.setStage()
     error && error(xhr)
   }
-  stopButton.click(_ => {
+  stopButton.on('click', _ => {
     $.ajax({
       url: `/stop?session=${opt.session}`,
       beforeSend: _ => {
