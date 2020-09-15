@@ -49,8 +49,8 @@ $(_ => {
     mousestop: true
   })
 })
-$(document).ready($ => {
-  $('.scroll ').click(function (event) {
+$(_ => {
+  $('.scroll ').on('click', function (event) {
     event.preventDefault()
     $('html,body').animate(
       {
@@ -91,6 +91,7 @@ const texts = {
   hour: '小时',
   minute: '分钟',
   second: '秒',
+  scale: '倍',
   noFile: '请选择',
   noFileMsg: '缺少输入文件',
   errorMsg: '出错啦',
@@ -124,6 +125,7 @@ const texts = {
   videoSucc: result => `完成啦，处理到第${result[1]}帧`,
   batchRunning: genOnProgress('张'),
   videoRunning: genOnProgress('帧'),
+  videoSkip: gone => `${processingMsg}，已跳过${gone}帧`,
   lockRunning: genOnProgress('秒', '锁定中')
 }
 const appendText = key => text => text + texts[key]

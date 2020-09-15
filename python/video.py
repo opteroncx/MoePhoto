@@ -288,6 +288,7 @@ def SR_vid(video, by, *steps):
   outputPath, process, *args = prepare(video, by, steps)
   start, stop, root = args[:3]
   width, height, *more = getVideoInfo(video, by, *args[-3:])
+  root.callback(root, dict(shape=[height, width], fps=more[0]))
   commandIn, commandVideo, commandOut = setupInfo(by, outputPath, *args[2:8], start, width, height, *more)
   procIn = popen(commandIn)
   procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=0)
@@ -306,6 +307,8 @@ def SR_vid(video, by, *steps):
       readSubprocess(qOut)
       if i >= start:
         p(raw_image)
+      elif (i + 1) % 10 == 0:
+        root.callback(root, dict(skip=i + 1))
       i += 1
       idle()
     os.kill(procIn.pid, sigint)

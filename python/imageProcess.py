@@ -292,14 +292,16 @@ def readFile(nodes=[], context=None):
     if image.mode == 'P':
       context.palette = image
       image = image.convert('RGB')
+    summary = dict(mode=image.mode)
     image = np.array(image)
+    summary['shape'] = list(image.shape[:2])
     for n in nodes:
       n.multipleLoad(image.size)
       updateNode(n)
     if len(nodes):
       p = nodes[0].parent
       updateNode(p)
-      p.callback(p)
+      p.callback(p, summary)
     if len(image.shape) == 2:
       return image.reshape(*image.shape, 1)
     if image.shape[2] == 3 or image.shape[2] == 4:

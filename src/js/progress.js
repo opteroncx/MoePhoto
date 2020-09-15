@@ -123,6 +123,7 @@ const setupProgress = opt => {
       : data.eta
       ? progress.setStatus(texts.onBusy(null))
       : 0
+    data.skip && opt.onSkip && opt.onSkip(data.skip)
     data.stage ? progress.setStage(data) : 0
   }
   const messager = setup(opt)
