@@ -9,6 +9,7 @@ const setComparison = opt =>
   $('.twentytwenty-container').twentytwenty({
     no_overlay: true
   })
+const onloadImg = _ => $(window).trigger('resize.twentytwenty')
 const setup = opt => {
   var options = $('#options')
   if (opt.inputImg && opt.inputImg.length) {
@@ -22,6 +23,7 @@ const setup = opt => {
     options.on('change', '.imgInp', readURL)
   }
   setComparison(opt)
+  opt.resizeOnce || opt.inputImg.on('load', onloadImg)
   if (opt.dropZone && opt.dropZone.length) {
     var dropZone = opt.dropZone[0]
     dropZone.addEventListener(
@@ -33,13 +35,18 @@ const setup = opt => {
       },
       false
     )
-    opt.inputImg.on('load', _ =>
-      onSummaryMessage({
-        data: {
-          shape: [opt.inputImg[0].naturalHeight, opt.inputImg[0].naturalWidth]
-        }
-      })
-    )
+    opt.resizeOnce ||
+      opt.inputImg.on('load', _ =>
+        onSummaryMessage({
+          data: {
+            shape: [
+              opt.inputImg[0].naturalHeight,
+              opt.inputImg[0].naturalWidth
+            ],
+            mode: 'unknown'
+          }
+        })
+      )
     dropZone.addEventListener(
       'drop',
       e => {
@@ -129,6 +136,7 @@ const setup = opt => {
     openMessager()
     reconnect = 0
     running = 1
+    opt.resizeOnce && opt.inputImg && opt.inputImg.one('load', onloadImg)
     return messager
   })
 

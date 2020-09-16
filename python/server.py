@@ -274,7 +274,7 @@ app.route('/log', endpoint='log')(lambda: send_file(logPath, add_etags=False))
 app.route('/favicon.ico', endpoint='favicon')(lambda: send_from_directory(app.root_path, 'logo3.ico'))
 for fmt in ('png', 'jpeg', 'bmp', 'tiff', 'webp'):
   app.route("/{}/.preview.{}".format(outDir, fmt), endpoint="preview{}".format(fmt))(
-    lambda: Response(current.getPreview(), mimetype="image/{}".format(fmt)))
+    (lambda mime: lambda: Response(current.getPreview(), mimetype=mime))("image/{}".format(fmt)))
 sendFromDownDir = lambda filename: send_from_directory(downDir, filename)
 app.route("/{}/<path:filename>".format(outDir), endpoint='download')(sendFromDownDir)
 lockFinal = lambda result: (jsonify(result='Interrupted', remain=result), 200) if result > 0 else (jsonify(result='Idle'), 200)
@@ -325,7 +325,8 @@ def batchEnhance():
     name = os.path.join(output_path, image.filename)
     start = time.time()
     opt[-1]['file'] = name
-    sender.send(('batch', current.writeFile(image), *opt))
+    current.fileSize = current.writeFile(image)
+    sender.send(('batch', current.fileSize, *opt))
     while not receiver.poll():
       idle()
     output = receiver.recv()
@@ -337,7 +338,7 @@ def batchEnhance():
     }
     updateETA(note)
     if output[1] == 200:
-      ext = os.path.splitext(image.filename)
+      ext = os.path.splitext(image.filename)[1]
       note['old'] = "/{}/.preview{}".format(outDir, ext)
       note['preview'] = name
       done.append(name)

@@ -369,7 +369,8 @@ const context = (steps => {
     }
   }
   const removeStep = p => {
-    let change = steps.splice(p, 1).panel.changeSummary
+    let change = steps.splice(p, 1).panel
+    change = change && change.changeSummary
     p > pos || (pos -= 1)
     self.changed = true
     refreshSteps(null, change)

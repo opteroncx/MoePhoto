@@ -35,6 +35,38 @@
             <div id="steps" class="col-sm-4 col-md-4 settings"></div>
             <div id="options" class="col-sm-8 col-md-8 settings"></div>
             <div class="clearfix"></div>
+            <div class="col-md-12 stats-agileinfo">
+              <hr />
+              <div class="features-grid">
+                视频摘要
+              </div>
+              <table class="col-sm-6">
+                <th>
+                  <tr>
+                    <td class="col-sm-2"></td>
+                    <td class="col-sm-2">源视频</td>
+                    <td class="col-sm-2">目标</td>
+                  </tr>
+                </th>
+                <tbody>
+                  <tr>
+                    <td>宽度</td>
+                    <td id="summary-srcWidth">未知</td>
+                    <td id="summary-width"></td>
+                  </tr>
+                  <tr>
+                    <td>高度</td>
+                    <td id="summary-srcHeight">未知</td>
+                    <td id="summary-height"></td>
+                  </tr>
+                  <tr>
+                    <td>帧率</td>
+                    <td id="summary-fps">未知</td>
+                    <td id="summary-frameRate"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
             <div class="col-md-12">
               <hr />
               <button
@@ -115,6 +147,7 @@
             $('#downImg').attr('href', im)
           },
           path: '/video_enhance',
+          resizeOnce: true,
           outputImg: $('#outputImg'),
           dropZone: $('#drop_zone'),
           features: [

@@ -115,7 +115,8 @@ const texts = {
     P: '色板图像',
     L: '灰度图像',
     RGB: '彩色图像',
-    RGBA: '带透明通道的彩色图像'
+    RGBA: '带透明通道的彩色图像',
+    unknown: '未知'
   },
   onBusy: gone => '忙碌中' + (gone == null ? '' : `，已经过${toHMS(gone)}`),
   timeFormatter: time => `，预计还需要${toHMS(time)}`,
