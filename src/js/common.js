@@ -111,6 +111,12 @@ const texts = {
   logWritten: '日志已写入浏览器控制台，请按<kbd>F12</kbd>查看',
   noMoreLog: '没有新的日志',
   needRefresh: '请在空闲后刷新',
+  imageMode: {
+    P: '色板图像',
+    L: '灰度图像',
+    RGB: '彩色图像',
+    RGBA: '带透明通道的彩色图像'
+  },
   onBusy: gone => '忙碌中' + (gone == null ? '' : `，已经过${toHMS(gone)}`),
   timeFormatter: time => `，预计还需要${toHMS(time)}`,
   batchSucc: result =>

@@ -1,3 +1,4 @@
+import $ from 'jquery'
 import { texts } from './common.js'
 import { serializeSteps } from './steps.js'
 const object = {},
@@ -21,7 +22,8 @@ const object = {},
     frameRate: 'fps',
     fps: 'fps'
   },
-  videoOnly = ['frameRate', 'fps']
+  videoOnly = ['frameRate', 'fps'],
+  textMapping = { mode: 'imageMode' }
 const show = o => {
   let ot = {}
   for (let key in units) o[key] && (ot[key] = o[key] + texts[units[key]])
@@ -29,11 +31,17 @@ const show = o => {
     let ko = multiples[key]
     o[ko] || (ot[ko] = o[key].toFixed(2) + texts.scale)
   }
+  for (let key in textMapping)
+    o[key] &&
+      (ot[key] =
+        o[key] in texts[textMapping[key]]
+          ? texts[textMapping[key]][o[key]]
+          : o[key])
   o.video ||
     videoOnly.forEach(key => {
       delete ot[key]
     })
-  console.log(ot)
+  for (let key in ot) $(`#summary-${key}`).html(ot[key])
 }
 const toKey = (op, arg) => `${op}.${arg}`
 const addSummary = (op, arg, option) => (s[toKey(op, arg)] = option)
@@ -65,6 +73,7 @@ const onSummaryChange = _ =>
   show(serializeSteps().reduce(summary, initObeject(object)))
 const onSummaryMessage = ({ data }) => {
   let change = false
+  if (!data) return
   if (data.shape && data.shape.length > 1) {
     identityObject.height = identityObject.srcHeight = data.shape[0]
     identityObject.width = identityObject.srcWidth = data.shape[1]

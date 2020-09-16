@@ -369,10 +369,10 @@ const context = (steps => {
     }
   }
   const removeStep = p => {
-    steps.splice(p, 1)
+    let change = steps.splice(p, 1).panel.changeSummary
     p > pos || (pos -= 1)
     self.changed = true
-    refreshSteps()
+    refreshSteps(null, change)
   }
   const compareOp = (a, b) => a.position - b.position
   const pushNewStep = panel => steps.push(newStep(panel))
@@ -394,7 +394,7 @@ const context = (steps => {
         f: _ => addStep(name)
       })
     )
-    refreshSteps()
+    refreshSteps(null, true)
   }
   const loadStep = (panel, opt, target, file) => {
     let name = panel.op ? panel.op : panel.name,
@@ -428,7 +428,7 @@ const context = (steps => {
     steps.push(indexStep)
     for (let i = 0; i < bottomSteps.length; i++) steps.push(bottomSteps[i])
     self.changed = true
-    refreshSteps()
+    refreshSteps(null, true)
   }
   const getFeatures = _ => addibleFeatures
   const refreshPanel = (refreshStep = 1) => {
@@ -456,14 +456,16 @@ const context = (steps => {
     $(`#steps .step[data-position=${pos}]`).html(
       getStepInnerHTML(steps[pos], pos)
     )
-  const refreshSteps = target => {
+  const refreshSteps = (target = null, changeSummary = false) => {
     target && (pos = target)
     index = steps.indexOf(indexStep)
     index < 0 && (index = steps.length)
     refreshPanel(0)
     $('#steps').html(steps.map(getStepNIndicatorHTML(pos)).join(''))
-    steps.reduce((acc, step) => acc || step.panel.changeSummary, false) &&
-      onSummaryChange()
+    steps.reduce(
+      (acc, step) => acc || step.panel.changeSummary,
+      changeSummary
+    ) && onSummaryChange()
   }
   const self = {
     getOpt,
@@ -549,7 +551,6 @@ const serializeSteps = (toFile, data = new Map()) =>
         }
         opt = panel.submit(opt, data)
       }
-      console.log(opt)
       opt && (opt.op = getOp(panel, toFile))
       return opt
     })

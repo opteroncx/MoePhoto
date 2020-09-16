@@ -1,5 +1,6 @@
-import { newMessager, texts } from './common.js'
 import $ from 'jquery'
+import { newMessager, texts } from './common.js'
+import { onSummaryMessage } from './summary.js'
 const reconnectPeriod = 5
 const setComparison = opt =>
   opt.outputImg &&
@@ -32,6 +33,13 @@ const setup = opt => {
       },
       false
     )
+    opt.inputImg.on('load', _ =>
+      onSummaryMessage({
+        data: {
+          shape: [opt.inputImg[0].naturalHeight, opt.inputImg[0].naturalWidth]
+        }
+      })
+    )
     dropZone.addEventListener(
       'drop',
       e => {
@@ -50,7 +58,8 @@ const setup = opt => {
 
   var runButton = $('#RunButton')
 
-  var running = 0
+  var running = 0,
+    reconnect = 0
   loading.hide()
   downloader.hide()
 
@@ -63,7 +72,10 @@ const setup = opt => {
       else running || ((running = 1) && runButton.attr('disabled', true))
     } else {
       messager.abort()
-      running && setTimeout(_ => running && openMessager(), 200)
+      running &&
+        (reconnect < 5
+          ? ++reconnect && setTimeout(_ => running && openMessager(), 200)
+          : endSession())
     }
   }
   messager
@@ -113,14 +125,15 @@ const setup = opt => {
   }
 
   const beforeSend = (messager.beforeSend = _ => {
-    running = 1
     loading.show()
     openMessager()
+    reconnect = 0
+    running = 1
     return messager
   })
 
   if (opt.session) {
-    runButton.bind('click', _ => {
+    runButton.on('click', _ => {
       var fdata = new FormData()
       opt.beforeSend && opt.beforeSend(fdata)
       if (
