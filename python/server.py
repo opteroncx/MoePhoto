@@ -48,7 +48,7 @@ with open('static/manifest.json') as manifest:
 vendorsJs = assetMapping['vendors.js'] if 'vendors.js' in assetMapping else None
 commonJs = assetMapping['common.js'] if 'common.js' in assetMapping else None
 getKey = lambda session, request: request.values['path'] + str(session) if 'path' in request.values else current.key
-toResponse = lambda obj, code=200: (json.dumps(obj, ensure_ascii=False, separators=(',', ':')), code)
+toResponse = lambda obj, code=200: obj if type(obj) is tuple else (json.dumps(obj, ensure_ascii=False, separators=(',', ':')), code)
 
 def pollNote():
   key = current.key
@@ -69,7 +69,7 @@ def pollNote():
         current.fileSize = res['fileSize']
         del res['fileSize']
       if len(res):
-        cache.put(key, toResponse(res))
+        cache.update(key, res)
 
 def acquireSession(request):
   if current.session:
@@ -120,7 +120,7 @@ def onConnect(key):
   res = None
   if key and cache.peek(key):
     res = cache.pop(key)
-    return res
+    return toResponse(res)
   else:
     return OK
 
@@ -128,7 +128,7 @@ def endSession(result):
   cache.put(current.key, result)
   current.key = None
   current.session = None
-  return result
+  return toResponse(result)
 
 def makeHandler(name, prepare, final, methods=['POST']):
   def f():
@@ -272,12 +272,11 @@ controlPoint('/stop', stopCurrent, lambda: E403, lambda *_: E404)
 controlPoint('/msg', onConnect, busy, onRequestCache, checkMsgMatch)
 app.route('/log', endpoint='log')(lambda: send_file(logPath, add_etags=False))
 app.route('/favicon.ico', endpoint='favicon')(lambda: send_from_directory(app.root_path, 'logo3.ico'))
-if previewFormat:
-  app.route("/{}/.preview.{}".format(outDir, previewFormat), endpoint='preview')(
-    lambda: Response(current.getPreview(), mimetype='image/{}'.format(previewFormat)))
+app.route("/{}/.preview.{}".format(outDir, previewFormat), endpoint="preview")(
+  lambda: Response(current.getPreview(), mimetype="image/{}".format(previewFormat)))
 sendFromDownDir = lambda filename: send_from_directory(downDir, filename)
 app.route("/{}/<path:filename>".format(outDir), endpoint='download')(sendFromDownDir)
-lockFinal = lambda result: (jsonify(result='Interrupted', remain=result), 200) if result > 0 else (jsonify(result='Idle'), 200)
+lockFinal = lambda result, *_: (jsonify(result='Interrupted', remain=result), 200) if result > 0 else (jsonify(result='Idle'), 200)
 makeHandler('lockInterface', (lambda req: [int(float(readOpt(req)[0]['duration']))]), lockFinal, ['GET', 'POST'])
 makeHandler('systemInfo', (lambda _: []), identity, ['GET', 'POST'])
 getReqFile = lambda f: lambda req: f(req, req.files['file'])
@@ -325,7 +324,8 @@ def batchEnhance():
     name = os.path.join(output_path, image.filename)
     start = time.time()
     opt[-1]['file'] = name
-    sender.send(('batch', current.writeFile(image), *opt))
+    current.fileSize = current.writeFile(image)
+    sender.send(('batch', current.fileSize, *opt))
     while not receiver.poll():
       idle()
     output = receiver.recv()
@@ -342,9 +342,9 @@ def batchEnhance():
     else:
       fail += 1
       fails.append(name)
-    cache.put(current.key, toResponse(note))
+    cache.put(current.key, note)
   current.setETA = True
-  return endSession(toResponse({'result': (result, count, done, fail, fails, output_path)}))
+  return endSession({'result': (result, count, done, fail, fails, output_path)})
 
 def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm, isWindows):
   global sender, receiver, noter

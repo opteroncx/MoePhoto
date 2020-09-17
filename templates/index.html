@@ -1,234 +1,315 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <title>MoePhoto {{version}} 主页</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="keywords" content="" />
+  </head>
 
-<head>
-	<title>MoePhoto {{version}} 主页</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<meta name="keywords" content="" />
-</head>
-
-<body>
-	<!-- banner -->
-	<div class="agileits-banner jarallax">
-		<div class="bnr-agileinfo">
-			<!-- navigation -->
-			<div class="top-nav w3-agiletop">
-				<div class="container">
-					<div class="navbar-header w3llogo">
-						<button type="button" class="navbar-toggle" data-toggle="collapse"
-							data-target="#bs-example-navbar-collapse-1">
-							<span class="sr-only">Toggle navigation</span>
-							<span class="icon-bar"></span>
-							<span class="icon-bar"></span>
-							<span class="icon-bar"></span>
-						</button>
-						<h1>
-							<a href="/">MoePhoto
-								<span>萌图修复工具箱</span>
-							</a>
-						</h1>
-					</div>
-					<!-- Collect the nav links, forms, and other content for toggling -->
-					<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-						<div class="w3menu navbar-right">
-							<ul class="nav navbar">
-								<li>
-									<a href="/" class="active">主页</a>
-								</li>
-								<li>
-									<a href="/batch">批量放大</a>
-								</li>
-								<li>
-									<a href="/video">AI视频</a>
-								</li>
-								<li>
-									<a href="/gallery">相册</a>
-								</li>
-								<li>
-									<a href="/system">系统信息</a>
-								</li>
-								<li>
-									<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-										aria-expanded="false">
-										<span data-letters="Pages">更多</span>
-										<span class="caret"></span>
-									</a>
-									<ul class="dropdown-menu">
-										<li>
-											<a href="/video?by=cmd&preset=benchmark">跑个分</a>
-										</li>
-										<li>
-											<a href="/lock">后台管理</a>
-										</li>
-										<li>
-											<a href="/document">使用教程</a>
-										</li>
-										<li>
-											<a href="/about">关于软件</a>
-										</li>
-									</ul>
-								</li>
-
-							</ul>
-						</div>
-						<div class="clearfix"> </div>
-					</div>
-				</div>
-			</div>
-			<!-- //navigation -->
-			<!-- banner-text -->
-			<div class="banner-w3text">
-				<div class="container">
-					<ul id="vertical-ticker">
-						<li>MoePhoto Image Toolbox</li>
-						<li>萌图工具箱</li>
-						<li>May-workshop出品</li>
-					</ul>
-					<div class="w3ls-bnr-icons social-icon">
-						<a href="https://moephoto.tech" class="social-button twit">
-							<i class="fa fa-home"></i>
-						</a>
-						<a href="https://blog.moephoto.tech" class="social-button gg1">
-							<i class="fa fa-book"></i>
-						</a>
-						<a href="https://hgalgame.com" class="social-button fb">
-							<i class="glyphicon glyphicon-header"></i>
-						</a>
-						<a href="https://github.com/opteroncx" class="social-button drb1">
-							<i class="fa fa-github"></i>
-						</a>
-					</div>
-				</div>
-			</div>
-			<!-- //banner-text -->
-		</div>
-	</div>
-	<!-- //banner -->
-	<!-- welcome -->
-	<div class="welcome">
-		<div class="container">
-			<div class="welcome-agileinfo">
-				<div class="col-xs-6 col-sm-6 welcome-w3lsgrids">
-					<div class="w3lwelcome-img effect-ruby">
-						<a href="/batch">
-							<img src="static/images/img2.jpg" alt=" " class="img-responsive" />
-							<div class="agile-caption">
-								<h3>批量放大</h3>
-								<p>没错，一次可以放大很多很多张哦~</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<div class="col-xs-6 col-sm-6 welcome-w3lsgrids">
-					<div class="w3lwelcome-img effect-ruby">
-						<a href="/video">
-							<img src="static/images/img1.jpg" alt=" " class="img-responsive" />
-							<div class="agile-caption">
-								<h3>AI视频</h3>
-								<p>对视频超分辨率、降噪、插帧以及慢动作</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<div class="clearfix"> </div>
-			</div>
-		</div>
-	</div>
-	<!-- //welcome -->
-	<div id="drop_zone">
-		<!-- features -->
-		<div class="features">
-			<div class="container">
-				<h2 class="agileits-title">开始吧</h2>
-				<p class="pagile-text">选择一张你需要放大的图片，开始体验吧！运行完毕请点击保存</p>
-				<div class="features-row">
-					<div class="col-md-6 features-right">
-						<img id="inputImg" class="img-responsive" src="http://placehold.it/500x120?text=Input+Image" alt="">
-					</div>
-					<div class="col-md-6 features-left">
-						<div id="FG">
-							<div id="fountainG_1" class="fountainG"></div>
-							<div id="fountainG_2" class="fountainG"></div>
-							<div id="fountainG_3" class="fountainG"></div>
-							<div id="fountainG_4" class="fountainG"></div>
-							<div id="fountainG_5" class="fountainG"></div>
-							<div id="fountainG_6" class="fountainG"></div>
-							<div id="fountainG_7" class="fountainG"></div>
-							<div id="fountainG_8" class="fountainG"></div>
-						</div>
-						<img id='outputImg' class="img-responsive" src="http://placehold.it/500x120?text=Output+Image" alt="">
-						<div id=downloader>
-							<br>
-							<a id='downImg' class="agile-icon btn btn-success btn-lg" href="#">
-								保存
-							</a>
-						</div>
-					</div>
-					<div class="clearfix"> </div>
-				</div>
-			</div>
-		</div>
-		<!-- //features -->
-		<!-- Stats -->
-		<div class="news-w3layouts">
-			<div class="container">
-				<hr>
-				<div class="features-grid">
-					<i class="fa fa-cogs" aria-hidden="true"></i> 属性设置
-				</div>
-				<div class="stats-agileinfo agileits-w3layouts">
-					<div id="steps" class="col-sm-4 col-md-4 settings"></div>
-					<div id="options" class="col-sm-8 col-md-8 settings"></div>
-					<div class="clearfix"></div>
-					<div class="col-md-12">
-						<hr>
-						<button id="RunButton" type="button" class="btn btn-primary btn-lg">开始</button>
-					</div>
-				</div>
-				<div class="col-md-12">
-					<br>
-					<br>
-				</div>
-			</div>
-		</div>
-	</div>
-	<!-- //Stats -->
-	<div class="container" id="progress">
-		<p><span class="message"></span></p>
-		<p><span class="status"></span><span class="time"></span></p>
-		<meter class="progress-bar" value=0 max=100></meter>
-		<div class="col-md-12">
-			<br>
-		</div>
-	</div>
-	<!-- footer start here -->
-	{% autoescape true %} {{footer| safe}} {% endautoescape %}
-	<!-- //footer end here -->
-	<!-- js -->
-	<script src="{{vendorsJs}}"></script>
-	<script src="{{commonJs}}"></script>
-	<script src="static/js/main.js"></script>
-	<script>
-		const app = window.app, path = '/image_enhance'
-		$(document).ready(_ => {
-			const outputImg = $('#outputImg'), downImg = $('#downImg')
-			const onProgress = _ => app.texts.processing
-			app.setup({
-				onProgress,
-				success: (result, progress) => {
-					progress.final(app.texts.finish)
-					let im = app.getResource(result)
-					outputImg.attr('src', im)
-					downImg.attr('href', im)
-				},
-				path,
-				inputImg: $('#inputImg'),
-				dropZone: $('#drop_zone'),
-				features: ['index', 'input', 'output', 'SR', 'DN', 'dehaze', 'demoire', 'ednoise', 'resize']
-			})
-		})
-	</script>
-</body>
-
+  <body>
+    <!-- banner -->
+    <div class="agileits-banner jarallax">
+      <div class="bnr-agileinfo">
+        <!-- navigation -->
+        <div class="top-nav w3-agiletop">
+          <div class="container">
+            <div class="navbar-header w3llogo">
+              <button
+                type="button"
+                class="navbar-toggle"
+                data-toggle="collapse"
+                data-target="#bs-example-navbar-collapse-1"
+              >
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+              <h1>
+                <a href="/"
+                  >MoePhoto
+                  <span>萌图修复工具箱</span>
+                </a>
+              </h1>
+            </div>
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div
+              class="collapse navbar-collapse"
+              id="bs-example-navbar-collapse-1"
+            >
+              <div class="w3menu navbar-right">
+                <ul class="nav navbar">
+                  <li>
+                    <a href="/" class="active">主页</a>
+                  </li>
+                  <li>
+                    <a href="/batch">批量放大</a>
+                  </li>
+                  <li>
+                    <a href="/video">AI视频</a>
+                  </li>
+                  <li>
+                    <a href="/gallery">相册</a>
+                  </li>
+                  <li>
+                    <a href="/system">系统信息</a>
+                  </li>
+                  <li>
+                    <a
+                      href="#"
+                      class="dropdown-toggle"
+                      data-toggle="dropdown"
+                      role="button"
+                      aria-haspopup="true"
+                      aria-expanded="false"
+                    >
+                      <span data-letters="Pages">更多</span>
+                      <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a href="/video?by=cmd&preset=benchmark">跑个分</a>
+                      </li>
+                      <li>
+                        <a href="/lock">后台管理</a>
+                      </li>
+                      <li>
+                        <a href="/document">使用教程</a>
+                      </li>
+                      <li>
+                        <a href="/about">关于软件</a>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </div>
+              <div class="clearfix"></div>
+            </div>
+          </div>
+        </div>
+        <!-- //navigation -->
+        <!-- banner-text -->
+        <div class="banner-w3text">
+          <div class="container">
+            <ul id="vertical-ticker">
+              <li>MoePhoto Image Toolbox</li>
+              <li>萌图工具箱</li>
+              <li>May-workshop出品</li>
+            </ul>
+            <div class="w3ls-bnr-icons social-icon">
+              <a href="https://moephoto.tech" class="social-button twit">
+                <i class="fa fa-home"></i>
+              </a>
+              <a href="https://blog.moephoto.tech" class="social-button gg1">
+                <i class="fa fa-book"></i>
+              </a>
+              <a href="https://hgalgame.com" class="social-button fb">
+                <i class="glyphicon glyphicon-header"></i>
+              </a>
+              <a href="https://github.com/opteroncx" class="social-button drb1">
+                <i class="fa fa-github"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        <!-- //banner-text -->
+      </div>
+    </div>
+    <!-- //banner -->
+    <!-- welcome -->
+    <div class="welcome">
+      <div class="container">
+        <div class="welcome-agileinfo">
+          <div class="col-xs-6 col-sm-6 welcome-w3lsgrids">
+            <div class="w3lwelcome-img effect-ruby">
+              <a href="/batch">
+                <img
+                  src="static/images/img2.jpg"
+                  alt=" "
+                  class="img-responsive"
+                />
+                <div class="agile-caption">
+                  <h3>批量放大</h3>
+                  <p>没错，一次可以放大很多很多张哦~</p>
+                </div>
+              </a>
+            </div>
+          </div>
+          <div class="col-xs-6 col-sm-6 welcome-w3lsgrids">
+            <div class="w3lwelcome-img effect-ruby">
+              <a href="/video">
+                <img
+                  src="static/images/img1.jpg"
+                  alt=" "
+                  class="img-responsive"
+                />
+                <div class="agile-caption">
+                  <h3>AI视频</h3>
+                  <p>对视频超分辨率、降噪、插帧以及慢动作</p>
+                </div>
+              </a>
+            </div>
+          </div>
+          <div class="clearfix"></div>
+        </div>
+      </div>
+    </div>
+    <!-- //welcome -->
+    <div id="drop_zone">
+      <!-- features -->
+      <div class="features">
+        <div class="container">
+          <h2 class="agileits-title">开始吧</h2>
+          <p class="pagile-text">
+            选择一张你需要放大的图片，开始体验吧！运行完毕请点击保存
+          </p>
+          <hr />
+          <div class="features-grid">
+            <i class="fa fa-cogs" aria-hidden="true"></i> 属性设置
+          </div>
+          <div class="stats-agileinfo agileits-w3layouts">
+            <div id="steps" class="col-sm-4 col-md-4 settings"></div>
+            <div id="options" class="col-sm-8 col-md-8 settings"></div>
+            <div class="clearfix"></div>
+            <div class="col-md-12 stats-agileinfo">
+              <hr />
+              <div class="features-grid">
+                图像摘要
+              </div>
+              <table class="col-sm-6">
+                <th>
+                  <tr>
+                    <td class="col-sm-2"></td>
+                    <td class="col-sm-2">源图像</td>
+                    <td class="col-sm-2">目标</td>
+                  </tr>
+                </th>
+                <tbody>
+                  <tr>
+                    <td>宽度</td>
+                    <td id="summary-srcWidth">未知</td>
+                    <td id="summary-width"></td>
+                  </tr>
+                  <tr>
+                    <td>高度</td>
+                    <td id="summary-srcHeight">未知</td>
+                    <td id="summary-height"></td>
+                  </tr>
+                  <tr>
+                    <td>图像模式</td>
+                    <td id="summary-mode">未知</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="col-md-12">
+              <hr />
+              <button
+                id="RunButton"
+                type="button"
+                class="btn btn-primary btn-lg"
+              >
+                开始
+              </button>
+            </div>
+          </div>
+          <div class="col-md-12">
+            <br />
+            <br />
+          </div>
+        </div>
+      </div>
+      <!-- //features -->
+      <!-- Stats -->
+      <div class="news-w3layouts">
+        <div class="container">
+          <div class="features-row">
+            <div id="FG">
+              <div id="fountainG_1" class="fountainG"></div>
+              <div id="fountainG_2" class="fountainG"></div>
+              <div id="fountainG_3" class="fountainG"></div>
+              <div id="fountainG_4" class="fountainG"></div>
+              <div id="fountainG_5" class="fountainG"></div>
+              <div id="fountainG_6" class="fountainG"></div>
+              <div id="fountainG_7" class="fountainG"></div>
+              <div id="fountainG_8" class="fountainG"></div>
+            </div>
+            <div id="comparison" class="twentytwenty-container">
+              <img
+                id="inputImg"
+                class="img-responsive"
+                src="http://placehold.it/1140x120?text=Input+Image"
+              />
+              <img
+                id="outputImg"
+                class="img-responsive"
+                src="http://placehold.it/1140x120?text=Output+Image"
+              />
+            </div>
+            <div id="downloader" class="stats-agileinfo">
+              <br />
+              <a
+                id="downImg"
+                class="agile-icon btn btn-success btn-lg"
+                href="#"
+              >
+                保存
+              </a>
+            </div>
+            <div class="clearfix"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- //Stats -->
+    <div class="container" id="progress">
+      <p><span class="message"></span></p>
+      <p><span class="status"></span><span class="time"></span></p>
+      <meter class="progress-bar" value="0" max="100"></meter>
+      <div class="col-md-12">
+        <br />
+      </div>
+    </div>
+    <!-- footer start here -->
+    {% autoescape true %} {{footer| safe}} {% endautoescape %}
+    <!-- //footer end here -->
+    <!-- js -->
+    <script src="{{vendorsJs}}"></script>
+    <script src="{{commonJs}}"></script>
+    <script src="static/js/main.js"></script>
+    <script>
+      const app = window.app,
+        path = '/image_enhance'
+      $(document).ready(_ => {
+        const outputImg = $('#outputImg'),
+          downImg = $('#downImg')
+        const onProgress = _ => app.texts.processing
+        app.setup({
+          onProgress,
+          success: (result, progress) => {
+            progress.final(app.texts.finish)
+            let im = app.getResource(result)
+            outputImg.attr('src', im)
+            downImg.attr('href', im)
+          },
+          path,
+          outputImg: outputImg,
+          inputImg: $('#inputImg'),
+          dropZone: $('#drop_zone'),
+          features: [
+            'index',
+            'input',
+            'output',
+            'SR',
+            'DN',
+            'dehaze',
+            'demoire',
+            'ednoise',
+            'resize'
+          ]
+        })
+      })
+    </script>
+  </body>
 </html>

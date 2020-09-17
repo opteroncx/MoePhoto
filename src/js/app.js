@@ -1,18 +1,32 @@
-import { newMessager, texts } from './common.js'
 import $ from 'jquery'
+import { newMessager, texts } from './common.js'
+import { onSummaryMessage } from './summary.js'
 const reconnectPeriod = 5
+const setComparison = opt =>
+  opt.outputImg &&
+  opt.inputImg &&
+  opt.inputImg.length &&
+  $('.twentytwenty-container').twentytwenty({
+    no_overlay: true
+  })
+const onloadImg = _ => $(window).trigger('resize.twentytwenty')
 const setup = opt => {
   var options = $('#options')
   if (opt.inputImg && opt.inputImg.length) {
-    const readURL = function () {
-      if (this.files && this.files[0]) {
-        var reader = new FileReader()
-        reader.onload = e => opt.inputImg.attr('src', e.target.result)
-        reader.readAsDataURL(this.files[0])
+    var reader = new FileReader()
+    reader.onload = e => opt.inputImg.attr('src', e.target.result)
+    opt.setInputImg = (i = 0) => {
+      if (opt.files && opt.files[i]) {
+        reader.readAsDataURL(opt.files[i])
       }
     }
-    options.on('change', '.imgInp', readURL)
-  }
+    options.on('change', '.imgInp', function () {
+      opt.files = this.files
+      opt.setInputImg()
+    })
+  } else opt.setInputImg = _ => _
+  setComparison(opt)
+  opt.resizeOnce || (opt.inputImg && opt.inputImg.on('load', onloadImg))
   if (opt.dropZone && opt.dropZone.length) {
     var dropZone = opt.dropZone[0]
     dropZone.addEventListener(
@@ -24,6 +38,18 @@ const setup = opt => {
       },
       false
     )
+    opt.resizeOnce ||
+      opt.inputImg.on('load', _ =>
+        onSummaryMessage({
+          data: {
+            shape: [
+              opt.inputImg[0].naturalHeight,
+              opt.inputImg[0].naturalWidth
+            ],
+            mode: 'unknown'
+          }
+        })
+      )
     dropZone.addEventListener(
       'drop',
       e => {
@@ -42,7 +68,8 @@ const setup = opt => {
 
   var runButton = $('#RunButton')
 
-  var running = 0
+  var running = 0,
+    reconnect = 0
   loading.hide()
   downloader.hide()
 
@@ -55,7 +82,10 @@ const setup = opt => {
       else running || ((running = 1) && runButton.attr('disabled', true))
     } else {
       messager.abort()
-      running && setTimeout(_ => running && openMessager(), 200)
+      running &&
+        (reconnect < 5
+          ? ++reconnect && setTimeout(_ => running && openMessager(), 200)
+          : endSession())
     }
   }
   messager
@@ -105,14 +135,16 @@ const setup = opt => {
   }
 
   const beforeSend = (messager.beforeSend = _ => {
-    running = 1
     loading.show()
     openMessager()
+    reconnect = 0
+    running = 1
+    opt.resizeOnce && opt.inputImg && opt.inputImg.one('load', onloadImg)
     return messager
   })
 
   if (opt.session) {
-    runButton.bind('click', _ => {
+    runButton.on('click', _ => {
       var fdata = new FormData()
       opt.beforeSend && opt.beforeSend(fdata)
       if (

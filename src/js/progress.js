@@ -89,22 +89,24 @@ const bindMessager = ($ele, messager, context) => {
   progress.on = messager.on
   return progress
 }
+const setImg = $ele => {
+  let idle = true
+  $ele.on('load', _ => (idle = true))
+  return path => {
+    if (idle && path) {
+      idle = false
+      $ele.attr('src', getResource(path))
+    }
+  }
+}
 const setupProgress = opt => {
   var stopButton = $('#StopButton').hide(),
     runButton = $('#RunButton'),
     total = 0
-  const setPreview = opt.outputImg
-    ? (_ => {
-        let idle = true
-        opt.outputImg.on('load', _ => (idle = true))
-        return path => {
-          if (idle) {
-            idle = false
-            opt.outputImg.attr('src', path)
-          }
-        }
-      })()
-    : _ => _
+
+  const [setPreview] = [opt.outputImg].map($ele =>
+    $ele && $ele.length ? setImg($ele) : _ => _
+  )
   if (!opt.session) opt.session = getSession()
   if (!opt.onProgress) opt.onProgress = texts.onBusy
   const onMessage = e => {
@@ -114,13 +116,15 @@ const setupProgress = opt => {
       runButton.hide()
       stopButton.attr('disabled', false).show()
     }
-    data.preview ? setPreview(getResource(data.preview)) : 0
+    data.preview && setPreview(data.preview)
+    data.gone && opt.setInputImg(data.gone)
     data.total ? (total = data.total) : 0
     data.gone
       ? progress.setStatus(opt.onProgress(data.gone, total, data))
       : data.eta
       ? progress.setStatus(texts.onBusy(null))
       : 0
+    data.skip && opt.onSkip && opt.onSkip(data.skip)
     data.stage ? progress.setStage(data) : 0
   }
   const messager = setup(opt)
@@ -152,7 +156,7 @@ const setupProgress = opt => {
     progress.setStage()
     error && error(xhr)
   }
-  stopButton.click(_ => {
+  stopButton.on('click', _ => {
     $.ajax({
       url: `/stop?session=${opt.session}`,
       beforeSend: _ => {
