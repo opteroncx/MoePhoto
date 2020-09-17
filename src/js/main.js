@@ -130,7 +130,8 @@ const panels = {
   },
   inputBatch: {
     text: '批量输入',
-    description: '将所有需要放大的图片放置到一个文件夹内，并在下方选择路径',
+    description:
+      '将所有需要放大的图片放置到一个文件夹内，并在下方选择路径；或者将多个图像文件一起拖放到下方',
     position: 0,
     submit: (opt, data) =>
       opt.file &&
@@ -150,7 +151,7 @@ const panels = {
         type: 'file',
         name: 'file',
         text: '文件',
-        classes: ['inputfile-6'],
+        classes: ['inputfile-6', 'imgInp'],
         attributes: ['required', 'webkitdirectory', 'directory']
       },
       preset: loadImagePreset,
@@ -528,7 +529,10 @@ const setupMain = opt => {
   initListeners()
   context.setFeatures(opt.features)
   if (opt.features.length > 2) {
-    progress.on('message', onDiagnoseMessage).on('message', onSummaryMessage)
+    progress
+      .on('message', onDiagnoseMessage)
+      .on('message', onSummaryMessage)
+      .on('open', onSummaryMessage)
     initDiagnoser(panels, document.getElementById('progress'))
   }
   let isVideo = opt.features.indexOf('inputVideo') > -1,

@@ -12,7 +12,7 @@
     {% autoescape true %} {{header| safe}} {% endautoescape %}
     <!-- //banner -->
     <!-- features -->
-    <div class="features">
+    <div id="drop_zone" class="features">
       <div class="container">
         <br />
         <br />
@@ -137,6 +137,7 @@
           path: '/batch_enhance',
           inputImg: $('#inputImg'),
           outputImg: $('#outputImg'),
+          dropZone: $('#drop_zone'),
           features: [
             'index',
             'inputBatch',

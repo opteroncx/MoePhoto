@@ -13,17 +13,20 @@ const onloadImg = _ => $(window).trigger('resize.twentytwenty')
 const setup = opt => {
   var options = $('#options')
   if (opt.inputImg && opt.inputImg.length) {
-    const readURL = function () {
-      if (this.files && this.files[0]) {
-        var reader = new FileReader()
-        reader.onload = e => opt.inputImg.attr('src', e.target.result)
-        reader.readAsDataURL(this.files[0])
+    var reader = new FileReader()
+    reader.onload = e => opt.inputImg.attr('src', e.target.result)
+    opt.setInputImg = (i = 0) => {
+      if (opt.files && opt.files[i]) {
+        reader.readAsDataURL(opt.files[i])
       }
     }
-    options.on('change', '.imgInp', readURL)
-  }
+    options.on('change', '.imgInp', function () {
+      opt.files = this.files
+      opt.setInputImg()
+    })
+  } else opt.setInputImg = _ => _
   setComparison(opt)
-  opt.resizeOnce || opt.inputImg.on('load', onloadImg)
+  opt.resizeOnce || (opt.inputImg && opt.inputImg.on('load', onloadImg))
   if (opt.dropZone && opt.dropZone.length) {
     var dropZone = opt.dropZone[0]
     dropZone.addEventListener(
