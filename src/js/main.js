@@ -8,6 +8,7 @@ import {
   onDiagnoseMessage,
   initDiagnoser
 } from './diagnose.js'
+import { onSummaryMessage } from './summary.js'
 
 const None = () => void 0
 const setAll = (arr, key) => values => arr.map((o, i) => (o[key] = values[i]))
@@ -129,7 +130,8 @@ const panels = {
   },
   inputBatch: {
     text: '批量输入',
-    description: '将所有需要放大的图片放置到一个文件夹内，并在下方选择路径',
+    description:
+      '将所有需要放大的图片放置到一个文件夹内，并在下方选择路径；或者将多个图像文件一起拖放到下方',
     position: 0,
     submit: (opt, data) =>
       opt.file &&
@@ -149,7 +151,7 @@ const panels = {
         type: 'file',
         name: 'file',
         text: '文件',
-        classes: ['inputfile-6'],
+        classes: ['inputfile-6', 'imgInp'],
         attributes: ['required', 'webkitdirectory', 'directory']
       },
       preset: loadImagePreset,
@@ -176,7 +178,8 @@ const panels = {
       scale: {
         type: 'radio',
         text: '放大倍数',
-        values: SRScaleValues
+        values: SRScaleValues,
+        summary: { op: '*', keys: ['scaleW', 'scaleH'] }
       },
       model: {
         type: 'radio',
@@ -262,14 +265,16 @@ const panels = {
         values: [
           { value: 'scale', binds: ['scaleW'] },
           { value: 'pixel', binds: ['width'], checked: 1 }
-        ]
+        ],
+        summary: 1
       },
       scaleW: {
         type: 'number',
         text: '缩放比例',
         value: 1,
         classes: ['input-number'],
-        attributes: ['min="0"', 'step="0.1"']
+        attributes: ['min="0"', 'step="0.1"'],
+        summary: '*'
       },
       width: {
         type: 'number',
@@ -277,7 +282,8 @@ const panels = {
         value: 1920,
         view: appendText('pixel'),
         classes: ['input-number'],
-        attributes: ['min="1"', 'step="10"']
+        attributes: ['min="1"', 'step="10"'],
+        summary: '='
       },
       byH: {
         type: 'radio',
@@ -286,14 +292,16 @@ const panels = {
           { value: 'scale', binds: ['scaleH'] },
           { value: 'pixel', binds: ['height'], checked: 1 }
         ],
-        notes: ['按比例缩放图像长宽的小数部分四舍五入为整数']
+        notes: ['按比例缩放图像长宽的小数部分四舍五入为整数'],
+        summary: 1
       },
       scaleH: {
         type: 'number',
         text: '缩放比例',
         value: 1,
         classes: ['input-number'],
-        attributes: ['min="0"', 'step="0.1"']
+        attributes: ['min="0"', 'step="0.1"'],
+        summary: '*'
       },
       height: {
         type: 'number',
@@ -301,7 +309,8 @@ const panels = {
         value: 1080,
         view: appendText('pixel'),
         classes: ['input-number'],
-        attributes: ['min="1"', 'step="10"']
+        attributes: ['min="1"', 'step="10"'],
+        summary: '='
       }
     }
   },
@@ -356,22 +365,20 @@ const panels = {
         change: _ => 1,
         values: [
           {
-            value: 'sun', text: '小模型',
-            notes: [
-              '小模型比较节约资源'
-            ]
+            value: 'sun',
+            text: '小模型',
+            notes: ['小模型比较节约资源']
           },
           {
-            value: 'moire_obj', text: '自然模型', checked: 1,
-            notes: [
-              '自然模型比较擅长保留对象的纹理'
-            ]
+            value: 'moire_obj',
+            text: '自然模型',
+            checked: 1,
+            notes: ['自然模型比较擅长保留对象的纹理']
           },
           {
-            value: 'moire_screen_gan', text: '屏幕模型',
-            notes: [
-              '屏幕模型比较强力地抹掉摩尔纹'
-            ]
+            value: 'moire_screen_gan',
+            text: '屏幕模型',
+            notes: ['屏幕模型比较强力地抹掉摩尔纹']
           }
         ]
       }
@@ -402,7 +409,8 @@ const panels = {
         value: 0,
         view: appendText('pixel'),
         classes: ['input-number'],
-        attributes: ['min="1"', 'step="10"']
+        attributes: ['min="1"', 'step="10"'],
+        summary: '='
       },
       height: {
         type: 'number',
@@ -413,7 +421,8 @@ const panels = {
         attributes: ['min="1"', 'step="10"'],
         notes: [
           '我们从输入视频文件里获取画面大小信息，如果这里的解码处理改变了画面大小，请设置上面的两个覆盖值从而告诉后面的处理过程，否则就不要动它们啦'
-        ]
+        ],
+        summary: '='
       }
     }
   },
@@ -481,7 +490,8 @@ const panels = {
         notes: [
           '默认的输出帧率就是输入乘上插帧倍数，这样保持时间长度与输入一致，如果您想要看慢动作什么的可以在这里设定',
           '注意我们只处理视频画面部分，设置了这个之后声音字幕什么的通常就对不上了'
-        ]
+        ],
+        summary: '='
       },
       diagnose,
       preset: saveVideoPreset,
@@ -503,7 +513,8 @@ const panels = {
         notes: [
           '输出帧数是输入的多少倍，必须是正整数',
           '为了方便精确地拼接输出视频，若之前的视频处理开始于设定大于0且这里设置了大于1的倍数，那么开始帧之前的那一帧会被用作参考帧，输出的头几帧将会是它与开始帧之间的插入帧，但这一参考帧本身将不会被输出'
-        ]
+        ],
+        summary: '*'
       }
     }
   }
@@ -517,9 +528,13 @@ const setupMain = opt => {
   let progress = setup(opt)
   initListeners()
   context.setFeatures(opt.features)
-  opt.features.length > 2 &&
-    progress.on('message', onDiagnoseMessage) &&
+  if (opt.features.length > 2) {
+    progress
+      .on('message', onDiagnoseMessage)
+      .on('message', onSummaryMessage)
+      .on('open', onSummaryMessage)
     initDiagnoser(panels, document.getElementById('progress'))
+  }
   let isVideo = opt.features.indexOf('inputVideo') > -1,
     applyPreset = isVideo ? applyVideoPreset : applyImagePreset,
     preset = urlParams.get('preset')

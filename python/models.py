@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import math
 import torch.nn.functional as F
-from imageProcess import apply, reduce, identity
+from imageProcess import apply, reduce, identity, split, flat
 from collections import OrderedDict
 
 def initParameters(model):
@@ -387,23 +387,15 @@ class Nonlocal_CA(nn.Module):
     super(Nonlocal_CA, self).__init__()
     # nonlocal module
     self.non_local = NONLocalBlock2D(in_channels=in_feat,inter_channels=inter_feat, sub_sample=sub_sample,bn_layer=bn_layer)
-    self.sigmoid = nn.Sigmoid()
   def forward(self,x):
-    ## divide feature map into 4 part
-    batch_size,C,H,W = x.shape
-    H1 = int(H / 2)
-    W1 = int(W / 2)
     nonlocal_feat = torch.zeros_like(x)
-    feat_sub_lu = x[:, :, :H1, :W1]
-    feat_sub_ld = x[:, :, H1:, :W1]
-    feat_sub_ru = x[:, :, :H1, W1:]
-    feat_sub_rd = x[:, :, H1:, W1:]
-    nonlocal_lu = self.non_local(feat_sub_lu)
-    nonlocal_ld = self.non_local(feat_sub_ld)
-    nonlocal_ru = self.non_local(feat_sub_ru)
-    nonlocal_rd = self.non_local(feat_sub_rd)
-    nonlocal_feat[:, :, :H1, :W1] = nonlocal_lu
-    nonlocal_feat[:, :, H1:, :W1] = nonlocal_ld
-    nonlocal_feat[:, :, :H1, W1:] = nonlocal_ru
-    nonlocal_feat[:, :, H1:, W1:] = nonlocal_rd
+    ## divide feature map into 4 part
+    *_, H, W = x.shape
+    H1 = H // 2
+    W1 = W // 2
+    fs = split([H1, H - H1], [W1, W -W1])
+    xs = flat(fs(x))
+    outs = flat(fs(nonlocal_feat))
+    for out, xi in zip(outs, xs):
+      out.copy_(self.non_local(xi))
     return  nonlocal_feat

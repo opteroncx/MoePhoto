@@ -1,5 +1,6 @@
 const VERSION = '4.6'
 import('bootstrap/dist/css/bootstrap.min.css')
+import('zurb-twentytwenty/css/twentytwenty.css')
 import('../css/style.css')
 import('../css/font-awesome.css')
 import('../css/loader.css')
@@ -12,6 +13,8 @@ import $ from 'jquery'
 window.$ = $
 import 'bootstrap'
 import { jarallax } from 'jarallax'
+import 'zurb-twentytwenty/js/jquery.event.move.js'
+import 'zurb-twentytwenty/js/jquery.twentytwenty.js'
 import './jquery.totemticker.js'
 import './move-top.min.js'
 import './easing.js'
@@ -46,8 +49,8 @@ $(_ => {
     mousestop: true
   })
 })
-$(document).ready($ => {
-  $('.scroll ').click(function (event) {
+$(_ => {
+  $('.scroll ').on('click', function (event) {
     event.preventDefault()
     $('html,body').animate(
       {
@@ -88,6 +91,7 @@ const texts = {
   hour: '小时',
   minute: '分钟',
   second: '秒',
+  scale: '倍',
   noFile: '请选择',
   noFileMsg: '缺少输入文件',
   errorMsg: '出错啦',
@@ -97,6 +101,7 @@ const texts = {
   running: '正在处理您的任务',
   diagnose: '诊断配置',
   bench: '显示跑分',
+  totalMark: '总分',
   item: '项目',
   samples: '样本数',
   mark: '得分',
@@ -106,6 +111,13 @@ const texts = {
   logWritten: '日志已写入浏览器控制台，请按<kbd>F12</kbd>查看',
   noMoreLog: '没有新的日志',
   needRefresh: '请在空闲后刷新',
+  imageMode: {
+    P: '色板图像',
+    L: '灰度图像',
+    RGB: '彩色图像',
+    RGBA: '带透明通道的彩色图像',
+    unknown: '未知'
+  },
   onBusy: gone => '忙碌中' + (gone == null ? '' : `，已经过${toHMS(gone)}`),
   timeFormatter: time => `，预计还需要${toHMS(time)}`,
   batchSucc: result =>
@@ -120,6 +132,7 @@ const texts = {
   videoSucc: result => `完成啦，处理到第${result[1]}帧`,
   batchRunning: genOnProgress('张'),
   videoRunning: genOnProgress('帧'),
+  videoSkip: gone => `${processingMsg}，已跳过${gone}帧`,
   lockRunning: genOnProgress('秒', '锁定中')
 }
 const appendText = key => text => text + texts[key]

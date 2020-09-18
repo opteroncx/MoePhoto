@@ -2,7 +2,7 @@
 import time
 from copy import copy
 from functools import reduce
-import itertools
+from itertools import chain
 import torch
 import torch.nn.functional as F
 import PIL
@@ -292,14 +292,16 @@ def readFile(nodes=[], context=None):
     if image.mode == 'P':
       context.palette = image
       image = image.convert('RGB')
+    summary = dict(mode=image.mode)
     image = np.array(image)
+    summary['shape'] = list(image.shape[:2])
     for n in nodes:
       n.multipleLoad(image.size)
       updateNode(n)
     if len(nodes):
       p = nodes[0].parent
       updateNode(p)
-      p.callback(p)
+      p.callback(p, summary)
     if len(image.shape) == 2:
       return image.reshape(*image.shape, 1)
     if image.shape[2] == 3 or image.shape[2] == 4:
@@ -391,3 +393,5 @@ trans = [transpose, flip, flip2, combine(flip, transpose), combine(transpose, fl
 transInv = [transpose, flip, flip2, trans[4], trans[3], trans[5], trans[6]]
 which = [getTransposedOpt, identity, identity, getTransposedOpt, getTransposedOpt, identity, getTransposedOpt]
 ensemble = lambda opt: lambda x: reduce((lambda v, t: (v + t[2](doCrop(t[3](opt), t[1](x)))).detach()), zip(range(opt.ensemble), trans, transInv, which), doCrop(opt, x))
+split = lambda *ps: lambda x: tuple(split(*ps[1:])(c) for c in x.split(ps[0], x.ndim - len(ps))) if len(ps) else x
+flat = lambda x: tuple(chain(*(flat(t) for t in x))) if len(x) and type(x[0]) is tuple else x

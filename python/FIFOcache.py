@@ -30,5 +30,13 @@ class Cache():
     else:
       return self.default
 
+  def update(self, key, item):
+    if key in self.cache and type(self.cache[key]) is dict and type(item) is dict:
+      old = self.cache[key]
+      old.update(item)
+    else:
+      old = item
+    return self.put(key, old)
+
   def peek(self, key):
     return key in self.cache
