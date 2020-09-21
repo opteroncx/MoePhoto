@@ -165,7 +165,9 @@ const setupProgress = opt => {
       },
       error: (xhr, status, error) => {
         console.error(xhr, status, error)
-        progress.final(texts.errorMsg)
+        error === 'NOT FOUND'
+          ? progress.final(texts.errorMsg)
+          : opt.error(texts.idle)
       }
     })
   })
