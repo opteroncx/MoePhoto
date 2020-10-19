@@ -6,6 +6,7 @@ from sun_demoire import Net as SUNNet
 from moire_obj import Net as ObjNet
 from moire_screen_gan import Net as GANNet
 from imageProcess import initModel, identity, doCrop, Option
+from config import config
 normalize = Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
 ramCoef = .95 / np.array([[443., 160., 152.], [503.1, 275.34, 276.], [41951.3, 16788.7, 7029.7]])
 ram2 = np.array([[[85<<23, -43520., 115/128], [-18<<20, 38272., 89/128], [-141<<20, 39488., 19/1536]],
@@ -20,7 +21,8 @@ mode_switch = {
 def getOpt(optDe):
   model = optDe.get('model', 'dehaze')
   opt = Option()
-  modelPath, opt.modelDef, opt.ram, opt.padding, opt.align, opt.prepare = mode_switch[model]
+  modelPath, opt.modelDef, ramCoef, opt.padding, opt.align, opt.prepare = mode_switch[model]
+  opt.ramCoef = ramCoef[config.getRunType()]
   opt.model = modelPath
   opt.modelCached = initModel(opt, modelPath, model)
   return opt
