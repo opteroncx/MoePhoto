@@ -5,7 +5,7 @@ sys.path.append('./pyc')
 from defaultConfig import defaultConfig
 sharedMemSize = defaultConfig['sharedMemSize'][0]
 isWindows = sys.platform[:3] == 'win'
-mmName = 'SharedMemory'
+mmName = 'SharedMemoryMoe'
 
 def getMM(size, create=True):
   if isWindows:
