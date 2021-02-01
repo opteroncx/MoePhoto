@@ -11,16 +11,18 @@ from config import config
 from time import perf_counter
 
 from moire_obj import Net
+from dehaze import getOpt
 modelName = 'moire_obj'
 test = False
 inputFolder = '../test-pics'
 refFile = 0 #'test/1566005911.7879605_ci.png'
 
 def context():pass
-opt = Option(('test/{}.pth' if test else 'model/demoire/{}.pth').format(modelName))
-opt.padding = 31
-opt.ramCoef = 1 / 8000.
-opt.align = 128
+# opt = Option(('test/{}.pth' if test else 'model/demoire/{}.pth').format(modelName))
+# opt.padding = 31
+# opt.ramCoef = 1 / 8000.
+# opt.align = 128
+opt = getOpt(dict(model=modelName))
 opt.modelCached = initModel(opt, weights=opt.model, f=lambda _: Net())
 toTorch = lambda x: torch.from_numpy(np.array(x)).permute(2, 0, 1).to(dtype=config.dtype(), device=config.device()) / 256
 time = 0.0
