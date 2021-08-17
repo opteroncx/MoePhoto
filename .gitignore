@@ -60,7 +60,7 @@ install.exe
 /ffmpeg
 *.dll
 *.pdb
-*.exe
+
 
 # include default presets
 !/.user/preset_video/benchmark.json
