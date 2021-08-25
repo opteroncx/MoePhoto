@@ -40,17 +40,21 @@ module.exports = (env, argv) => {
         ]
       }, {
         test: /\.(png|jpg|gif)$/,
-        loader: 'url-loader',
-        options: {
-          limit: 10000,
-          outputPath: 'static/bg'
+        type: 'asset',
+        parser: {
+          dataUrlCondition: { maxSize: 10000 }
+        },
+        generator: {
+          filename: 'static/bg/[hash][ext][query]'
         }
       }, {
         test: /\.(svg|eot|ttf|woff|woff2)$/,
-        loader: 'url-loader',
-        options: {
-          limit: 10000,
-          outputPath: 'static/fonts'
+        type: 'asset',
+        parser: {
+          dataUrlCondition: { maxSize: 10000 }
+        },
+        generator: {
+          filename: 'static/fonts/[hash][ext][query]'
         }
       }]
     },
