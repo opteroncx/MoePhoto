@@ -1,5 +1,5 @@
 import json
-from os.path import exists
+from os.path import exists, join
 from defaultConfig import defaultConfig
 VERSION = '4.6'
 configPath = '.user/config.json'
@@ -20,14 +20,14 @@ def compareVersion(a, b):
   else:
     return 0
 
-def setConfig(config, version=VERSION):
+def setConfig(config, version=VERSION, dir='.'):
   for key in defaultConfig:
     config[key] = defaultConfig[key][0]
-  if exists(manifestPath):
-    with open(manifestPath,'r',encoding='utf-8') as manifest:
+  if exists(join(dir, manifestPath)):
+    with open(join(dir, manifestPath),'r',encoding='utf-8') as manifest:
       config['version'] = json.load(manifest)['version']
-  if exists(configPath):
-    with open(configPath, 'r', encoding='utf-8') as fp:
+  if exists(join(dir, configPath)):
+    with open(join(dir, configPath), 'r', encoding='utf-8') as fp:
       try:
         userConfig = json.load(fp)
       except:

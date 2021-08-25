@@ -1,13 +1,14 @@
 const webpack = require('webpack')
 const MiniCssExtractPlugin = require("mini-css-extract-plugin")
 const TerserPlugin = require('terser-webpack-plugin')
-const CleanWebpackPlugin = require('clean-webpack-plugin')
-const ManifestPlugin = require('webpack-manifest-plugin')
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
+const { WebpackManifestPlugin } = require('webpack-manifest-plugin')
 
 module.exports = (env, argv) => {
   return {
     mode: 'production',
-    target: 'web',
+    target: ["web", "es2020"],
+    stats: 'normal',
     entry: {
       system: './src/js/system.js',
       lock: './src/js/lock.js',
@@ -62,7 +63,7 @@ module.exports = (env, argv) => {
             chunks: "initial",
             minChunks: 2
           },
-          vendors: {
+          defaultVendors: {
             test: /[\\/]node_modules[\\/]/,
             name: "vendors",
             chunks: "all"
@@ -100,7 +101,7 @@ module.exports = (env, argv) => {
     },
     plugins: [
       new webpack.ProgressPlugin(),
-      new ManifestPlugin({
+      new WebpackManifestPlugin({
         fileName: 'static/manifest.json'
       }),
       new webpack.ProvidePlugin({
@@ -109,7 +110,9 @@ module.exports = (env, argv) => {
         'window.jQuery': 'jquery'
       }),
       new MiniCssExtractPlugin({ filename: "static/css/[contenthash].css" }),
-      new CleanWebpackPlugin(['static/css', 'static/js', 'static/fonts', 'static/bg'])
+      new CleanWebpackPlugin({
+        cleanOnceBeforeBuildPatterns: ['static/css', 'static/js', 'static/fonts', 'static/bg']
+      })
     ]
   }
 }

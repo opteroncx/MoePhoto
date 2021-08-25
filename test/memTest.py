@@ -1,14 +1,14 @@
 import sys
 sys.path.append('./python')
 import torch
-from procedure import genProcess
 from config import config, process
+from procedure import genProcess
 
-getMemUsed = (lambda i: torch.cuda.memory_stats(i)['reserved_bytes.all.peak']) if config.cuda else lambda *_: process.memory_info()[0]
-step = dict(op='dehaze', model='moire_obj')
-load = 3 << 20
+getMemUsed = (lambda i: torch.cuda.memory_stats(i)['reserved_bytes.all.peak']) if config.cuda else lambda *_: process.memory_info()[1]
+step = dict(op='SR', model='gan', scale=2)
+t = torch.randn((3, 512, 512), dtype=config.dtype(), device=config.device()) # pylint: disable=E1101
+load = t.nelement()
 p, _ = genProcess([step], True, dict(bitDepth=8, channel=0, source=0, load=load))
-t = torch.randn((3, 1440, 900), dtype=config.dtype(), device=config.device()) # pylint: disable=E1101
 m = getMemUsed(config.device())
 print(config.dtype(), m)
 sys.stdin.readline()

@@ -1,7 +1,6 @@
 # pylint: disable=E1101
 import time
 import os
-import json
 import logging
 import psutil
 import torch
@@ -20,10 +19,14 @@ def transform(self):
   return f
 
 class Config():
-  def __init__(self):
+  def __init__(self, dir='.'):
     self.deviceId = 0
+    self.dir = dir
+    self.initialize()
+
+  def initialize(self):
     try:
-      setConfig(self.__dict__, VERSION)
+      setConfig(self.__dict__, VERSION, dir=self.dir)
     except Exception as e:
       log.warning(e)
     self.cuda &= Config.cudaAvailable()
@@ -96,7 +99,7 @@ class Config():
       gram = []
     return gram
 
-Config.cudaAvailable = lambda *args:torch.cuda.is_available()
+Config.cudaAvailable = lambda *_:torch.cuda.is_available()
 
 config = Config()
 
