@@ -79,7 +79,7 @@ const showBench = (op, weight, samples) => {
   let mark = (weights[op.op] || 1e-3) / weight
   diag.marks[op.op] = mark
   let s = 0
-  for (k in diag.marks) s += diag.marks[k]
+  for (let k in diag.marks) s += diag.marks[k]
   setItem(diag.d.get(texts.totalMark), texts.totalMark, '', s)
   op = restrictLength(names[op.op] + joinByKeys(op, ops[op.op]))
   diag.d.has(op)
