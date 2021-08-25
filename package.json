@@ -1,6 +1,6 @@
 {
   "name": "moephoto",
-  "version": "5.5.2",
+  "version": "5.6.0",
   "description": "MoePhoto Image Toolbox萌图工具箱   一个基于深度学习的AI图像修复软件（更新中...）   感兴趣的加QQ群320785467讨论   ### 基本功能 * 图像降噪 * 超分辨率 * 去雾 * 涂抹及风格化",
   "directories": {
     "test": "test"
@@ -22,24 +22,25 @@
   },
   "homepage": "https://github.com/lotress/MoePhoto#readme",
   "devDependencies": {
-    "clean-webpack-plugin": "^1",
-    "css-loader": "^2",
-    "cssnano": "^4",
-    "file-loader": "^3",
-    "is-obj": "^2",
-    "mini-css-extract-plugin": "^0",
-    "postcss-import": "^12",
-    "postcss-loader": "^3",
-    "terser-webpack-plugin": "^1",
-    "url-loader": "^1",
-    "webpack": "^4",
-    "webpack-cli": "^3",
-    "webpack-manifest-plugin": "^2"
+    "clean-webpack-plugin": ">=3",
+    "css-loader": ">=6",
+    "cssnano": ">=5",
+    "file-loader": ">=6",
+    "is-obj": ">=3",
+    "mini-css-extract-plugin": ">=2",
+    "postcss-import": ">=14",
+    "postcss-loader": ">=6",
+    "postcss": ">=8",
+    "terser-webpack-plugin": ">=5",
+    "url-loader": ">=4",
+    "webpack": "^5",
+    "webpack-cli": ">=4",
+    "webpack-manifest-plugin": ">=4"
   },
   "dependencies": {
     "bootstrap": "^3",
-    "jarallax": "^1",
-    "jquery": "^3.5",
+    "jarallax": ">=1",
+    "jquery": "^3.6.0",
     "jquery.event.move": "^1",
     "zurb-twentytwenty": ">=0"
   }

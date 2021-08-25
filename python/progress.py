@@ -1,7 +1,6 @@
 import time
 import json
 from os.path import exists
-from functools import partial
 from gevent import spawn, sleep
 
 ops = {}

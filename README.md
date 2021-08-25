@@ -1,6 +1,6 @@
 # MoePhoto
 
-[![Badge](https://img.shields.io/badge/version-5.4-brightgreen.svg)](https://github.com/opteroncx/MoePhoto/blob/master/update_log.txt)
+[![Badge](https://img.shields.io/badge/version-5.6-brightgreen.svg)](https://github.com/opteroncx/MoePhoto/blob/master/update_log.txt)
 [![Badge](https://img.shields.io/badge/link-moephoto-blueviolet.svg)](http://moephoto.tech/)
 [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 

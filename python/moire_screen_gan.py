@@ -1,5 +1,4 @@
 # -*- coding:utf-8 -*-
-import torch
 import torch.nn as nn
 from models import upsample_block, ScaleLayer, initConvParameters, Conv3x3, namedSequential, CARB, Nonlocal_CA
 from imageProcess import identity, reduce

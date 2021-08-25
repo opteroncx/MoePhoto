@@ -28,7 +28,7 @@ const scaleModelMapping = {
   a: [0, 0, 0, 1],
   p: [0, 0, 0, 1],
   lite: [0, 1, 0, 0],
-  gan: [1, 1, 0, 1]
+  gan: [0, 1, 0, 1]
 }
 var getResizeView = (by, scale, size) =>
   by === 'scale' ? scale + '倍' : appendText('pixel')(size)
@@ -198,15 +198,16 @@ const panels = {
             value: 'lite',
             text: '快速',
             notes: [
-              '快速模型仅能放大2、4、8倍，可以在后面添加“缩放”步骤配合使用'
+              '快速模型能放大2、4或8倍，可以在后面添加“缩放”步骤配合使用'
             ]
           },
           {
             value: 'gan',
             text: 'GAN',
             notes: [
-              'GAN模型仅适用于RGB图像',
-              'GAN模型仅能放大4倍，可以在后面添加“缩放”步骤配合使用'
+              'GAN模型仅适用于RGB图像，遇到带alpha通道的图像会出错错',
+              'GAN模型能放大2或4倍，可以在后面添加“缩放”步骤配合使用',
+              '来自于<a href="https://github.com/xinntao/Real-ESRGAN">Xintao Wang的Real-ESRGAN</a>'
             ]
           }
         ]
@@ -218,7 +219,7 @@ const panels = {
         classes: ['input-number'],
         attributes: ['min="0"', 'max="7"', 'step="1"'],
         notes: [
-          '让超分模型额外处理变换的图像，之后混合多次处理的结果，轻微提高质量，花费时间以此处设置倍数增长',
+          '让超分模型额外处理变换的图像，之后混合多次处理的结果，轻微提高质量，要花费时间以此处设置倍数增长',
           '可填0-7倍'
         ]
       }

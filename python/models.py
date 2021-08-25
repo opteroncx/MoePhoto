@@ -399,3 +399,128 @@ class Nonlocal_CA(nn.Module):
     for out, xi in zip(outs, xs):
       out.copy_(self.non_local(xi))
     return  nonlocal_feat
+
+conv2d311 = lambda inCh, outCh: Conv3x3(inCh, outCh, 1, True)
+
+"""Make layers by stacking the same blocks.
+Args:
+    basic_block (nn.module): nn.module class for basic block.
+    num_basic_block (int): number of blocks.
+Returns:
+    nn.Sequential: Stacked blocks in nn.Sequential.
+"""
+make_layer = lambda basic_block, num_basic_block, **kwarg:\
+  nn.Sequential(*(basic_block(**kwarg) for _ in range(num_basic_block)))
+
+def pixel_unshuffle(scale):
+  """ Pixel unshuffle.
+  Args:
+      x (Tensor): Input feature with shape (b, c, hh, hw).
+      scale (int): Downsample ratio.
+  Returns:
+      Tensor: the pixel unshuffled feature.
+  """
+  if scale == 1:
+    return lambda x: x
+  def f(x):
+    b, c, hh, hw = x.size()
+    out_channel = c * (scale**2)
+    assert hh % scale == 0 and hw % scale == 0
+    h = hh // scale
+    w = hw // scale
+    x_view = x.view(b, c, h, scale, w, scale)
+    return x_view.permute(0, 1, 3, 5, 2, 4).reshape(b, out_channel, h, w)
+  return f
+
+class ResidualDenseBlock(nn.Module):
+  """Residual Dense Block.
+  Used in RRDB block in ESRGAN.
+  Args:
+      num_feat (int): Channel number of intermediate features.
+      num_grow_ch (int): Channels for each growth.
+  """
+  def __init__(self, num_feat=64, num_grow_ch=32):
+    super(ResidualDenseBlock, self).__init__()
+    self.conv = nn.ModuleList(conv2d311(num_feat + i * num_grow_ch, num_grow_ch if i < 4 else num_feat) for i in range(5))
+
+    self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+    # initialization
+    # default_init_weights(self.conv, 0.1)
+
+  def forward(self, x):
+    a = [x]
+    for i in range(5):
+      t = torch.cat(a, 1) if i else x
+      t = self.conv[i](t)
+      if i < 4:
+          t = self.lrelu(t)
+      a.append(t)
+    # Emperically, we use 0.2 to scale the residual for better performance
+    return a[-1] * 0.2 + x
+
+class RRDB(nn.Module):
+  """Residual in Residual Dense Block.
+  Used in RRDB-Net in ESRGAN.
+  Args:
+      num_feat (int): Channel number of intermediate features.
+      num_grow_ch (int): Channels for each growth.
+  """
+
+  def __init__(self, num_feat, num_grow_ch=32):
+    super(RRDB, self).__init__()
+    self.rdb1 = ResidualDenseBlock(num_feat, num_grow_ch)
+    self.rdb2 = ResidualDenseBlock(num_feat, num_grow_ch)
+    self.rdb3 = ResidualDenseBlock(num_feat, num_grow_ch)
+
+  def forward(self, x):
+    out = self.rdb1(x)
+    out = self.rdb2(out)
+    out = self.rdb3(out)
+    # Emperically, we use 0.2 to scale the residual for better performance
+    return out * 0.2 + x
+
+
+class RRDBNet(nn.Module):
+  """Networks consisting of Residual in Residual Dense Block, which is used
+  in ESRGAN.
+  ESRGAN: Enhanced Super-Resolution Generative Adversarial Networks.
+  We extend ESRGAN for scale x2 and scale x1.
+  Note: This is one option for scale 1, scale 2 in RRDBNet.
+  We first employ the pixel-unshuffle (an inverse operation of pixelshuffle to reduce the spatial size
+  and enlarge the channel size before feeding inputs into the main ESRGAN architecture.
+  Args:
+    num_in_ch (int): Channel number of inputs.
+    num_out_ch (int): Channel number of outputs.
+    num_feat (int): Channel number of intermediate features.
+        Default: 64
+    num_block (int): Block number in the trunk network. Defaults: 23
+    num_grow_ch (int): Channels for each growth. Default: 32.
+  """
+
+  def __init__(self, num_in_ch, num_out_ch, scale=4, num_feat=64, num_block=23, num_grow_ch=32):
+    super(RRDBNet, self).__init__()
+    self.scale = scale
+    num_in_ch *= (4 // scale) ** 2
+    self.unshuffle = pixel_unshuffle(4 // scale)
+    self.conv_first = conv2d311(num_in_ch, num_feat)
+    self.body = make_layer(RRDB, num_block, num_feat=num_feat, num_grow_ch=num_grow_ch)
+    self.conv_body = conv2d311(num_feat, num_feat)
+    # upsample
+    self.conv_up1 = conv2d311(num_feat, num_feat)
+    self.conv_up2 = conv2d311(num_feat, num_feat)
+    self.conv_hr = conv2d311(num_feat, num_feat)
+    self.conv_last = conv2d311(num_feat, num_out_ch)
+
+    self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+  def forward(self, x):
+    feat = self.unshuffle(x)
+    feat = self.conv_first(feat)
+    body_feat = self.conv_body(self.body(feat))
+    feat = feat + body_feat
+    # upsample
+    feat = self.lrelu(self.conv_up1(F.interpolate(feat, scale_factor=2, mode='nearest')))
+    feat = self.lrelu(self.conv_up2(F.interpolate(feat, scale_factor=2, mode='nearest')))
+    out = self.conv_last(self.lrelu(self.conv_hr(feat)))
+    return out
