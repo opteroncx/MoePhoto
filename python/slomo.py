@@ -186,7 +186,7 @@ class backWarp(nn.Module):
     Returns output tensor after passing input `img` and `flow` to the backwarping
     block.
   """
-  def __init__(self, W, H, device, dtype=torch.float): # pylint: disable=E1101
+  def __init__(self, W, H, device, dtype=torch.float, padding_mode='zeros'): # pylint: disable=E1101
     """
     Parameters
     ----------
@@ -199,11 +199,12 @@ class backWarp(nn.Module):
     """
     super(backWarp, self).__init__()
     # create a grid
-    gridX, gridY = torch.meshgrid(torch.arange(W), torch.arange(H)) # pylint: disable=E1101
+    gridY, gridX = torch.meshgrid(torch.arange(H), torch.arange(W)) # pylint: disable=E1101
     self.W = W
     self.H = H
-    self.gridX = gridX.t().to(dtype=dtype, device=device) # pylint: disable=E1101
-    self.gridY = gridY.t().to(dtype=dtype, device=device) # pylint: disable=E1101
+    self.gridX = gridX.to(dtype=dtype, device=device) # pylint: disable=E1101
+    self.gridY = gridY.to(dtype=dtype, device=device) # pylint: disable=E1101
+    self.padding_mode = padding_mode
 
   def forward(self, img, flow):
     """
@@ -212,9 +213,9 @@ class backWarp(nn.Module):
     I0  = backwarp(I1, F_0_1)
     Parameters
     ----------
-      img : tensor
+      img : tensor(n, c, h, w)
         frame I1.
-      flow : tensor
+      flow : tensor(n, 2, h, w)
         optical flow from I0 and I1: F_0_1.
     Returns
     -------
@@ -233,7 +234,7 @@ class backWarp(nn.Module):
     grid = torch.stack((x,y), dim=3) # pylint: disable=E1101
     # Sample pixels using bilinear interpolation.
     # set both here and interpolate's align_corners to False will occur memory overflow
-    imgOut = torch.nn.functional.grid_sample(img, grid, align_corners=True)
+    imgOut = torch.nn.functional.grid_sample(img, grid, align_corners=True, padding_mode=self.padding_mode, mode='bilinear')
     return imgOut
 
 """unused

@@ -28,7 +28,8 @@ const scaleModelMapping = {
   a: [0, 0, 0, 1],
   p: [0, 0, 0, 1],
   lite: [0, 1, 0, 0],
-  gan: [0, 1, 0, 1]
+  gan: [0, 1, 0, 1],
+  gana: [1, 1, 0, 1]
 }
 var getResizeView = (by, scale, size) =>
   by === 'scale' ? scale + '倍' : appendText('pixel')(size)
@@ -208,6 +209,15 @@ const panels = {
               'GAN模型仅适用于RGB图像，遇到带alpha通道的图像会出错错',
               'GAN模型能放大2或4倍，可以在后面添加“缩放”步骤配合使用',
               '来自于<a href="https://github.com/xinntao/Real-ESRGAN">Xintao Wang的Real-ESRGAN</a>'
+            ]
+          },
+          {
+            value: 'gana',
+            text: 'GAN动漫',
+            notes: [
+              '仅适用于RGB动漫图像，遇到带alpha通道的图像会出错错',
+              '仅能放大4倍，但是比较快，可以在后面添加“缩放”步骤配合使用',
+              '来自于<a href="https://github.com/xinntao/Real-ESRGAN">Real-ESRGAN</a>'
             ]
           }
         ]
