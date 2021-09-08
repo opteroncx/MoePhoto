@@ -395,6 +395,11 @@ const panels = {
       }
     }
   },
+  VSR: {
+    text: '视频放大',
+    description: '专用于视频的4倍放大，带一点去模糊能力',
+    draggable: 1
+  },
   decode: {
     text: '输入解码',
     description:

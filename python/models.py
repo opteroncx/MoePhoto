@@ -4,8 +4,9 @@ import torch
 import torch.nn as nn
 import math
 import torch.nn.functional as F
-from imageProcess import apply, reduce, identity, split, flat
 from collections import OrderedDict
+from imageProcess import apply, reduce, identity, split, flat
+from deform_conv_ext import ModulatedDeformConvPack as DCNv2Pack
 
 def initParameters(model):
   for i, convt in enumerate(model.convt_F):
@@ -431,6 +432,28 @@ def pixel_unshuffle(scale):
     x_view = x.view(b, c, h, scale, w, scale)
     return x_view.permute(0, 1, 3, 5, 2, 4).reshape(b, out_channel, h, w)
   return f
+
+class ResidualBlockNoBN(nn.Module):
+  """Residual block without BN.
+  It has a style of:
+    ---Conv-ReLU-Conv-+-
+      |________________|
+  Args:
+    num_feat (int): Channel number of intermediate features. Default: 64.
+    res_scale (float): Residual scale. Default: 1.
+  """
+
+  def __init__(self, num_feat=64, res_scale=1):
+    super(ResidualBlockNoBN, self).__init__()
+    self.res_scale = res_scale
+    self.conv1 = nn.Conv2d(num_feat, num_feat, 3, 1, 1, bias=True)
+    self.conv2 = nn.Conv2d(num_feat, num_feat, 3, 1, 1, bias=True)
+    self.relu = nn.ReLU(inplace=True)
+
+  def forward(self, x):
+    identity = x
+    out = self.conv2(self.relu(self.conv1(x)))
+    return identity + out * self.res_scale
 
 class ResidualDenseBlock(nn.Module):
   """Residual Dense Block.

@@ -82,13 +82,13 @@ def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
     unpad = identity
   elif stepH > 1:
     padImage = getPad(aw, w, 0, 0)
-    unpad = lambda im: im[:, :, :outw]
+    unpad = lambda im: im[..., :outw]
   elif stepW > 1:
     padImage = getPad(0, 0, ah, h)
-    unpad = lambda im: im[:, :outh]
+    unpad = lambda im: im[..., :outh, :]
   else:
     padImage = getPad(aw, w, ah, h)
-    unpad = lambda im: im[:, :outh, :outw]
+    unpad = lambda im: im[..., :outh, :outw]
   b = ((torch.arange(padSc, dtype=config.dtype(), device=config.device()) / padSc - .5) * 9).sigmoid().view(1, -1)
   def iterClip():
     for i in range(stepH):
@@ -195,31 +195,32 @@ def restrictSize(width, height=0, method='bilinear'):
 
 def windowWrap(f, opt, window=2):
   cache = []
+  wm1 = window - 1
   maxBatch = 1 << 7
   h = 0
-  getData = lambda: [cache[i:i + window] for i in range(h - window + 1)]
-  def init(r=False):
+  getData = lambda: [cache[i:i + window] for i in range(h - wm1)]
+  def reset(r=False):
     nonlocal h, cache
-    if r and window > 1:
-      cache = cache[h - window + 1:h] + [0 for _ in range(maxBatch)]
-      h = window - 1
+    if r and wm1:
+      cache = cache[h - wm1:h] + [0 for _ in range(maxBatch)]
+      h = wm1
     else:
-      cache = [0 for _ in range(window + maxBatch - 1)]
+      cache = [0 for _ in range(wm1 + maxBatch)]
       h = 0
-  init()
+  reset()
   def g(inp=None):
     nonlocal h
     b = min(max(1, opt.batchSize), maxBatch)
-    if not inp is None:
+    if inp != None:
       cache[h] = inp
       h += 1
-      if h >= window + b - 1:
+      if h >= wm1 + b:
         data = getData()
-        init(True)
+        reset(True)
         return f(data)
-    elif h >= window:
-      data = getData()
-      init()
+    elif h:
+      data = getData() if h > wm1 else [cache[:h]]
+      reset()
       return f(data)
   return g
 

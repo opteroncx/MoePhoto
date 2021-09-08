@@ -5,13 +5,16 @@ import sys
 import threading
 import logging
 import signal
+from math import ceil
 from queue import Queue, Empty
-from gevent import spawn_later, idle
+from gevent import idle
 from config import config
-from imageProcess import clean, writeFile, BGR2RGB
+from imageProcess import clean
 from procedure import genProcess
 from progress import Node, initialETA
 from worker import context, begin
+from runSlomo import RefTime as SlomoRefs
+from videoSR import RefTime as VSRRefs
 
 log = logging.getLogger('Moe')
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
@@ -27,9 +30,11 @@ reMatchFrame = re.compile(r'frame=')
 reSearchFrame = re.compile(r'frame=[\s]*([\d]+) ')
 reMatchAudio = re.compile(r'Stream #0:1')
 reMatchOutput = re.compile(r'Output #0,')
-creationflag = sp.CREATE_NEW_PROCESS_GROUP if isWindows else 0
 formats = {'.mp4', '.ts', '.mkv'}
+creationflag = sp.CREATE_NEW_PROCESS_GROUP if isWindows else 0
 sigint = signal.CTRL_BREAK_EVENT if isWindows else signal.SIGINT
+lookback = dict(slomo=SlomoRefs - 1, VSR=VSRRefs - 1)
+resizeOp = {'SR', 'resize', 'VSR'}
 popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, creationflags=creationflag)
 popenText = lambda command: sp.Popen(command, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
 insert1 = lambda t, s: ''.join((t[0], s, *t[1:]))
@@ -150,13 +155,27 @@ def prepare(video, by, steps):
   traceDetail = config.progressDetail or bench  # pylint: disable=E1101
   root = begin(Node({'op': 'video'}, 1, 2, 0), nodes, traceDetail, bench, clear)
   context.root = root
-  slomos = [*filter((lambda opt: opt['op'] == 'slomo'), procSteps)]
+  slomos = [step for step in procSteps if step['op'] == 'slomo']
+  refs = 0
   if start < 0:
     start = 0
-  if start and len(slomos): # should generate intermediate frames between start-1 and start
-    start -= 1
-    for opt in slomos:
-      opt['opt'].firstTime = 0
+  if start: # gather some reference frames before start point for video models
+    for i in range(len(procSteps) - 1, -1, -1):
+      step = procSteps[i]
+      if step['op'] in lookback:
+        if not refs:
+          refs = lookback[step['op']]
+        step['opt'].outStart = refs
+        refs = ceil(refs / step.get('sf', 1))
+  if start < refs: # no enough reference frames
+    refs = start
+    for step in procSteps:
+      if step['op'] in lookback:
+        refs = refs * step.get('sf', 1)
+        step['opt'].outStart = refs
+    start = 0
+  else:
+    start -= refs
   stop = int(optRange.get('stop', -1))
   if stop <= start:
     stop = -1
@@ -217,7 +236,7 @@ def prepare(video, by, steps):
   frameRate = optEncode.get('frameRate', 0)
   width = optDecode.get('width', 0)
   height = optDecode.get('height', 0)
-  sizes = filter((lambda opt: opt['op'] == 'SR' or opt['op'] == 'resize'), procSteps)
+  sizes = [step for step in procSteps if step['op'] in resizeOp]
   return outputPath, process, start, stop, root, commandIn, commandVideo, commandOut, slomos, sizes, width, height, frameRate
 
 def setupInfo(by, outputPath, root, commandIn, commandVideo, commandOut, slomos, sizes, start, width, height, frameRate, totalFrames, videoOnly):
@@ -231,6 +250,9 @@ def setupInfo(by, outputPath, root, commandIn, commandVideo, commandOut, slomos,
     if opt['op'] == 'SR':
       outWidth *= opt['scale']
       outHeight *= opt['scale']
+    elif opt['op'] == 'VSR':
+      outWidth *= 4
+      outHeight *= 4
     else: # resize
       outWidth = round(outWidth * opt['scaleW']) if 'scaleW' in opt else opt['width']
       outHeight = round(outHeight * opt['scaleH']) if 'scaleH' in opt else opt['height']
@@ -300,8 +322,9 @@ def SR_vid(video, by, *steps):
     createEnqueueThread(procIn.stderr)
     createEnqueueThread(procOut.stderr)
     i = 0
+    frameBytes = width * height * pixBytes # read 1 frame
     while (stop < 0 or i <= stop) and not context.stopFlag.is_set():
-      raw_image = procIn.stdout.read(width * height * pixBytes) # read width*height*6 bytes (= 1 frame)
+      raw_image = procIn.stdout.read(frameBytes)
       if len(raw_image) == 0:
         break
       readSubprocess(qOut)
