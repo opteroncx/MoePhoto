@@ -3,6 +3,7 @@ import time
 from copy import copy
 from functools import reduce
 from itertools import chain
+from typing import List
 import torch
 import torch.nn.functional as F
 import PIL
@@ -362,6 +363,57 @@ class Option():
     self.iterClip = None
     self.squeeze = lambda x: x.squeeze(0)
     self.unsqueeze = lambda x: x.unsqueeze(0)
+
+class StreamState():
+  def __init__(self, window=None, device=config.device(), offload=True):
+    self.wm1 = window - 1 if window else 0
+    self.device = device
+    self.offload = offload
+    self.state = []
+
+  def clear(self):
+    self.state.clear()
+
+  def shift(self, size=1): # for RNN
+    if not len(self.state):
+      return
+    data = torch.stack(self.state[:size]) if size > 1 else self.state[0]
+    self.state = self.state[size:]
+    return data.to(self.device)
+
+  def getSize(self, size):
+    ls = len(self.state)
+    if not ls or (size and ls < self.wm1 + size):
+      return 0
+    lb = len(self.state) - self.wm1 + 1
+    r = min(size, lb) if size else lb
+    return r if self.wm1 else (min(ls, size) if size else ls)
+
+  def popBatch(self, size=1):
+    r = self.getSize(size)
+    if not r:
+      return
+    batch = [torch.stack(self.state[i:i + self.wm1 + 1]) for i in range(r)] if self.wm1 else self.state[:r]
+    self.state = self.state[r:]
+    return torch.stack(batch).to(self.device)
+
+  def push(self, batch: torch.Tensor):
+    if self.offload:
+      batch = [t.cpu() for t in batch] if type(batch) == list else batch.cpu()
+    self.state.extend(t for t in batch)
+
+  def __len__(self):
+    return len(self.state)
+
+  @classmethod
+  def run(f, states, args, size, last=False):
+    res = []
+    r = min(s.getSize() for s in states)
+    while r > 0 and (last or r >= size):
+      nargs = list(args) + [s.popBatch(min(r, size)) for s in states]
+      res.append(f(*nargs))
+      r -= size
+    return res
 
 deviceCPU = torch.device('cpu')
 outDir = config.outDir
