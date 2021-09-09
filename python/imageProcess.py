@@ -3,7 +3,7 @@ import time
 from copy import copy
 from functools import reduce
 from itertools import chain
-from typing import List, Union
+from typing import Callable, List, Union
 import torch
 import torch.nn.functional as F
 import PIL
@@ -374,12 +374,12 @@ class StreamState():
   def clear(self):
     self.state.clear()
 
-  def getSize(self, size=None):
+  def getSize(self, size=1):
     ls = len(self.state)
-    if not ls or (size and ls < self.wm1 + size):
+    if ls < self.wm1 + size:
       return 0
     lb = ls - self.wm1
-    return min(size, lb) if size else lb
+    return min(size, lb)
 
   def popBatch(self, size=1):
     r = self.getSize(size)
@@ -404,22 +404,47 @@ class StreamState():
     return padding
 
   def push(self, batch: Union[torch.Tensor, List[torch.Tensor]]):
+    if batch is None:
+      return
     if self.offload:
       batch = [t.cpu() for t in batch] if type(batch) == list else batch.cpu()
     self.state.extend(t for t in batch)
+    return len(batch)
+
+  def bind(self, f: Callable, states, size: int, args=[]):
+    return StreamState.pipe(f, states, size, self, args)
 
   def __len__(self):
     return self.getSize()
 
   @classmethod
-  def run(_, f, states, size, args=[], last=False):
-    r = min(s.getSize() for s in states)
-    while r > 0 and (last or r >= size):
+  def run(_, f: Callable, states, size: int, args=[], last=False, pipe=False):
+    while True:
+      r = min(s.getSize() for s in states)
+      if not r or (r < size and not last):
+        if pipe and not last:
+          last |= yield None
+        else:
+          break
       nargs = list(args) + [s.popBatch(min(r, size)) for s in states]
       out = f(*nargs)
       if out != None:
-        yield out
-      r -= size
+        last |= yield out
+
+  @classmethod
+  def pipe(cls, f: Callable, states, size: int, target, args=[]):
+    it = cls.run(f, states, size, args, pipe=True)
+    last, x = False, None
+    while not last:
+      last |= yield x
+      try:
+        x = it.send(last)
+      except StopIteration:
+        break
+      target.push(x)
+    for x in it:
+      if target.push(x):
+        yield x
 
 deviceCPU = torch.device('cpu')
 outDir = config.outDir
