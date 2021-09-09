@@ -3,7 +3,7 @@ import time
 from copy import copy
 from functools import reduce
 from itertools import chain
-from typing import List
+from typing import List, Union
 import torch
 import torch.nn.functional as F
 import PIL
@@ -365,7 +365,7 @@ class Option():
     self.unsqueeze = lambda x: x.unsqueeze(0)
 
 class StreamState():
-  def __init__(self, window=None, device=config.device(), offload=True):
+  def __init__(self, window=None, device=config.device(), offload=False):
     self.wm1 = window - 1 if window else 0
     self.device = device
     self.offload = offload
@@ -374,20 +374,12 @@ class StreamState():
   def clear(self):
     self.state.clear()
 
-  def shift(self, size=1): # for RNN
-    if not len(self.state):
-      return
-    data = torch.stack(self.state[:size]) if size > 1 else self.state[0]
-    self.state = self.state[size:]
-    return data.to(self.device)
-
-  def getSize(self, size):
+  def getSize(self, size=None):
     ls = len(self.state)
     if not ls or (size and ls < self.wm1 + size):
       return 0
-    lb = len(self.state) - self.wm1 + 1
-    r = min(size, lb) if size else lb
-    return r if self.wm1 else (min(ls, size) if size else ls)
+    lb = ls - self.wm1
+    return min(size, lb) if size else lb
 
   def popBatch(self, size=1):
     r = self.getSize(size)
@@ -395,25 +387,39 @@ class StreamState():
       return
     batch = [torch.stack(self.state[i:i + self.wm1 + 1]) for i in range(r)] if self.wm1 else self.state[:r]
     self.state = self.state[r:]
-    return torch.stack(batch).to(self.device)
+    batch = torch.stack(batch) if size > 1 else batch[0]
+    return batch.to(self.device)
 
-  def push(self, batch: torch.Tensor):
+  def pad(self, padding: int):
+    if padding == 0:
+      return 0
+    absPad = abs(padding)
+    size = 1 + absPad * 2
+    if len(self.state) < size:
+      return 0
+    offset = padding - 2 if padding < 0 else 0
+    ids = (torch.arange(absPad, 0, -1) + padding + offset).tolist()
+    batch = [self.state[i] for i in ids]
+    self.state = (self.state + batch) if padding < 0 else (batch + self.state)
+    return padding
+
+  def push(self, batch: Union[torch.Tensor, List[torch.Tensor]]):
     if self.offload:
       batch = [t.cpu() for t in batch] if type(batch) == list else batch.cpu()
     self.state.extend(t for t in batch)
 
   def __len__(self):
-    return len(self.state)
+    return self.getSize()
 
   @classmethod
-  def run(f, states, args, size, last=False):
-    res = []
+  def run(_, f, states, size, args=[], last=False):
     r = min(s.getSize() for s in states)
     while r > 0 and (last or r >= size):
       nargs = list(args) + [s.popBatch(min(r, size)) for s in states]
-      res.append(f(*nargs))
+      out = f(*nargs)
+      if out != None:
+        yield out
       r -= size
-    return res
 
 deviceCPU = torch.device('cpu')
 outDir = config.outDir

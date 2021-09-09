@@ -124,6 +124,9 @@ def doSlomo(func, node, opt):
 
       node.trace()
 
+    if data is None and opt.outEnd:
+      tempOut = tempOut[:opt.outEnd]
+      opt.outEnd = 0
     for i in range(opt.outStart, len(tempOut)):
       tempOut[i] = func(tempOut[i])
     res = []
@@ -132,6 +135,6 @@ def doSlomo(func, node, opt):
         res.extend(item)
       elif not item is None:
         res.append(item)
-    opt.outStart = 0
+    opt.outStart = max(0, opt.outStart - len(tempOut))
     return res
   return f

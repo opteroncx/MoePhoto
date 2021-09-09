@@ -3,7 +3,7 @@ import torch
 from torch import nn as nn
 from torch.nn import functional as F
 
-from .imageProcess import initModel, getPadBy32, doCrop
+from .imageProcess import initModel, getPadBy32, doCrop, StreamState
 from .models import DCNv2Pack, ResidualBlockNoBN, make_layer, conv2d311
 from .slomo import backWarp
 from .runSlomo import getOptS, getBatchSize
@@ -563,19 +563,30 @@ def doVSR(func, node, opt):
     if not opt.batchSize:
       opt.batchSize = getBatchSize(6 * width * height, ramCoef[opt.ramOffset])
       log.info('VSR batch size={}'.format(opt.batchSize))
+
+    if opt.inp is None:
+      opt.inp = StreamState()
+    if data is None and opt.end:
+      end = opt.inp.pad(opt.end)
+      opt.end -= end
+    if not data is None:
+      opt.inp.push(data)
+    if opt.start:
+      start = opt.inp.pad(opt.start)
+      opt.start -= start
+    data = opt.inp.popBatch(opt.batchSize)
+    if data is None:
+      return
     batchSize = len(data)
     tempOut = [0] * batchSize
     # TODO
     node.trace()
-
-    for i in range(opt.outStart, len(tempOut)):
-      tempOut[i] = func(tempOut[i])
     res = []
-    for item in tempOut[opt.outStart:]:
+    for item in tempOut:
+      item = func(item)
       if type(item) == list:
         res.extend(item)
       elif not item is None:
         res.append(item)
-    opt.outStart = 0
     return res
   return f
