@@ -388,7 +388,7 @@ class StreamState():
     lb = ls - self.wm1
     return min(size, lb) if size else lb
 
-  def popBatch(self, size=1):
+  def popBatch(self, size=1, last=None):
     r = self.getSize(size)
     if not r:
       return
@@ -442,10 +442,9 @@ class StreamState():
         if not last:
           last = yield None
         continue
-      nargs = list(args) + [s.popBatch(min(r, size)) for s in states]
+      nargs = list(args) + [s.popBatch(min(r, size), last) for s in states]
       out = f(*nargs)
-      if out != None:
-        last = yield out
+      last = yield out
 
   @classmethod
   def pipe(cls, f: Callable, states, size: int, target, args=[]):

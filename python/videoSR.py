@@ -542,18 +542,41 @@ class EDVRFeatureExtractor(nn.Module):
     # TSA fusion
     return self.fusion(aligned_feat)
 
+class KeyFrameState():
+  def __init__(self, window):
+    self.window = window
+    self.count = 0
+    self.last = None
+
+  def getSize(self, size=1 << 30):
+    return size
+
+  def pull(self, last=None):
+    return not last
+
+  def popBatch(self, size=1, last=None):
+    res = [False for _ in range(size)]
+    r = -self.count % self.window
+    for i in range(r, size, self.window):
+      res[i] = True
+    if last:
+      res[-1] = True
+    self.count += size
+    return res
+
 def getOpt(_):
   opt = getOptS(modelPath, modules, ramCoef)
   opt.flow_warp = None
+  opt.inp = StreamState()
   return opt
 
 def doVSR(func, node, opt):
-  def f(data):
+
+  def f(x):
     node.reset()
     node.trace(0, p='VSR start')
 
     if opt.flow_warp is None:
-      x = data[0][0]
       width, height, opt.pad, opt.unpad = getPadBy32(x, opt)
       opt.width = width
       opt.height = height
@@ -565,20 +588,15 @@ def doVSR(func, node, opt):
       opt.batchSize = getBatchSize(6 * width * height, ramCoef[opt.ramOffset])
       log.info('VSR batch size={}'.format(opt.batchSize))
 
-    if opt.inp is None:
-      opt.inp = StreamState()
-    if data is None and opt.end:
+    last = True if x is None else None
+    if last and opt.end:
       end = opt.inp.pad(opt.end)
       opt.end -= end
-    if not data is None:
-      opt.inp.push(data)
+    opt.inp.push(x)
     if opt.start:
       start = opt.inp.pad(opt.start)
       opt.start -= start
-    data = opt.inp.popBatch(opt.batchSize)
-    if data is None:
-      return
-    batchSize = len(data)
+    batchSize = opt.batchSize
     tempOut = [0] * batchSize
     # TODO
     node.trace()
