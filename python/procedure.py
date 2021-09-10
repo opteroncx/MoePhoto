@@ -11,7 +11,7 @@ import dehaze
 import videoSR
 from worker import context
 
-videoOps = {'slomo': runSlomo.RefTime, 'VSR': videoSR.RefTime}
+videoOps = {'slomo': runSlomo.WindowSize, 'VSR': videoSR.WindowSize}
 applyNonNull = lambda v, f: NonNullWrap(f)(v)
 NonNullWrap = lambda f: lambda x: f(x) if not x is None else None
 newNode = lambda opt, op, load=1, total=1: Node(op, load, total, name=opt.get('name', None))
@@ -170,7 +170,7 @@ def genProcess(steps, root=True, outType=None):
         nodesAfter = []
       videoOpt = opt['opt']
       func = funcs[-1](f, nodes[-1], videoOpt)
-      funcs[-1] = windowWrap(func, videoOpt, videoOps[op])
+      funcs[-1] = windowWrap(func, videoOpt, videoOps[op]) if videoOps[op] > 1 else func
       nodeAfter = Node({}, total=opt.get('sf', 1), learn=0)
       for node in nodesAfter:
         nodeAfter.append(node)

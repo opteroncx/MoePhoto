@@ -9,6 +9,7 @@ from .slomo import backWarp
 from .runSlomo import getOptS, getBatchSize
 
 RefTime = 7
+WindowSize = 1
 modelPath = './model/vsr/IconVSR_Vimeo90K_BDx4-cfcb7e00.pth'
 ramCoef = [.9 / x for x in (450., 138., 450., 137., 223., 60.)]
 modules = dict()

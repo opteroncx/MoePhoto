@@ -12,6 +12,7 @@ from config import config
 log = logging.getLogger('Moe')
 modelPath = './model/slomo/SuperSloMo.ckpt'
 RefTime = 2
+WindowSize = 1
 ramCoef = [.9 / x for x in (450., 138., 450., 137., 223., 60.)]
 getFlowComp = lambda *_: UNet(6, 4)
 getFlowIntrp = lambda *_: UNet(20, 5)
