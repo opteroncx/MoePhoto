@@ -369,13 +369,14 @@ def DefaultStreamSource(last=None):
     last = yield
 
 class StreamState():
-  def __init__(self, window=None, device=config.device(), offload=False, store=True):
+  def __init__(self, window=None, device=config.device(), offload=False, store=True, name=None):
     self.source = DefaultStreamSource()
     next(self.source)
     self.wm1 = window - 1 if window else 0
     self.device = device
     self.offload = offload
     self.store = store
+    self.name = name
     self.state = []
 
   def clear(self):
@@ -388,7 +389,7 @@ class StreamState():
     lb = ls - self.wm1
     return min(size, lb) if size else lb
 
-  def popBatch(self, size=1, last=None):
+  def popBatch(self, size=1, *_, **__):
     r = self.getSize(size)
     if not r:
       return
@@ -396,7 +397,7 @@ class StreamState():
     self.state = self.state[r:]
     return torch.stack(batch).to(self.device)
 
-  def pad(self, padding: int):
+  def pad(self, padding: int, *_, **__):
     if padding == 0:
       return 0
     absPad = abs(padding)
@@ -409,7 +410,7 @@ class StreamState():
     self.state = (self.state + batch) if padding < 0 else (batch + self.state)
     return padding
 
-  def push(self, batch: Union[torch.Tensor, List[torch.Tensor]]):
+  def push(self, batch: Union[torch.Tensor, List[torch.Tensor]], *_, **__):
     if batch is None:
       return
     if self.offload:
@@ -417,12 +418,15 @@ class StreamState():
     self.store and self.state.extend(t for t in batch)
     return batch
 
-  def bind(self, f: Callable, states, size: int, args=[]):
-    self.source = type(self).pipe(f, states, size, self, args)
+  def bind(self, stateIter):
+    self.source = stateIter
     return self.source
 
   def __len__(self):
     return self.getSize()
+
+  def __str__(self):
+    return 'StreamState {}'.format(self.name) if self.name else 'anonymous StreamState'
 
   def pull(self, last=None):
     try:
@@ -432,28 +436,43 @@ class StreamState():
 
   @classmethod
   def run(_, f: Callable, states, size: int, args=[], last=None, pipe=False):
+    t = yield
     while True:
+      last, size = t if type(t) == tuple else (t, size)
       r = min(s.getSize() for s in states)
       if not r or (r < size and not last):
         if not pipe:
           break
-        if not any(s.pull(last) for s in states):
-          pipe = False
+        if not any(s.pull(last) for s in states): # every source is drained
+          pipe = False # try to check sources' size for last time
         if not last:
-          last = yield None
+          t = yield
         continue
       nargs = list(args) + [s.popBatch(min(r, size), last) for s in states]
       out = f(*nargs)
-      last = yield out
+      t = yield out
 
   @classmethod
-  def pipe(cls, f: Callable, states, size: int, target, args=[]):
-    it, last, flag = cls.run(f, states, size, args, pipe=True), None, None
-    while True:
-      try:
-        last = yield target.push(it.send(flag))
-        if last: flag = True
-      except StopIteration: break
+  def pipe(cls, f: Callable, states, targets, size=1, args=[]):
+    it = cls.run(f, states, size, args, pipe=True)
+    next(it)
+    itPipe = pipeFunc(it, targets, size)
+    next(itPipe)
+    for t in targets:
+      t.bind(itPipe)
+    return itPipe
+
+def pipeFunc(it, targets, size, last=False):
+  t = yield
+  while True:
+    flag, size = t if type(t) == tuple else (t, size)
+    last |= bool(flag)
+    try:
+      out = it.send((last, size))
+      for t in targets:
+        t.push(out)
+      t = yield out
+    except StopIteration: break
 
 deviceCPU = torch.device('cpu')
 outDir = config.outDir

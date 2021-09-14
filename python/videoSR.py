@@ -554,7 +554,7 @@ class KeyFrameState():
   def pull(self, last=None):
     return not last
 
-  def popBatch(self, size=1, last=None):
+  def popBatch(self, size=1, last=None, *_, **__):
     res = [False for _ in range(size)]
     r = -self.count % self.window
     for i in range(r, size, self.window):
