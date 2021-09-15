@@ -17,6 +17,8 @@ log = logging.getLogger('Moe')
 
 conv2d713 = lambda in_channels, out_channels:\
   nn.Conv2d(in_channels, out_channels, kernel_size=7, stride=1, padding=3)
+conv2d110 = lambda in_channels, out_channels:\
+  nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0)
 
 """Basic Module for SpyNet."""
 BasicModule = lambda: nn.Sequential(
@@ -103,20 +105,19 @@ class PCDAlignment(nn.Module):
     # Pyramids
     for i in range(3, 0, -1):
       level = f'l{i}'
-      self.offset_conv1[level] = nn.Conv2d(num_feat * 2, num_feat, 3, 1, 1)
+      self.offset_conv1[level] = conv2d311(num_feat * 2, num_feat)
       if i == 3:
-        self.offset_conv2[level] = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
+        self.offset_conv2[level] = conv2d311(num_feat, num_feat)
       else:
-        self.offset_conv2[level] = nn.Conv2d(num_feat * 2, num_feat, 3, 1, 1)
-        self.offset_conv3[level] = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
+        self.feat_conv[level] = conv2d311(num_feat * 2, num_feat)
+        self.offset_conv2[level] = conv2d311(num_feat * 2, num_feat)
+        self.offset_conv3[level] = conv2d311(num_feat, num_feat)
+
       self.dcn_pack[level] = DCNv2Pack(num_feat, num_feat, 3, padding=1, deformable_groups=deformable_groups)
 
-      if i < 3:
-        self.feat_conv[level] = nn.Conv2d(num_feat * 2, num_feat, 3, 1, 1)
-
     # Cascading dcn
-    self.cas_offset_conv1 = nn.Conv2d(num_feat * 2, num_feat, 3, 1, 1)
-    self.cas_offset_conv2 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
+    self.cas_offset_conv1 = conv2d311(num_feat * 2, num_feat)
+    self.cas_offset_conv2 = conv2d311(num_feat, num_feat)
     self.cas_dcnpack = DCNv2Pack(num_feat, num_feat, 3, padding=1, deformable_groups=deformable_groups)
 
     self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
@@ -178,23 +179,23 @@ class TSAFusion(nn.Module):
     super(TSAFusion, self).__init__()
     self.center_frame_idx = center_frame_idx
     # temporal attention (before fusion conv)
-    self.temporal_attn1 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-    self.temporal_attn2 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-    self.feat_fusion = nn.Conv2d(num_frame * num_feat, num_feat, 1, 1)
+    self.temporal_attn1 = conv2d311(num_feat, num_feat)
+    self.temporal_attn2 = conv2d311(num_feat, num_feat)
+    self.feat_fusion = conv2d110(num_frame * num_feat, num_feat)
 
     # spatial attention (after fusion conv)
     self.max_pool = nn.MaxPool2d(3, stride=2, padding=1)
     self.avg_pool = nn.AvgPool2d(3, stride=2, padding=1)
-    self.spatial_attn1 = nn.Conv2d(num_frame * num_feat, num_feat, 1)
-    self.spatial_attn2 = nn.Conv2d(num_feat * 2, num_feat, 1)
-    self.spatial_attn3 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-    self.spatial_attn4 = nn.Conv2d(num_feat, num_feat, 1)
-    self.spatial_attn5 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-    self.spatial_attn_l1 = nn.Conv2d(num_feat, num_feat, 1)
-    self.spatial_attn_l2 = nn.Conv2d(num_feat * 2, num_feat, 3, 1, 1)
-    self.spatial_attn_l3 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-    self.spatial_attn_add1 = nn.Conv2d(num_feat, num_feat, 1)
-    self.spatial_attn_add2 = nn.Conv2d(num_feat, num_feat, 1)
+    self.spatial_attn1 = conv2d110(num_frame * num_feat, num_feat)
+    self.spatial_attn2 = conv2d110(num_feat * 2, num_feat)
+    self.spatial_attn3 = conv2d311(num_feat, num_feat)
+    self.spatial_attn4 = conv2d110(num_feat, num_feat)
+    self.spatial_attn5 = conv2d311(num_feat, num_feat)
+    self.spatial_attn_l1 = conv2d110(num_feat, num_feat)
+    self.spatial_attn_l2 = conv2d311(num_feat * 2, num_feat)
+    self.spatial_attn_l3 = conv2d311(num_feat, num_feat)
+    self.spatial_attn_add1 = conv2d110(num_feat, num_feat)
+    self.spatial_attn_add2 = conv2d110(num_feat, num_feat)
 
     self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
     self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
@@ -202,46 +203,45 @@ class TSAFusion(nn.Module):
   def forward(self, aligned_feat):
     """
     Args:
-      aligned_feat (Tensor): Aligned features with shape (b, t, c, h, w).
+      aligned_feat (Tensor): Aligned features with shape (b, n, c, h, w).
     Returns:
       Tensor: Features after TSA with the shape (b, c, h, w).
     """
-    b, t, c, h, w = aligned_feat.size()
+    b, n, c, h, w = aligned_feat.size()
     # temporal attention
     embedding_ref = self.temporal_attn1(aligned_feat[:, self.center_frame_idx, :, :, :].clone())
     embedding = self.temporal_attn2(aligned_feat.view(-1, c, h, w))
-    embedding = embedding.view(b, t, -1, h, w)  # (b, t, c, h, w)
+    embedding = embedding.view(b, n, -1, h, w)  # (b, n, c, h, w)
 
     corr_l = []  # correlation list
-    for i in range(t):
+    for i in range(n):
       emb_neighbor = embedding[:, i, :, :, :]
       corr = torch.sum(emb_neighbor * embedding_ref, 1)  # (b, h, w)
       corr_l.append(corr.unsqueeze(1))  # (b, 1, h, w)
-    corr_prob = torch.sigmoid(torch.cat(corr_l, dim=1))  # (b, t, h, w)
-    corr_prob = corr_prob.unsqueeze(2).expand(b, t, c, h, w)
-    # TODO: cache status here
-    corr_prob = corr_prob.contiguous().view(b, -1, h, w)  # (b, t*c, h, w)
+    corr_prob = torch.sigmoid(torch.cat(corr_l, dim=1))  # (b, n, h, w)
+    corr_prob = corr_prob.unsqueeze(2).expand(b, n, c, h, w)
+    corr_prob = corr_prob.contiguous().view(b, -1, h, w)  # (b, n*c, h, w)
     aligned_feat = aligned_feat.view(b, -1, h, w) * corr_prob
 
     # fusion
-    feat = self.lrelu(self.feat_fusion(aligned_feat))
+    feat = self.lrelu(self.feat_fusion(aligned_feat))  # (b, c, h, w)
 
     # spatial attention
-    attn = self.lrelu(self.spatial_attn1(aligned_feat))
+    attn = self.lrelu(self.spatial_attn1(aligned_feat))  # (b, c, h, w)
     attn_max = self.max_pool(attn)
     attn_avg = self.avg_pool(attn)
-    attn = self.lrelu(self.spatial_attn2(torch.cat([attn_max, attn_avg], dim=1)))
+    attn = self.lrelu(self.spatial_attn2(torch.cat([attn_max, attn_avg], dim=1)))  # (b, c, h / 2, w / 2)
     # pyramid levels
     attn_level = self.lrelu(self.spatial_attn_l1(attn))
-    attn_max = self.max_pool(attn_level)
+    attn_max = self.max_pool(attn_level)  # (b, c, h / 4, w / 4)
     attn_avg = self.avg_pool(attn_level)
     attn_level = self.lrelu(self.spatial_attn_l2(torch.cat([attn_max, attn_avg], dim=1)))
     attn_level = self.lrelu(self.spatial_attn_l3(attn_level))
-    attn_level = self.upsample(attn_level)
+    attn_level = self.upsample(attn_level)  # (b, c, h / 2, w / 2)
 
     attn = self.lrelu(self.spatial_attn3(attn)) + attn_level
     attn = self.lrelu(self.spatial_attn4(attn))
-    attn = self.upsample(attn)
+    attn = self.upsample(attn)  # (b, c, h, w)
     attn = self.spatial_attn5(attn)
     attn_add = self.spatial_attn_add2(self.lrelu(self.spatial_attn_add1(attn)))
     attn = torch.sigmoid(attn)
@@ -273,8 +273,8 @@ class BasicVSR(nn.Module):
     self.fusion = nn.Conv2d(num_feat * 2, num_feat, 1, 1, 0, bias=True)
     self.upconv1 = nn.Conv2d(num_feat, num_feat * 4, 3, 1, 1, bias=True)
     self.upconv2 = nn.Conv2d(num_feat, 64 * 4, 3, 1, 1, bias=True)
-    self.conv_hr = nn.Conv2d(64, 64, 3, 1, 1)
-    self.conv_last = nn.Conv2d(64, 3, 3, 1, 1)
+    self.conv_hr = conv2d311(64, 64)
+    self.conv_last = conv2d311(64, 3)
 
     self.pixel_shuffle = nn.PixelShuffle(2)
 
@@ -494,12 +494,12 @@ class EDVRFeatureExtractor(nn.Module):
     self.center_frame_idx = num_input_frame // 2
 
     # extrat pyramid features
-    self.conv_first = nn.Conv2d(3, num_feat, 3, 1, 1)
+    self.conv_first = conv2d311(3, num_feat)
     self.feature_extraction = make_layer(ResidualBlockNoBN, 5, num_feat=64)
     self.conv_l2_1 = nn.Conv2d(num_feat, num_feat, 3, 2, 1)
-    self.conv_l2_2 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
+    self.conv_l2_2 = conv2d311(num_feat, num_feat)
     self.conv_l3_1 = nn.Conv2d(num_feat, num_feat, 3, 2, 1)
-    self.conv_l3_2 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
+    self.conv_l3_2 = conv2d311(num_feat, num_feat)
 
     # pcd and tsa module
     self.pcd_align = PCDAlignment(num_feat=num_feat, deformable_groups=8)
@@ -523,8 +523,8 @@ class EDVRFeatureExtractor(nn.Module):
     feat_l3 = self.lrelu(self.conv_l3_2(feat_l3))
 
     feat_l1 = feat_l1.view(b, n, -1, h, w)
-    feat_l2 = feat_l2.view(b, n, -1, h // 2, w // 2)
-    feat_l3 = feat_l3.view(b, n, -1, h // 4, w // 4)
+    feat_l2 = feat_l2.view(b, n, -1, h >> 1, w >> 1)
+    feat_l3 = feat_l3.view(b, n, -1, h >> 2, w >> 2)
 
     # PCD alignment
     ref_feat_l = [  # reference feature list
@@ -555,12 +555,10 @@ class KeyFrameState():
     return not last
 
   def popBatch(self, size=1, last=None, *_, **__):
-    res = [False for _ in range(size)]
-    r = -self.count % self.window
-    for i in range(r, size, self.window):
+    res = torch.zeros((size,), dtype=torch.bool)
+    for i in range(-self.count % self.window, size, self.window):
       res[i] = True
-    if last:
-      res[-1] = True
+    res[-1] = bool(last)
     self.count += size
     return res
 

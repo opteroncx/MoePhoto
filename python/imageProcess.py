@@ -366,36 +366,49 @@ class Option():
 
 def DefaultStreamSource(last=None):
   while not last:
-    last = yield
+    t = yield
+    last = t[0] if type(t) == tuple else t
 
 class StreamState():
-  def __init__(self, window=None, device=config.device(), offload=False, store=True, name=None):
+  def __init__(self, window=None, device=config.device(), offload=False, store=True, tensor=True, name=None, **_):
     self.source = DefaultStreamSource()
     next(self.source)
     self.wm1 = window - 1 if window else 0
     self.device = device
-    self.offload = offload
+    self.offload = tensor and offload
     self.store = store
+    self.batchFunc = torch.stack if tensor else identity
     self.name = name
+    self.start = 0
+    self.end = 0
     self.state = []
 
   def clear(self):
     self.state.clear()
 
   def getSize(self, size=None):
+    if self.start:
+      self.start -= self.pad(self.start)
     ls = len(self.state)
     if ls < self.wm1 + (size or 1):
       return 0
     lb = ls - self.wm1
     return min(size, lb) if size else lb
 
-  def popBatch(self, size=1, *_, **__):
+  def popBatch(self, size=1, last=None, *_, **__):
+    if last and self.end:
+      self.end -= self.pad(self.end)
     r = self.getSize(size)
     if not r:
       return
-    batch = [torch.stack(self.state[i:i + self.wm1 + 1]) for i in range(r)] if self.wm1 else self.state[:r]
+    batch = [self.batchFunc(self.state[i:i + self.wm1 + 1]) for i in range(r)] if self.wm1 else self.state[:r]
     self.state = self.state[r:]
-    return torch.stack(batch).to(self.device)
+    batch = self.batchFunc(batch)
+    return batch.to(self.device) if self.offload else batch
+
+  def setPadding(self, padding):
+    if padding > 0: self.start = padding
+    elif padding < 0: self.end = padding
 
   def pad(self, padding: int, *_, **__):
     if padding == 0:
@@ -414,7 +427,7 @@ class StreamState():
     if batch is None:
       return
     if self.offload:
-      batch = [t.cpu() for t in batch] if type(batch) == list else batch.cpu()
+      batch = [t.cpu() for t in batch if t != None] if type(batch) == list else batch.cpu()
     self.store and self.state.extend(t for t in batch)
     return batch
 
@@ -428,9 +441,10 @@ class StreamState():
   def __str__(self):
     return 'StreamState {}'.format(self.name) if self.name else 'anonymous StreamState'
 
-  def pull(self, last=None):
+  def pull(self, last=None, size=None):
+    t = (last, size) if size else last
     try:
-      self.source.send(last)
+      self.source.send(t)
       return 1
     except StopIteration: return
 
