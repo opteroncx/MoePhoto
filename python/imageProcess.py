@@ -390,7 +390,7 @@ class StreamState():
     if self.start:
       self.start -= self.pad(self.start)
     ls = len(self.state)
-    if ls < self.wm1 + (size or 1):
+    if ls < self.wm1 + (size or 1) or self.start:
       return 0
     lb = ls - self.wm1
     return min(size, lb) if size else lb
