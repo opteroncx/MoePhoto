@@ -409,6 +409,7 @@ class StreamState():
   def setPadding(self, padding):
     if padding > 0: self.start = padding
     elif padding < 0: self.end = padding
+    return self
 
   def pad(self, padding: int, *_, **__):
     if padding == 0:
@@ -457,7 +458,8 @@ class StreamState():
       if not r or (r < size and not last):
         if not pipe:
           break
-        if not any(s.pull(last) for s in states): # every source is drained
+        pr = [s.pull(last) for s in states]
+        if not any(pr): # every source is drained
           pipe = False # try to check sources' size for last time
         if not last:
           t = yield

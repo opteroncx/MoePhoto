@@ -543,22 +543,23 @@ class EDVRFeatureExtractor(nn.Module):
     return self.fusion(aligned_feat)
 
 class KeyFrameState():
-  def __init__(self, window):
+  def __init__(self, window, count=0):
     self.window = window
-    self.count = 0
-    self.last = None
+    self.count = count
 
   def getSize(self, size=1 << 30):
-    return size
+    return 0 if self.last else size
 
-  def pull(self, last=None):
+  def pull(self, last=None, *_, **__):
     return not last
 
   def popBatch(self, size=1, last=None, *_, **__):
     res = torch.zeros((size,), dtype=torch.bool)
     for i in range(-self.count % self.window, size, self.window):
       res[i] = True
-    res[-1] = bool(last)
+    if last:
+      res[-1] = True
+    self.last = last
     self.count += size
     return res
 
