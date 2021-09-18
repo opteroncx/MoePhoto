@@ -623,20 +623,20 @@ def getOpt(_):
   opt = getOptS(modelPath, modules, ramCoef)
   opt.flow_warp = None
   opt.inp = StreamState()
-  inp1 = StreamState()
-  inp2 = StreamState()
+  inp1 = StreamState(offload=True)
+  inp2 = StreamState(offload=True)
   backwardInp = StreamState(offload=True)
   flowInp = StreamState(2)
   flowForwardInp = StreamState(offload=True).setPadding(1)
   flowBackwardInp = StreamState()
   isKeyFrame = KeyFrameState(RefTime)
   opt.keyframeFeatureInp = StreamState(RefTime, tensor=False, reserve=1)
-  StreamState.pipe(identity, [opt.inp], [inp1, inp2,flowInp, backwardInp])
+  StreamState.pipe(identity, [opt.inp], [inp1, inp2, flowInp, backwardInp])
   StreamState.pipe(identity, [flowInp], [flowForwardInp, flowBackwardInp])
   keyframeFeature = StreamState(tensor=False)
   StreamState.pipe(getKeyframeFeature, [opt.keyframeFeatureInp, isKeyFrame], [keyframeFeature], size=3)
   keyframeFeature1 = StreamState(tensor=False, offload=True)
-  keyframeFeature2 = StreamState(tensor=False)
+  keyframeFeature2 = StreamState(tensor=False, offload=True)
   StreamState.pipe(identity, [keyframeFeature], [keyframeFeature1, keyframeFeature2])
   flowBackward = StreamState(tensor=False, offload=True)
   StreamState.pipe(calcFlowBackward, [flowBackwardInp], [flowBackward], size=4)
@@ -652,6 +652,7 @@ def getOpt(_):
   opt.i = 0
   return opt
 
+extend = lambda out, res: out.extend(tuple(res)) if res != None else None
 def doVSR(func, node, opt):
 
   def f(x):
