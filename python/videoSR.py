@@ -3,7 +3,7 @@ import torch
 from torch import nn as nn
 from torch.nn import functional as F
 
-from .imageProcess import initModel, getPadBy32, doCrop, StreamState
+from .imageProcess import initModel, getPadBy32, doCrop, StreamState, identity
 from .models import DCNv2Pack, ResidualBlockNoBN, make_layer, conv2d311
 from .slomo import backWarp
 from .runSlomo import getOptS, getBatchSize
@@ -543,30 +543,113 @@ class EDVRFeatureExtractor(nn.Module):
     return self.fusion(aligned_feat)
 
 class KeyFrameState():
-  def __init__(self, window, count=0):
+  def __init__(self, window):
     self.window = window
-    self.count = count
+    self.count = 0
 
   def getSize(self, size=1 << 30):
-    return 0 if self.last else size
+    return size
 
   def pull(self, last=None, *_, **__):
     return not last
 
-  def popBatch(self, size=1, last=None, *_, **__):
+  def popBatch(self, size=1, last=None):
     res = torch.zeros((size,), dtype=torch.bool)
     for i in range(-self.count % self.window, size, self.window):
       res[i] = True
     if last:
       res[-1] = True
-    self.last = last
     self.count += size
     return res
+
+def calcKeyframeFeature(window):
+  return window
+def getKeyframeFeature(keyframe, isKeyFrame, **_):
+  return [(calcKeyframeFeature(w) if b else None) for w, b in zip(keyframe, isKeyFrame)]
+def calcFlowBackward(flowInp, last):
+  out = []
+  # flowInp = self.get_backward_flow(flowInp) [[x_i, x_i+1], ...]
+  out = list(flowInp)
+  if last:
+    out.append(None)
+  return out
+def calcBackward(inp, flowInp, keyframeFeature, last):
+  n = inp.shape[0]
+  feat_prop = inp.new_zeros(1, 1) # batch, channel, height, width
+  out = []
+  if last: # require at least 2 backward reference frames
+    out = [0, 0] # pad 2 empties for the last window
+  for i in range(n - 1, -1, -1):
+    if i < n - 1 or not last:
+      # feat_prop = self.flow_warp(feat_prop, flowInp[i])
+      pass
+    if keyframeFeature[i] != None:
+      pass
+      # feat_prop = torch.cat([feat_prop, keyframeFeature[i]], dim=1)
+      # feat_prop = self.backward_fusion(feat_prop)
+    # feat_prop = torch.cat([inp[i], feat_prop], dim=1)
+    # feat_prop = self.backward_trunk(feat_prop)
+    feat_prop = inp[i]
+    out.insert(0, feat_prop)
+  return out # only window[0] is used
+def calcFlowForward(state, flowInp, **_):
+  out = []
+  if state.first:
+    out.append(None)
+    flowInp = flowInp[1:]
+    state.first = 0
+  # flowInp = self.get_forward_flow(flowInp) [[x_i, x_i+1], ...]
+  out.extend(list(flowInp))
+  return out
+def calcForward(inp, flowInp, keyframeFeature, backward, **_):
+  n = inp.shape[0]
+  feat_prop = inp.new_zeros(1, 1) # batch, channel, height, width
+  out = []
+  for i in range(n):
+    if flowInp[i] != None:
+      # feat_prop = self.flow_warp(feat_prop, flowInp[i])
+      pass
+    if keyframeFeature[i] != None:
+      # feat_prop = torch.cat([feat_prop, keyframeFeature[i]], dim=1)
+      # feat_prop = self.forward_fusion(feat_prop)
+      pass
+    feat_prop = inp[i] + feat_prop
+    out.append(feat_prop)
+    # feat_prop = torch.cat([inp[i], backward[i][0], feat_prop], dim=1)
+    # feat_prop = self.forward_trunk(feat_prop)
+  return out
 
 def getOpt(_):
   opt = getOptS(modelPath, modules, ramCoef)
   opt.flow_warp = None
   opt.inp = StreamState()
+  inp1 = StreamState()
+  inp2 = StreamState()
+  backwardInp = StreamState(offload=True)
+  flowInp = StreamState(2)
+  flowForwardInp = StreamState(offload=True).setPadding(1)
+  flowBackwardInp = StreamState()
+  isKeyFrame = KeyFrameState(RefTime)
+  opt.keyframeFeatureInp = StreamState(RefTime, tensor=False, reserve=1)
+  StreamState.pipe(identity, [opt.inp], [inp1, inp2,flowInp, backwardInp])
+  StreamState.pipe(identity, [flowInp], [flowForwardInp, flowBackwardInp])
+  keyframeFeature = StreamState(tensor=False)
+  StreamState.pipe(getKeyframeFeature, [opt.keyframeFeatureInp, isKeyFrame], [keyframeFeature], size=3)
+  keyframeFeature1 = StreamState(tensor=False, offload=True)
+  keyframeFeature2 = StreamState(tensor=False)
+  StreamState.pipe(identity, [keyframeFeature], [keyframeFeature1, keyframeFeature2])
+  flowBackward = StreamState(tensor=False, offload=True)
+  StreamState.pipe(calcFlowBackward, [flowBackwardInp], [flowBackward], size=4)
+  backward = StreamState(3, tensor=False, offload=True)
+  StreamState.pipe(calcBackward, [backwardInp, flowBackward, keyframeFeature1], [backward], size=20)
+  flowForward = StreamState(tensor=False)
+  flowForward.first = 1 # signal alignment for frame 0, 1
+  StreamState.pipe(calcFlowForward, [flowForwardInp], [flowForward], args=[flowForward], size=4)
+  forward = StreamState()
+  StreamState.pipe(calcForward, [inp1, flowForward, keyframeFeature2, backward], [forward])
+  upsample = StreamState(store=False)
+  opt.out = StreamState.pipe(identity, [inp2, forward], [upsample])
+  opt.i = 0
   return opt
 
 def doVSR(func, node, opt):
@@ -586,21 +669,30 @@ def doVSR(func, node, opt):
     if not opt.batchSize:
       opt.batchSize = getBatchSize(6 * width * height, ramCoef[opt.ramOffset])
       log.info('VSR batch size={}'.format(opt.batchSize))
+      opt.out.send((None, opt.batchSize))
 
-    last = True if x is None else None
-    if last and opt.end:
-      end = opt.inp.pad(opt.end)
-      opt.end -= end
-    opt.inp.push(x)
+    if opt.end:
+      opt.keyframeFeatureInp.setPadding(opt.end)
+      opt.end = 0
     if opt.start:
-      start = opt.inp.pad(opt.start)
-      opt.start -= start
-    batchSize = opt.batchSize
-    tempOut = [0] * batchSize
-    # TODO
+      opt.startPadding = opt.start
+      opt.keyframeFeatureInp.setPadding(opt.start)
+      opt.start = 0
+    last = True if x is None else None
+    if not last:
+      if opt.i + opt.startPadding >= RefTime >> 1:
+        opt.inp.push(x.unsqueeze(0))
+      opt.keyframeFeatureInp.push(x.unsqueeze(0))
+      opt.i += 1
+    out = []
+    out.extent(tuple(opt.out.send(last)))
     node.trace()
+    while last:
+      try:
+        out.extent(tuple(opt.out.send(last)))
+      except StopIteration: break
     res = []
-    for item in tempOut:
+    for item in out:
       item = func(item)
       if type(item) == list:
         res.extend(item)
