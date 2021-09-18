@@ -381,7 +381,7 @@ class StreamState():
     self.wm1 = window - 1 if window else 0
     self.device = device
     self.tensor = tensor
-    self.offload = offload
+    self.offload = offload and store
     self.store = store
     self.batchFunc = torch.stack if tensor else identity
     self.name = name
