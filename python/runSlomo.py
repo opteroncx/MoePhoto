@@ -24,7 +24,7 @@ modules = dict(
 
 def newOpt(f, ramCoef, align=32, padding=45, **_):
   opt = Option()
-  opt.modelCached = lambda x: (f(x),)
+  opt.modelCached = lambda x: (f(x),) # compatibility with doCrop calling f(x)[-1]
   opt.ramCoef = ramCoef
   opt.align = align
   opt.padding = padding
@@ -42,8 +42,9 @@ def getOptS(modelPath, modules, ramCoef):
   for i, key in enumerate(modules):
     wKey = modules[key]['weight']
     constructor = modules[key].get('f', 0)
+    rc = modules[key]['ramCoef'][opt.ramOffset] if 'ramCoef' in modules[key] else ramCoef[opt.ramOffset + i]
     opt.__dict__[key] =\
-      newOpt(initModel(opt, weights[wKey], key, constructor), ramCoef[opt.ramOffset + i], **modules[key])\
+      newOpt(initModel(opt, weights[wKey], key, constructor), rc, **modules[key])\
       if constructor else None
   return opt
 
