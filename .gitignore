@@ -66,5 +66,4 @@ install.exe
 !/.user/preset_video/benchmark.json
 
 # development
-model/vsr
 *.so

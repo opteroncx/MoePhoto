@@ -65,7 +65,7 @@ def procVSR(opt, out, *_):
   scale = 4
   out['load'] = load * scale * scale
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
-  ns.append(newNode(opt, dict(op='VSR', scale=scale), load))
+  ns.append(newNode(opt, dict(op='VSR', learn=0), load))
   return fs + [videoSR.doVSR], ns, out
 
 def procSlomo(opt, out, *_):

@@ -3,17 +3,15 @@ import torch
 from torch import nn as nn
 from torch.nn import functional as F
 
-from .imageProcess import initModel, getPadBy32, doCrop, StreamState, identity
-from .models import DCNv2Pack, ResidualBlockNoBN, make_layer, conv2d311
-from .slomo import backWarp
-from .runSlomo import getOptS, getBatchSize
-from .progress import Node
+from imageProcess import getPadBy32, doCrop, StreamState, identity
+from models import DCNv2Pack, ResidualBlockNoBN, make_layer, conv2d311
+from slomo import backWarp
+from runSlomo import getOptS, setOutShape
+from progress import Node
 
 RefTime = 7
 WindowSize = 1
 NumFeat = 64
-modelPath = './model/vsr/IconVSR_Vimeo90K_BDx4-cfcb7e00.pth'
-ramCoef = [.9 / x for x in (450., 138., 450., 137., 223., 60.)]
 log = logging.getLogger('Moe')
 
 conv2d713 = lambda in_channels, out_channels:\
@@ -50,9 +48,10 @@ class SpyNet(nn.Module):
     tensor_output = (tensor_input - self.mean) / self.std
     return tensor_output
 
-  def forward(self, ref, supp):
-    ref = [0] * 5 + [self.preprocess(ref)]
-    supp = [0] * 5 + [self.preprocess(supp)]
+  def forward(self, inp):
+    inp = self.preprocess(inp)
+    ref = [0] * 5 + [inp[:, :-1]]
+    supp = [0] * 5 + [inp[:, 1:]]
 
     for i in range(len(ref) - 1, 0, -1):
       ref[i - 1] = F.avg_pool2d(input=ref[i], kernel_size=2, stride=2, count_include_pad=False)
@@ -251,95 +250,6 @@ class TSAFusion(nn.Module):
     feat = feat * attn * 2 + attn_add
     return feat
 
-class BasicVSR(nn.Module):
-  """A recurrent network for video SR. Now only x4 is supported.
-  Args:
-    num_feat (int): Number of channels. Default: 64.
-    num_block (int): Number of residual blocks for each branch. Default: 15
-    spynet_path (str): Path to the pretrained weights of SPyNet. Default: None.
-  """
-
-  def __init__(self, num_feat=64, num_block=15, spynet_path=None):
-    super().__init__()
-    self.num_feat = num_feat
-
-    # alignment
-    self.spynet = SpyNet(spynet_path)
-
-    # propagation
-    self.backward_trunk = ConvResidualBlocks(num_feat + 3, num_feat, num_block)
-    self.forward_trunk = ConvResidualBlocks(num_feat + 3, num_feat, num_block)
-
-    # reconstruction
-    self.fusion = nn.Conv2d(num_feat * 2, num_feat, 1, 1, 0, bias=True)
-    self.upconv1 = nn.Conv2d(num_feat, num_feat * 4, 3, 1, 1, bias=True)
-    self.upconv2 = nn.Conv2d(num_feat, 64 * 4, 3, 1, 1, bias=True)
-    self.conv_hr = conv2d311(64, 64)
-    self.conv_last = conv2d311(64, 3)
-
-    self.pixel_shuffle = nn.PixelShuffle(2)
-
-    # activation functions
-    self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
-
-    self.flow_warp = None
-    self.size = None
-
-  def get_flow(self, x):
-    b, n, c, h, w = x.size()
-
-    x_1 = x[:, :-1, :, :, :].reshape(-1, c, h, w)
-    x_2 = x[:, 1:, :, :, :].reshape(-1, c, h, w)
-
-    flows_backward = self.spynet(x_1, x_2).view(b, n - 1, 2, h, w)
-    flows_forward = self.spynet(x_2, x_1).view(b, n - 1, 2, h, w)
-
-    return flows_forward, flows_backward
-
-  def forward(self, x):
-    flows_forward, flows_backward = self.get_flow(x)
-    b, n, _, h, w = x.size()
-
-    if not self.flow_warp or self.size != x.shape[-2:]:
-      self.flow_warp = backWarp(w, h, device=x.device, dtype=x.dtype)
-      self.size = x.shape[-2:]
-
-    # backward branch
-    out_l = []
-    feat_prop = x.new_zeros(b, self.num_feat, h, w)
-    for i in range(n - 1, -1, -1):
-      x_i = x[:, i, :, :, :]
-      if i < n - 1:
-          flow = flows_backward[:, i, :, :, :]
-          feat_prop = self.flow_warp(feat_prop, flow)
-      feat_prop = torch.cat([x_i, feat_prop], dim=1)
-      feat_prop = self.backward_trunk(feat_prop)
-      out_l.insert(0, feat_prop)
-
-    # forward branch
-    feat_prop = torch.zeros_like(feat_prop)
-    for i in range(0, n):
-      x_i = x[:, i, :, :, :]
-      if i > 0:
-        flow = flows_forward[:, i - 1, :, :, :]
-        feat_prop = self.flow_warp(feat_prop, flow)
-
-      feat_prop = torch.cat([x_i, feat_prop], dim=1)
-      feat_prop = self.forward_trunk(feat_prop)
-
-      # upsample
-      out = torch.cat([out_l[i], feat_prop], dim=1)
-      out = self.lrelu(self.fusion(out))
-      out = self.lrelu(self.pixel_shuffle(self.upconv1(out)))
-      out = self.lrelu(self.pixel_shuffle(self.upconv2(out)))
-      out = self.lrelu(self.conv_hr(out))
-      out = self.conv_last(out)
-      base = F.interpolate(x_i, scale_factor=4, mode='bilinear', align_corners=False)
-      out += base
-      out_l[i] = out
-
-    return torch.stack(out_l, dim=1)
-
 ConvResidualBlocks = lambda num_in_ch=3, num_out_ch=64, num_block=15: nn.Sequential(
       conv2d311(num_in_ch, num_out_ch), nn.LeakyReLU(negative_slope=0.1, inplace=True),
       make_layer(ResidualBlockNoBN, num_block, num_feat=num_out_ch))
@@ -366,10 +276,9 @@ def pad_spatial(x):
   return x.view(n, t, c, h + pad_h, w + pad_w)
 
 class IconVSR(nn.Module):
-  """IconVSR, proposed also in the BasicVSR paper
-  """
+  # IconVSR, proposed also in the BasicVSR paper
 
-  def __init__(self, num_feat=64, num_block=30, temporal_padding=3):
+  def __init__(self, num_feat=NumFeat, num_block=30, temporal_padding=3):
     super().__init__()
 
     self.num_feat = num_feat
@@ -389,15 +298,7 @@ class IconVSR(nn.Module):
     self.forward_trunk = ConvResidualBlocks(2 * num_feat + 3, num_feat, num_block)
 
     # reconstruction
-    self.upconv1 = conv2d311(num_feat, num_feat * 4)
-    self.upconv2 = conv2d311(num_feat, 64 * 4)
-    self.conv_hr = conv2d311(64, 64)
-    self.conv_last = conv2d311(64, 3)
-
-    self.pixel_shuffle = nn.PixelShuffle(2)
-
-    # activation functions
-    self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
+    self.upsample = Upsample(num_feat=num_feat)
 
     self.flow_warp = None
     self.size = None
@@ -426,10 +327,7 @@ class IconVSR(nn.Module):
         feats_keyframe[i] = self.edvr(x[:, i:i + num_frames].contiguous())
     return feats_keyframe
 
-  """
-  args:
-    x: Tensor(b, n, 3, h ,w), h & w align by 32
-  """
+  # args: x: Tensor(b, n, 3, h ,w), h & w align by 32
   def forward(self, x):
     b, n, _, h, w = x.size()
 
@@ -475,16 +373,23 @@ class IconVSR(nn.Module):
       feat_prop = self.forward_trunk(feat_prop)
 
       # upsample
-      out = self.lrelu(self.pixel_shuffle(self.upconv1(feat_prop)))
-      out = self.lrelu(self.pixel_shuffle(self.upconv2(out)))
-      out = self.lrelu(self.conv_hr(out))
-      out = self.conv_last(out)
+      out = self.upsample(feat_prop)
       base = F.interpolate(x_i, scale_factor=4, mode='bilinear', align_corners=False)
       out += base
       out_l[i] = out
 
     return torch.stack(out_l, dim=1)[..., :4 * h, :4 * w]
 
+Upsample = lambda *_, num_feat=NumFeat: nn.Sequential(
+  conv2d311(num_feat, num_feat * 4),
+  nn.PixelShuffle(2),
+  nn.LeakyReLU(negative_slope=0.1, inplace=True),
+  conv2d311(num_feat, 64 * 4),
+  nn.PixelShuffle(2),
+  nn.LeakyReLU(negative_slope=0.1, inplace=True),
+  conv2d311(64, 64),
+  nn.LeakyReLU(negative_slope=0.1, inplace=True),
+  conv2d311(64, 3))
 
 class EDVRFeatureExtractor(nn.Module):
 
@@ -567,13 +472,10 @@ def getKeyframeFeature(opt, keyframe, isKeyFrame, **_):
   return [(doCrop(opt.edvr, torch.stack(w)) if b else None) for w, b in zip(keyframe, isKeyFrame)]
 
 def calcFlowBackward(opt, flowInp, last):
-  b, _, __, h, w = flowInp.size()
+  b, _, __, h, w = flowInp.size() # [[x_i, x_i+1], ...]
 
-  x_1 = flowInp[:, 0].squeeze(1)
-  x_2 = flowInp[:, 1].squeeze(1)
-
-  flows_backward = opt.spynet(x_1, x_2).view(b, 1, 2, h, w) # [[x_i, x_i+1], ...]
-  out = list(flows_backward)
+  flows = opt.spynet(flowInp).view(b, 1, 2, h, w)
+  out = list(flows)
   if last:
     out.append(None)
   return out
@@ -603,12 +505,12 @@ def calcFlowForward(opt, state, flowInp, **_):
     flowInp = flowInp[1:]
     state.first = 0
   b, _, __, h, w = flowInp.size()
+  x = torch.empty_like(flowInp) # [[x_i+1, x_i], ...]
+  x[:, 0] = flowInp[:, 1]
+  x[:, 1] = flowInp[:, 0]
 
-  x_1 = flowInp[:, 0].squeeze(1)
-  x_2 = flowInp[:, 1].squeeze(1)
-
-  flows_backward = opt.spynet(x_2, x_1).view(b, 1, 2, h, w)
-  out.extend(list(flows_backward))
+  flows = opt.spynet(x).view(b, 1, 2, h, w)
+  out.extend(list(flows))
   return out
 
 def calcForward(opt, inp, flowInp, keyframeFeature, backward, **_):
@@ -632,14 +534,25 @@ def doUpsample(opt, inp, forward):
   out += base
   return out
 
+modelPath = './model/vsr/IconVSR_Vimeo90K_BDx4-cfcb7e00.pth'
+# TODO: meature ram coefs
+ramCoef = [.9 / x for x in (100., 100., 100., 100., 100., 100., 100., 100., 100., 100., 100., 100., 100., 100., 100.)]
+fusionRamCoef = [.9 / x for x in (100., 100., 100.)]
+newFusion = lambda *_: conv2d311(2 * NumFeat, NumFeat)
 modules = dict(
-  edvr={'weight': 'edvr', 'f': lambda *_: EDVRFeatureExtractor(RefTime, NumFeat)},
+  edvr={'weight': 'edvr', 'outShape': (1, NumFeat, 1, 1),
+    'f': lambda *_: EDVRFeatureExtractor(RefTime, NumFeat)},
   spynet={'weight': 'spynet', 'f': SpyNet},
-  backward_fusion={'weight': ''},
-  forward_fusion={'weight': ''},
-  backward_trunk={'weight': ''},
-  forward_trunk={'weight': ''},
-  upsample={'weight': 'upsample'}
+  backward_trunk={'weight': 'backward_trunk', 'outShape': (1, NumFeat, 1, 1),
+    'f': lambda *_: ConvResidualBlocks(NumFeat + 3, NumFeat, 30)},
+  forward_trunk={'weight': 'forward_trunk', 'outShape': (1, NumFeat, 1, 1),
+    'f': lambda *_: ConvResidualBlocks(2 * NumFeat + 3, NumFeat, 30)},
+  upsample={'weight': 'upsample', 'outShape': (1, 3, 4, 4),
+    'f': Upsample},
+  backward_fusion={'weight': 'backward_fusion', 'outShape': (1, NumFeat, 1, 1),
+    'f': newFusion, 'ramCoef': fusionRamCoef},
+  forward_fusion={'weight': 'forward_fusion', 'outShape': (1, NumFeat, 1, 1),
+    'f': newFusion, 'ramCoef': fusionRamCoef}
 )
 
 def getOpt(_):
@@ -663,26 +576,26 @@ def doVSR(func, node, opt):
   StreamState.pipe(identity, [flowInp], [flowForwardInp, flowBackwardInp])
   keyframeFeature = StreamState(tensor=False, offload=False)
   n1 = Node('VSR.KeyframeFeature')
-  StreamState.pipe(n1.bindFunc(getKeyframeFeature), [opt.keyframeFeatureInp, isKeyFrame], [keyframeFeature], args=[opt], size=3)
+  StreamState.pipe(n1.bindFunc(getKeyframeFeature), [opt.keyframeFeatureInp, isKeyFrame], [keyframeFeature], args=[opt], size=7)
   keyframeFeature1 = StreamState(tensor=False)
   keyframeFeature2 = StreamState(tensor=False)
   StreamState.pipe(identity, [keyframeFeature], [keyframeFeature1, keyframeFeature2])
   flowBackward = StreamState(tensor=False)
   n2 = Node('VSR.FlowBackward')
-  StreamState.pipe(n2.bindFunc(calcFlowBackward), [flowBackwardInp], [flowBackward], args=[opt], size=4)
+  StreamState.pipe(n2.bindFunc(calcFlowBackward), [flowBackwardInp], [flowBackward], args=[opt], size=1)
   backward = StreamState(3, tensor=False)
   n3 = Node('VSR.Backward')
   StreamState.pipe(n3.bindFunc(calcBackward), [backwardInp, flowBackward, keyframeFeature1], [backward], args=[opt], size=20)
   flowForward = StreamState(tensor=False, offload=False)
   flowForward.first = 1 # signal alignment for frame 0, 1
   n4 = Node('VSR.FlowForward')
-  StreamState.pipe(n4.bindFunc(calcFlowForward), [flowForwardInp], [flowForward], args=[opt, flowForward], size=4)
+  StreamState.pipe(n4.bindFunc(calcFlowForward), [flowForwardInp], [flowForward], args=[opt, flowForward], size=1)
   forward = StreamState(offload=False)
   n5 = Node('VSR.Forward')
   StreamState.pipe(n5.bindFunc(calcForward), [inp1, flowForward, keyframeFeature2, backward], [forward], args=[opt])
   upsample = StreamState(store=False)
   n6 = Node('VSR.upsample')
-  opt.out = StreamState.pipe(n6.bindFunc(doUpsample), [inp2, forward], [upsample], args=[opt])
+  opt.out = StreamState.pipe(n6.bindFunc(doUpsample), [inp2, forward], [upsample], args=[opt], size=1)
   node.append(n1).append(n2).append(n3).append(n4).append(n5).append(n6)
   def f(x):
     node.reset()
@@ -693,13 +606,9 @@ def doVSR(func, node, opt):
       opt.width = width
       opt.height = height
       opt.flow_warp = backWarp(width, height, device=x.device, dtype=x.dtype)
+      setOutShape(modules, opt, height, width, lambda *_: 1)
     else:
       width, height = opt.width, opt.height
-
-    if not opt.batchSize:
-      opt.batchSize = getBatchSize(6 * width * height, ramCoef[opt.ramOffset])
-      log.info('VSR batch size={}'.format(opt.batchSize))
-      opt.out.send((None, opt.batchSize))
 
     if opt.end:
       opt.keyframeFeatureInp.setPadding(opt.end)
