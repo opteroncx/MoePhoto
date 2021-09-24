@@ -85,6 +85,7 @@ const responsePromise = res => {
       data = rawData.length ? JSON.parse(rawData) : void 0
       return _resolve(data)
     } catch (e) {
+      console.error(rawData)
       _reject(e)
     }
   })
@@ -126,7 +127,7 @@ const throwError = err => {
 }
 
 const batchRequest = (options, callback, onError = throwError) =>
-  async function * (dir, files, getParam) {
+  async function* (dir, files, getParam) {
     let connection = Promise.resolve()
     let r = genRequest(options)
 
@@ -147,16 +148,16 @@ const batchRequest = (options, callback, onError = throwError) =>
     }
   }
 
-const traverse = async function * (dir = '', pathName = '') {
+const traverse = async function* (dir = '', pathName = '') {
   let files = []
   let dirs = []
   await fs.promises.readdir(path.join(dir, pathName), { withFileTypes: true }).then(arr => {
     files = arr.filter(fp => fp.isFile())
     dirs = arr.filter(fp => fp.isDirectory())
   })
-  yield * files.map(fp => Promise.resolve(path.join(pathName, fp.name)))
+  yield* files.map(fp => Promise.resolve(path.join(pathName, fp.name)))
   for (let dir_ of dirs) {
-    yield * traverse(dir, path.join(pathName, dir_.name))
+    yield* traverse(dir, path.join(pathName, dir_.name))
   }
 }
 
