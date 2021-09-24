@@ -529,6 +529,7 @@ def calcForward(opt, inp, flowInp, keyframeFeature, backward, **_):
   return out
 
 def doUpsample(opt, inp, forward):
+  setBatchSize(opt.upsample, inp)
   out = doCrop(opt.upsample, forward)
   base = F.interpolate(inp, scale_factor=4, mode='bilinear', align_corners=False)
   out += base
@@ -540,18 +541,18 @@ ramCoef = [.9 / x for x in (100., 100., 100., 100., 100., 100., 100., 100., 100.
 fusionRamCoef = [.9 / x for x in (100., 100., 100.)]
 newFusion = lambda *_: conv2d311(2 * NumFeat, NumFeat)
 modules = dict(
-  edvr={'weight': 'edvr', 'outShape': (1, NumFeat, 1, 1),
+  edvr={'weight': 'edvr', 'outShape': (1, NumFeat, 1, 1), 'staticDims': [0],
     'f': lambda *_: EDVRFeatureExtractor(RefTime, NumFeat)},
-  spynet={'weight': 'spynet', 'f': SpyNet},
-  backward_trunk={'weight': 'backward_trunk', 'outShape': (1, NumFeat, 1, 1),
+  spynet={'weight': 'spynet', 'f': SpyNet, 'streams': ['flowBackward', 'flowForward']},
+  backward_trunk={'weight': 'backward_trunk', 'outShape': (1, NumFeat, 1, 1), 'staticDims': [0],
     'f': lambda *_: ConvResidualBlocks(NumFeat + 3, NumFeat, 30)},
-  forward_trunk={'weight': 'forward_trunk', 'outShape': (1, NumFeat, 1, 1),
+  forward_trunk={'weight': 'forward_trunk', 'outShape': (1, NumFeat, 1, 1), 'staticDims': [0],
     'f': lambda *_: ConvResidualBlocks(2 * NumFeat + 3, NumFeat, 30)},
   upsample={'weight': 'upsample', 'outShape': (1, 3, 4, 4),
-    'f': Upsample},
-  backward_fusion={'weight': 'backward_fusion', 'outShape': (1, NumFeat, 1, 1),
+    'f': Upsample, 'streams': ['out']},
+  backward_fusion={'weight': 'backward_fusion', 'outShape': (1, NumFeat, 1, 1), 'staticDims': [0],
     'f': newFusion, 'ramCoef': fusionRamCoef},
-  forward_fusion={'weight': 'forward_fusion', 'outShape': (1, NumFeat, 1, 1),
+  forward_fusion={'weight': 'forward_fusion', 'outShape': (1, NumFeat, 1, 1), 'staticDims': [0],
     'f': newFusion, 'ramCoef': fusionRamCoef}
 )
 
@@ -560,6 +561,9 @@ def getOpt(_):
   opt.flow_warp = None
   opt.i = 0
   return opt
+
+def setBatchSize(opt, x):
+  opt.outShape[0] = x.shape[0]
 
 extend = lambda out, res: out.extend(tuple(res)) if res != None else None
 def doVSR(func, node, opt):
@@ -582,14 +586,14 @@ def doVSR(func, node, opt):
   StreamState.pipe(identity, [keyframeFeature], [keyframeFeature1, keyframeFeature2])
   flowBackward = StreamState(tensor=False)
   n2 = Node('VSR.FlowBackward')
-  StreamState.pipe(n2.bindFunc(calcFlowBackward), [flowBackwardInp], [flowBackward], args=[opt], size=1)
+  opt.flowBackward = StreamState.pipe(n2.bindFunc(calcFlowBackward), [flowBackwardInp], [flowBackward], args=[opt], size=1)
   backward = StreamState(3, tensor=False)
   n3 = Node('VSR.Backward')
   StreamState.pipe(n3.bindFunc(calcBackward), [backwardInp, flowBackward, keyframeFeature1], [backward], args=[opt], size=20)
   flowForward = StreamState(tensor=False, offload=False)
   flowForward.first = 1 # signal alignment for frame 0, 1
   n4 = Node('VSR.FlowForward')
-  StreamState.pipe(n4.bindFunc(calcFlowForward), [flowForwardInp], [flowForward], args=[opt, flowForward], size=1)
+  opt.flowForward = StreamState.pipe(n4.bindFunc(calcFlowForward), [flowForwardInp], [flowForward], args=[opt, flowForward], size=1)
   forward = StreamState(offload=False)
   n5 = Node('VSR.Forward')
   StreamState.pipe(n5.bindFunc(calcForward), [inp1, flowForward, keyframeFeature2, backward], [forward], args=[opt])

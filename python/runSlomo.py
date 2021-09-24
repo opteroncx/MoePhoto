@@ -12,7 +12,7 @@ from config import config
 log = logging.getLogger('Moe')
 modelPath = './model/slomo/SuperSloMo.ckpt'
 RefTime = 2
-WindowSize = 1
+WindowSize = 2
 ramCoef = [.95 / x for x in (2700., 828., 2700., 822., 1338., 360.)]
 getFlowComp = lambda *_: UNet(6, 4)
 getFlowIntrp = lambda *_: UNet(20, 5)
@@ -22,9 +22,9 @@ modules = dict(
   flowComp={'weight': 'state_dictFC', 'f': getFlowComp, 'outShape': (1, 4, 1, 1)},
   ArbTimeFlowIntrp={'weight': 'state_dictAT', 'f': getFlowIntrp, 'outShape': (1, 5, 1, 1)})
 
-def newOpt(f, ramCoef, align=32, padding=45, **_):
+def newOpt(func, ramCoef, align=32, padding=45, **_):
   opt = Option()
-  opt.modelCached = lambda x: (f(x),) # compatibility with doCrop calling f(x)[-1]
+  opt.modelCached = lambda x: (func(x),) # compatibility with doCrop calling f(x)[-1]
   opt.ramCoef = ramCoef
   opt.align = align
   opt.padding = padding
@@ -54,9 +54,13 @@ def setOutShape(modules, opt, height, width, bf=getBatchSize):
     batchSize = bf(load, od[key].ramCoef)
     if 'outShape' in o:
       q = o['outShape']
-      od[key].outShape = (batchSize, *q[1:-2], int(height * q[-2]), int(width * q[-1]))
-    if 'stream' in o:
-      od[o['stream']].send((None, batchSize))
+      od[key].outShape = [batchSize, *q[1:-2], int(height * q[-2]), int(width * q[-1])]
+      if 'staticDims' in o:
+        for i in o['staticDims']:
+          od[key].outShape[i] = q[i]
+    if 'streams' in o:
+      for name in o['streams']:
+        od[name].send((None, batchSize))
   return opt
 
 def getOpt(option):
@@ -90,6 +94,8 @@ def doSlomo(func, node, opt):
       width, height = opt.width, opt.height
     flowBackWarp = opt.flowBackWarp
 
+    opt.flowComp.outShape[0] = batchSize
+    opt.ArbTimeFlowIntrp.outShape[0] = batchSize
     sf = opt.sf
     tempOut = [0 for _ in range(batchSize * sf + 1)]
     # Save reference frames
