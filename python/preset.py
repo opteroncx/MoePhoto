@@ -38,7 +38,7 @@ def savePreset(path):
   def f(data):
     if not os.path.exists(path):
       os.mkdir(path)
-    brief = getBrief(json.loads(data, encoding='utf-8'))
+    brief = getBrief(json.loads(data))
     name = brief['name']
     with open(getFilePath(path, name), 'w', encoding='utf-8') as fp:
       fp.write(data)
