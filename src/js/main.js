@@ -398,7 +398,8 @@ const panels = {
   VSR: {
     text: '视频放大',
     description: '专用于视频的4倍放大，带一点去模糊能力',
-    draggable: 1
+    draggable: 1,
+    notes: ['一定要有老黄家的显卡才行哟']
   },
   decode: {
     text: '输入解码',

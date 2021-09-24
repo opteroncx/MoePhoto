@@ -50,8 +50,8 @@ class SpyNet(nn.Module):
 
   def forward(self, inp):
     inp = self.preprocess(inp)
-    ref = [0] * 5 + [inp[:, :-1]]
-    supp = [0] * 5 + [inp[:, 1:]]
+    ref = [0] * 5 + [inp[:, 0]]
+    supp = [0] * 5 + [inp[:, 1]]
 
     for i in range(len(ref) - 1, 0, -1):
       ref[i - 1] = F.avg_pool2d(input=ref[i], kernel_size=2, stride=2, count_include_pad=False)
@@ -162,7 +162,6 @@ class PCDAlignment(nn.Module):
     feat = self.lrelu(self.cas_dcnpack(feat, offset))
     return feat
 
-
 class TSAFusion(nn.Module):
   """Temporal Spatial Attention (TSA) fusion module.
   Temporal: Calculate the correlation between center frame and neighboring frames;
@@ -253,27 +252,6 @@ class TSAFusion(nn.Module):
 ConvResidualBlocks = lambda num_in_ch=3, num_out_ch=64, num_block=15: nn.Sequential(
       conv2d311(num_in_ch, num_out_ch), nn.LeakyReLU(negative_slope=0.1, inplace=True),
       make_layer(ResidualBlockNoBN, num_block, num_feat=num_out_ch))
-
-def pad_spatial(x):
-  """ Apply padding spatially.
-  Since the PCD module in EDVR requires that the resolution is a multiple
-  of 4, we apply padding to the input LR images if their resolution is
-  not divisible by 4.
-  Args:
-    x (Tensor): Input LR sequence with shape (n, t, c, h, w).
-  Returns:
-    Tensor: Padded LR sequence with shape (n, t, c, h_pad, w_pad).
-  """
-  n, t, c, h, w = x.size()
-
-  pad_h = (4 - h % 4) % 4
-  pad_w = (4 - w % 4) % 4
-
-  # padding
-  x = x.view(-1, c, h, w)
-  x = F.pad(x, [0, pad_w, 0, pad_h], mode='reflect')
-
-  return x.view(n, t, c, h + pad_h, w + pad_w)
 
 class IconVSR(nn.Module):
   # IconVSR, proposed also in the BasicVSR paper
@@ -469,7 +447,7 @@ class KeyFrameState():
     return res
 
 def getKeyframeFeature(opt, keyframe, isKeyFrame, **_):
-  return [(doCrop(opt.edvr, torch.stack(w)) if b else None) for w, b in zip(keyframe, isKeyFrame)]
+  return [(doCrop(opt.edvr, torch.stack(w).unsqueeze(0)) if b else None) for w, b in zip(keyframe, isKeyFrame)]
 
 def calcFlowBackward(opt, flowInp, last):
   b, _, __, h, w = flowInp.size() # [[x_i, x_i+1], ...]
@@ -536,8 +514,8 @@ def doUpsample(opt, inp, forward):
   return out
 
 modelPath = './model/vsr/IconVSR_Vimeo90K_BDx4-cfcb7e00.pth'
-# TODO: meature ram coefs
-ramCoef = [.9 / x for x in (100., 100., 100., 100., 100., 100., 100., 100., 100., 100., 100., 100., 100., 100., 100.)]
+# TODO: measure ram coefs
+ramCoef = [.9 / x for x in (100., 100., 100., 100., 100., 1., 1., 100., 100., 100., 100., 100., 1., 1., 100., 100., 100., 100., 100.)]
 fusionRamCoef = [.9 / x for x in (100., 100., 100.)]
 newFusion = lambda *_: conv2d311(2 * NumFeat, NumFeat)
 modules = dict(
@@ -579,26 +557,26 @@ def doVSR(func, node, opt):
   StreamState.pipe(identity, [opt.inp], [inp1, inp2, flowInp, backwardInp])
   StreamState.pipe(identity, [flowInp], [flowForwardInp, flowBackwardInp])
   keyframeFeature = StreamState(tensor=False, offload=False)
-  n1 = Node('VSR.KeyframeFeature')
+  n1 = Node({'IconVSR' :'KeyframeFeature'})
   StreamState.pipe(n1.bindFunc(getKeyframeFeature), [opt.keyframeFeatureInp, isKeyFrame], [keyframeFeature], args=[opt], size=7)
   keyframeFeature1 = StreamState(tensor=False)
   keyframeFeature2 = StreamState(tensor=False)
   StreamState.pipe(identity, [keyframeFeature], [keyframeFeature1, keyframeFeature2])
   flowBackward = StreamState(tensor=False)
-  n2 = Node('VSR.FlowBackward')
+  n2 = Node({'IconVSR' :'Flow'})
   opt.flowBackward = StreamState.pipe(n2.bindFunc(calcFlowBackward), [flowBackwardInp], [flowBackward], args=[opt], size=1)
   backward = StreamState(3, tensor=False)
-  n3 = Node('VSR.Backward')
+  n3 = Node({'IconVSR' :'Backward'})
   StreamState.pipe(n3.bindFunc(calcBackward), [backwardInp, flowBackward, keyframeFeature1], [backward], args=[opt], size=20)
   flowForward = StreamState(tensor=False, offload=False)
   flowForward.first = 1 # signal alignment for frame 0, 1
-  n4 = Node('VSR.FlowForward')
+  n4 = Node({'IconVSR' :'Flow'})
   opt.flowForward = StreamState.pipe(n4.bindFunc(calcFlowForward), [flowForwardInp], [flowForward], args=[opt, flowForward], size=1)
   forward = StreamState(offload=False)
-  n5 = Node('VSR.Forward')
+  n5 = Node({'IconVSR' :'Forward'})
   StreamState.pipe(n5.bindFunc(calcForward), [inp1, flowForward, keyframeFeature2, backward], [forward], args=[opt])
   upsample = StreamState(store=False)
-  n6 = Node('VSR.upsample')
+  n6 = Node({'IconVSR' :'upsample'})
   opt.out = StreamState.pipe(n6.bindFunc(doUpsample), [inp2, forward], [upsample], args=[opt], size=1)
   node.append(n1).append(n2).append(n3).append(n4).append(n5).append(n6)
   def f(x):
@@ -606,13 +584,12 @@ def doVSR(func, node, opt):
     node.trace(0, p='VSR start')
 
     if opt.flow_warp is None:
-      width, height, opt.pad, opt.unpad = getPadBy32(x, opt)
-      opt.width = width
-      opt.height = height
+      width, height, opt.pad, _ = getPadBy32(x, opt)
+      opt.width = width << 2
+      opt.height = height << 2
       opt.flow_warp = backWarp(width, height, device=x.device, dtype=x.dtype)
+      opt.unpad = lambda im: im[:, :opt.width, :opt.height]
       setOutShape(modules, opt, height, width, lambda *_: 1)
-    else:
-      width, height = opt.width, opt.height
 
     if opt.end:
       opt.keyframeFeatureInp.setPadding(opt.end)
@@ -623,20 +600,21 @@ def doVSR(func, node, opt):
       opt.start = 0
     last = True if x is None else None
     if not last:
+      x = opt.pad(x.unsqueeze(0))
       if opt.i + opt.startPadding >= RefTime >> 1:
-        opt.inp.push(x.unsqueeze(0))
-      opt.keyframeFeatureInp.push(x.unsqueeze(0))
+        opt.inp.push(x)
+      opt.keyframeFeatureInp.push(x)
       opt.i += 1
     out = []
-    out.extent(tuple(opt.out.send(last)))
+    extend(out, opt.out.send(last))
     node.trace()
     while last:
       try:
-        out.extent(tuple(opt.out.send(last)))
+        extend(out, opt.out.send(last))
       except StopIteration: break
     res = []
     for item in out:
-      item = func(item)
+      item = func(opt.unpad(item))
       if type(item) == list:
         res.extend(item)
       elif not item is None:

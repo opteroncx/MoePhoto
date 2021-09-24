@@ -35,16 +35,22 @@ def newOpt(func, ramCoef, align=32, padding=45, **_):
 def getOptS(modelPath, modules, ramCoef):
   opt = Option(modelPath)
   weights = getStateDict(modelPath)
-  opt.outStart = 0
   opt.modulesCount = len(modules)
   opt.ramOffset = config.getRunType() * len(modules)
   for i, key in enumerate(modules):
-    wKey = modules[key]['weight']
-    constructor = modules[key].get('f', 0)
-    rc = modules[key]['ramCoef'][opt.ramOffset] if 'ramCoef' in modules[key] else ramCoef[opt.ramOffset + i]
-    opt.__dict__[key] =\
-      newOpt(initModel(opt, weights[wKey], key, constructor), rc, **modules[key])\
-      if constructor else None
+    m = modules[key]
+    wKey = m['weight']
+    constructor = m.get('f', 0)
+    rc = m['ramCoef'][config.getRunType()] if 'ramCoef' in m else ramCoef[opt.ramOffset + i]
+    o = dict()
+    if 'align' in m: o['align'] = m['align']
+    if 'padding' in m: o['padding'] = m['padding']
+    model = initModel(opt, weights[wKey], key, constructor)
+    if 'outShape' in m:
+      opt.__dict__[key] = newOpt(model, rc, **o)
+    else:
+      model.ramCoef = rc
+      opt.__dict__[key] = model
   return opt
 
 def setOutShape(modules, opt, height, width, bf=getBatchSize):
@@ -66,6 +72,7 @@ def setOutShape(modules, opt, height, width, bf=getBatchSize):
 def getOpt(option):
   opt = getOptS(modelPath, modules, ramCoef)
   opt.flowBackWarp = None
+  opt.outStart = 0
   opt.batchSize = 0
   opt.sf = option['sf']
   if opt.sf < 2:
