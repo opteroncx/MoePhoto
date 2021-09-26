@@ -3,7 +3,7 @@ import torch
 from torch import nn as nn
 from torch.nn import functional as F
 
-from imageProcess import getPadBy32, StreamState, identity, doCrop
+from imageProcess import ceilBy, StreamState, identity, doCrop
 from models import ModulatedDeformConvPack, ResidualBlockNoBN, make_layer, conv2d311
 from slomo import backWarp
 from runSlomo import getOptS, setOutShape
@@ -65,7 +65,7 @@ class SpyNet(nn.Module):
       for r in ref:
         _, _, H, W = r.shape
         self.flow_warp.append(backWarp(W, H, device=flow.device, dtype=flow.dtype, padding_mode='border'))
-      assert not (H & 31 or W & 31)
+      assert not (H & 63 or W & 63)
 
     for level in range(len(ref)):
       upsampled_flow = F.interpolate(input=flow, scale_factor=2, mode='bilinear', align_corners=True) * 2.0
@@ -483,7 +483,9 @@ def doVSR(func, node, opt):
 
     if opt.flow_warp is None:
       *_, h, w = x.shape
-      width, height, opt.pad, _ = getPadBy32(x, opt)
+      width = ceilBy(64)(w)
+      height = ceilBy(64)(h)
+      opt.pad = nn.ReflectionPad2d((0, width - w, 0, height - h))
       w = w << 2
       h = h << 2
       opt.flow_warp = backWarp(width, height, device=x.device, dtype=x.dtype)

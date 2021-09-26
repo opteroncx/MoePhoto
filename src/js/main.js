@@ -397,12 +397,12 @@ const panels = {
   },
   VSR: {
     text: '视频放大',
-    description: '专用于视频的4倍放大，带一点去模糊能力',
-    draggable: 1,
-    notes: [
+    description: [
+      '专用于视频的4倍放大，带一点去模糊能力',
       '切块分批什么的都还没做啦，所以得有张好显卡',
-      '来自于<a href="https://github.com/xinntao/BasicSR/tree/master/basicsr/ops/dcn">Xintao Wang的IconVSR</a>'
-    ]
+      '来自于<a href="https://github.com/xinntao/BasicSR/blob/master/basicsr/archs/basicvsr_arch.py">Xintao Wang的IconVSR</a>'
+    ].join('<br />'),
+    draggable: 1
   },
   decode: {
     text: '输入解码',
