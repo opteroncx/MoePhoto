@@ -27,6 +27,7 @@ findRs = lambda w, rs: reduce(set.union, (find(w.keys(), r) for r in rs))
 def changeName(w, old, new):
   if new:
     w[new] = w[old]
+    print('rename {} to {}'.format(old, new))
   del w[old]
 changeNames = lambda w, names: [changeName(w, old, new) for old, new in names]
 pf = lambda f, w, r: lambda p, s: [] if p is None else f(w, r, p, s)

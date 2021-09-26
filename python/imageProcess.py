@@ -3,6 +3,7 @@ import time
 from copy import copy
 from functools import reduce
 from itertools import chain
+from typing import Callable, List, Union
 import torch
 import torch.nn.functional as F
 import PIL
@@ -32,15 +33,26 @@ def getAnchors(s, ns, l, pad, af, sc):
   # clip = [0:l, pad:l - pad, ..., end[-2] - s:l]
   return start.tolist(), end.tolist(), clip, step, endSc.tolist()
 
+def wrapPad2D(p):
+  def f(x):
+    if x.dim() > 4:
+      s0 = x.shape[:-3]
+      s1 = x.shape[-3:]
+      x = p(x.view(-1, *s1))
+      return x.view(*s0, *x.shape[-3:])
+    else:
+      return p(x)
+  return f
+
 def getPad(aw, w, ah, h):
   if aw > 2 * w - 1 or ah > 2 * h - 1:
     tw = max(0, min(w - 1, aw - w))
     th = max(0, min(h - 1, ah - h))
     rw = aw - tw
     rh = ah - th
-    return lambda x: F.pad(F.pad(x, (0, tw, 0, th), mode='reflect'), (0, rw, 0, rh))
+    return wrapPad2D(lambda x: F.pad(F.pad(x, (0, tw, 0, th), mode='reflect'), (0, rw, 0, rh)))
   else:
-    return padImageReflect((0, aw - w, 0, ah - h))
+    return wrapPad2D(padImageReflect((0, aw - w, 0, ah - h)))
 
 def memoryError(ram):
   raise MemoryError('Free memory space is {} bytes, which is not enough.'.format(ram))
@@ -82,13 +94,13 @@ def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
     unpad = identity
   elif stepH > 1:
     padImage = getPad(aw, w, 0, 0)
-    unpad = lambda im: im[:, :, :outw]
+    unpad = lambda im: im[..., :outw]
   elif stepW > 1:
     padImage = getPad(0, 0, ah, h)
-    unpad = lambda im: im[:, :outh]
+    unpad = lambda im: im[..., :outh, :]
   else:
     padImage = getPad(aw, w, ah, h)
-    unpad = lambda im: im[:, :outh, :outw]
+    unpad = lambda im: im[..., :outh, :outw]
   b = ((torch.arange(padSc, dtype=config.dtype(), device=config.device()) / padSc - .5) * 9).sigmoid().view(1, -1)
   def iterClip():
     for i in range(stepH):
@@ -195,31 +207,32 @@ def restrictSize(width, height=0, method='bilinear'):
 
 def windowWrap(f, opt, window=2):
   cache = []
+  wm1 = window - 1
   maxBatch = 1 << 7
   h = 0
-  getData = lambda: [cache[i:i + window] for i in range(h - window + 1)]
-  def init(r=False):
+  getData = lambda: [cache[i:i + window] for i in range(h - wm1)]
+  def reset(r=False):
     nonlocal h, cache
-    if r and window > 1:
-      cache = cache[h - window + 1:h] + [0 for _ in range(maxBatch)]
-      h = window - 1
+    if r and wm1:
+      cache = cache[h - wm1:h] + [0 for _ in range(maxBatch)]
+      h = wm1
     else:
-      cache = [0 for _ in range(window + maxBatch - 1)]
+      cache = [0 for _ in range(wm1 + maxBatch)]
       h = 0
-  init()
+  reset()
   def g(inp=None):
     nonlocal h
     b = min(max(1, opt.batchSize), maxBatch)
-    if not inp is None:
+    if inp != None:
       cache[h] = inp
       h += 1
-      if h >= window + b - 1:
+      if h >= wm1 + b:
         data = getData()
-        init(True)
+        reset(True)
         return f(data)
-    elif h >= window:
-      data = getData()
-      init()
+    elif h:
+      data = getData() if h > wm1 else [cache[:h]]
+      reset()
       return f(data)
   return g
 
@@ -362,6 +375,149 @@ class Option():
     self.squeeze = lambda x: x.squeeze(0)
     self.unsqueeze = lambda x: x.unsqueeze(0)
 
+offload = lambda b: [t.cpu() if isinstance(t, torch.Tensor) else t for t in b] if type(b) == list else b.cpu()
+load2device = lambda b, device: b.to(device) if isinstance(b, torch.Tensor) else (b if b == None else [load2device(t, device) for t in b])
+
+def DefaultStreamSource(last=None):
+  flag = True
+  while flag:
+    t = yield
+    last = t[0] if type(t) == tuple else t
+    flag &= not last
+
+class StreamState():
+  def __init__(self, window=None, device=config.device(), offload=True, store=True, tensor=True, name=None, **_):
+    self.source = DefaultStreamSource()
+    next(self.source)
+    self.wm1 = window - 1 if window else 0
+    self.device = device
+    self.tensor = tensor
+    self.offload = offload and store
+    self.store = store
+    self.batchFunc = torch.stack if tensor else identity
+    self.name = name
+    self.start = 0
+    self.end = 0
+    self.state = []
+
+  def clear(self):
+    self.state.clear()
+
+  def getSize(self, size=None):
+    if self.start:
+      self.start -= self.pad(self.start)
+    ls = len(self.state)
+    if ls < self.wm1 + (size or 1) or self.start:
+      return 0
+    lb = ls - self.wm1
+    return min(size, lb) if size else lb
+
+  def popBatch(self, size=1, last=None, *_, **__):
+    if last and self.end:
+      self.end -= self.pad(self.end)
+    r = self.getSize(size)
+    if not r:
+      return
+    batch = [self.batchFunc(self.state[i:i + self.wm1 + 1]) for i in range(r)] if self.wm1 else self.state[:r]
+    self.state = self.state[r:]
+    batch = self.batchFunc(batch)
+    return load2device(batch, self.device) if self.offload else batch
+
+  def setPadding(self, padding):
+    if padding > 0: self.start = padding
+    elif padding < 0: self.end = padding
+    return self
+
+  def pad(self, padding: int, *_, **__):
+    if padding == 0:
+      return 0
+    absPad = abs(padding)
+    size = 1 + absPad * 2
+    if len(self.state) < size:
+      return 0
+    offset = padding - 2 if padding < 0 else 0
+    ids = (torch.arange(absPad, 0, -1) + padding + offset).tolist()
+    batch = [self.state[i] for i in ids]
+    self.state = (self.state + batch) if padding < 0 else (batch + self.state)
+    return padding
+
+  def push(self, batch: Union[torch.Tensor, List[torch.Tensor]], *_, **__):
+    if batch is None:
+      return
+    if self.offload:
+      batch = offload(batch)
+    self.store and self.state.extend(t for t in batch)
+    return batch
+
+  def bind(self, stateIter):
+    self.source = stateIter
+    return self.source
+
+  def __len__(self):
+    return self.getSize()
+
+  def __str__(self):
+    return 'StreamState {}'.format(self.name) if self.name else 'anonymous StreamState'
+
+  def pull(self, last=None, size=None):
+    t = (last, size) if size else last
+    flag = None
+    try:
+      self.source.send(t)
+      flag = 1
+    except StopIteration: pass
+    if last:
+      tuple(self.source) # drain source
+      flag = None
+      if self.end:
+        self.end -= self.pad(self.end)
+    return flag
+
+  @classmethod
+  def run(_, f: Callable, states, size: int, args=[], last=None, pipe=False):
+    t = yield
+    flag, trial = False, 2
+    while True:
+      last, size = t if type(t) == tuple else (t, size)
+      r = min(s.getSize() for s in states)
+      flag &= r <= size
+      if r > size or (r and flag):
+        trial = 2
+        nargs = list(args) + [s.popBatch(min(r, size), last=flag) for s in states]
+        out = f(*nargs, last=flag)
+        t = yield out
+      else:
+        if flag or not pipe:
+          break
+        pr = [s.getSize() > size or s.pull(last) for s in states]
+        flag = not all(pr) # some source will not append
+        if trial == 0:
+          t = yield # don't wait if we can advance
+          trial = 2
+        trial -= 1
+
+  @classmethod
+  def pipe(cls, f: Callable, states, targets, size=1, args=[]):
+    it = cls.run(f, states, size, args, pipe=True)
+    next(it)
+    itPipe = pipeFunc(it, targets, size)
+    next(itPipe)
+    for t in targets:
+      t.bind(itPipe)
+    return itPipe
+
+def pipeFunc(it, targets, size, last=False):
+  t = yield
+  while True:
+    flag, size = t if type(t) == tuple else (t, size)
+    last |= bool(flag)
+    try:
+      out = it.send((last, size))
+      for t in targets:
+        t.push(out)
+      t = yield out
+    except StopIteration: break
+
 deviceCPU = torch.device('cpu')
 outDir = config.outDir
 previewFormat = config.videoPreview
@@ -371,7 +527,7 @@ modelCache = {}
 weightCache = {}
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
 padImageReflect = torch.nn.ReflectionPad2d
-identity = lambda x, *_: x
+identity = lambda x, *_, **__: x
 ceilBy = lambda d: lambda x: (-int(x) & -d ^ -1) + 1 # d needed to be a power of 2
 ceilBy32 = ceilBy(32)
 minSize = 28

@@ -1,171 +1,165 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title>MoePhoto {{version}} AI视频</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta name="keywords" content="" />
-  </head>
 
-  <body>
-    <!-- banner -->
-    {% autoescape true %} {{header| safe}} {% endautoescape %}
-    <!-- //banner -->
-    <div id="drop_zone">
-      <!-- features -->
-      <div class="features">
-        <div class="container">
-          <br />
-          <br />
-          <h2 class="agileits-title">AI视频</h2>
-          <p class="pagile-text">
-            选择一段需要放大/插帧或慢动作处理的视频！运行完毕请点击保存
-          </p>
-        </div>
-      </div>
-      <!-- //features -->
-      <!-- Stats -->
-      <div class="news-w3layouts">
-        <div class="container">
-          <hr />
-          <div class="features-grid">
-            <i class="fa fa-cogs" aria-hidden="true"></i> 属性设置
-          </div>
-          <div class="stats-agileinfo agileits-w3layouts">
-            <div id="steps" class="col-sm-4 col-md-4 settings"></div>
-            <div id="options" class="col-sm-8 col-md-8 settings"></div>
-            <div class="clearfix"></div>
-            <div class="col-md-12 stats-agileinfo">
-              <hr />
-              <div class="features-grid">
-                视频摘要
-              </div>
-              <table class="col-sm-6">
-                <th>
-                  <tr>
-                    <td class="col-sm-2"></td>
-                    <td class="col-sm-2">源视频</td>
-                    <td class="col-sm-2">目标</td>
-                  </tr>
-                </th>
-                <tbody>
-                  <tr>
-                    <td>宽度</td>
-                    <td id="summary-srcWidth">未知</td>
-                    <td id="summary-width"></td>
-                  </tr>
-                  <tr>
-                    <td>高度</td>
-                    <td id="summary-srcHeight">未知</td>
-                    <td id="summary-height"></td>
-                  </tr>
-                  <tr>
-                    <td>帧率</td>
-                    <td id="summary-fps">未知</td>
-                    <td id="summary-frameRate"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="col-md-12">
-              <hr />
-              <button
-                id="RunButton"
-                type="button"
-                class="btn btn-primary btn-lg"
-              >
-                开始
-              </button>
-            </div>
-            <div class="col-md-12">
-              <br />
-              <br />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="container">
-      <div class="features-row stats-agileinfo agileits-w3layouts">
-        <div>
-          <div id="FG" style="position: relative;top: 64px;left: 20%;">
-            <div id="fountainG_1" class="fountainG"></div>
-            <div id="fountainG_2" class="fountainG"></div>
-            <div id="fountainG_3" class="fountainG"></div>
-            <div id="fountainG_4" class="fountainG"></div>
-            <div id="fountainG_5" class="fountainG"></div>
-            <div id="fountainG_6" class="fountainG"></div>
-            <div id="fountainG_7" class="fountainG"></div>
-            <div id="fountainG_8" class="fountainG"></div>
-          </div>
-          <img
-            id="outputImg"
-            class="img-responsive"
-            src="http://placehold.it/1140x120?text=Output+Image"
-            alt=""
-          />
-          <div id="downloader">
-            <br />
-            <a id="downImg" class="agile-icon btn btn-success btn-lg" href="#">
-              保存
-            </a>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-12 stats-agileinfo agileits-w3layouts">
-        <hr />
-        <button id="StopButton" type="button" class="btn btn-warning btn-lg">
-          中止
-        </button>
-      </div>
-    </div>
-    <!-- //Stats -->
-    <div class="container" id="progress">
-      <p><span class="message"></span></p>
-      <p><span class="status"></span><span class="time"></span></p>
-      <meter class="progress-bar" value="0" max="100"></meter>
-      <div class="col-md-12">
+<head>
+  <title>MoePhoto {{version}} AI视频</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="keywords" content="" />
+</head>
+
+<body>
+  <!-- banner -->
+  {% autoescape true %} {{header| safe}} {% endautoescape %}
+  <!-- //banner -->
+  <div id="drop_zone">
+    <!-- features -->
+    <div class="features">
+      <div class="container">
         <br />
+        <br />
+        <h2 class="agileits-title">AI视频</h2>
+        <p class="pagile-text">
+          选择一段需要放大/插帧或慢动作处理的视频！运行完毕请点击保存
+        </p>
       </div>
     </div>
-    <!-- footer start here -->
-    {% autoescape true %} {{footer| safe}} {% endautoescape %}
-    <!-- //footer end here -->
-    <!-- js -->
-    <script src="{{vendorsJs}}"></script>
-    <script src="{{commonJs}}"></script>
-    <script src="static/js/main.js"></script>
-    <script>
-      const app = window.app
-      $(document).ready(_ =>
-        app.setup({
-          onProgress: app.texts.videoRunning,
-          onSkip: app.texts.videoSkip,
-          success: (result, progress) => {
-            progress.final(app.texts.videoSucc(result))
-            let im = app.getResource(result[0])
-            $('#downImg').attr('href', im)
-          },
-          path: '/video_enhance',
-          resizeOnce: true,
-          outputImg: $('#outputImg'),
-          dropZone: $('#drop_zone'),
-          features: [
-            'index',
-            'inputVideo',
-            'decode',
-            'range',
-            'encode',
-            'SR',
-            'DN',
-            'dehaze',
-            'demoire',
-            'ednoise',
-            'resize',
-            'slomo'
-          ]
-        })
-      )
-    </script>
-  </body>
+    <!-- //features -->
+    <!-- Stats -->
+    <div class="news-w3layouts">
+      <div class="container">
+        <hr />
+        <div class="features-grid">
+          <i class="fa fa-cogs" aria-hidden="true"></i> 属性设置
+        </div>
+        <div class="stats-agileinfo agileits-w3layouts">
+          <div id="steps" class="col-sm-4 col-md-4 settings"></div>
+          <div id="options" class="col-sm-8 col-md-8 settings"></div>
+          <div class="clearfix"></div>
+          <div class="col-md-12 stats-agileinfo">
+            <hr />
+            <div class="features-grid">
+              视频摘要
+            </div>
+            <table class="col-sm-6">
+              <th>
+                <tr>
+                  <td class="col-sm-2"></td>
+                  <td class="col-sm-2">源视频</td>
+                  <td class="col-sm-2">目标</td>
+                </tr>
+              </th>
+              <tbody>
+                <tr>
+                  <td>宽度</td>
+                  <td id="summary-srcWidth">未知</td>
+                  <td id="summary-width"></td>
+                </tr>
+                <tr>
+                  <td>高度</td>
+                  <td id="summary-srcHeight">未知</td>
+                  <td id="summary-height"></td>
+                </tr>
+                <tr>
+                  <td>帧率</td>
+                  <td id="summary-fps">未知</td>
+                  <td id="summary-frameRate"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="col-md-12">
+            <hr />
+            <button id="RunButton" type="button" class="btn btn-primary btn-lg">
+              开始
+            </button>
+          </div>
+          <div class="col-md-12">
+            <br />
+            <br />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="features-row stats-agileinfo agileits-w3layouts">
+      <div>
+        <div id="FG" style="position: relative;top: 64px;left: 20%;">
+          <div id="fountainG_1" class="fountainG"></div>
+          <div id="fountainG_2" class="fountainG"></div>
+          <div id="fountainG_3" class="fountainG"></div>
+          <div id="fountainG_4" class="fountainG"></div>
+          <div id="fountainG_5" class="fountainG"></div>
+          <div id="fountainG_6" class="fountainG"></div>
+          <div id="fountainG_7" class="fountainG"></div>
+          <div id="fountainG_8" class="fountainG"></div>
+        </div>
+        <img id="outputImg" class="img-responsive" src="http://placehold.it/1140x120?text=Output+Image" alt="" />
+        <div id="downloader">
+          <br />
+          <a id="downImg" class="agile-icon btn btn-success btn-lg" href="#">
+            保存
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-12 stats-agileinfo agileits-w3layouts">
+      <hr />
+      <button id="StopButton" type="button" class="btn btn-warning btn-lg">
+        中止
+      </button>
+    </div>
+  </div>
+  <!-- //Stats -->
+  <div class="container" id="progress">
+    <p><span class="message"></span></p>
+    <p><span class="status"></span><span class="time"></span></p>
+    <meter class="progress-bar" value="0" max="100"></meter>
+    <div class="col-md-12">
+      <br />
+    </div>
+  </div>
+  <!-- footer start here -->
+  {% autoescape true %} {{footer| safe}} {% endautoescape %}
+  <!-- //footer end here -->
+  <!-- js -->
+  <script src="{{vendorsJs}}"></script>
+  <script src="{{commonJs}}"></script>
+  <script src="static/js/main.js"></script>
+  <script>
+    const app = window.app
+    $(document).ready(_ =>
+      app.setup({
+        onProgress: app.texts.videoRunning,
+        onSkip: app.texts.videoSkip,
+        success: (result, progress) => {
+          progress.final(app.texts.videoSucc(result))
+          let im = app.getResource(result[0])
+          $('#downImg').attr('href', im)
+        },
+        path: '/video_enhance',
+        resizeOnce: true,
+        outputImg: $('#outputImg'),
+        dropZone: $('#drop_zone'),
+        features: [
+          'index',
+          'inputVideo',
+          'decode',
+          'range',
+          'encode',
+          'SR',
+          'DN',
+          'dehaze',
+          'demoire',
+          'ednoise',
+          'resize',
+          'slomo',
+          'VSR'
+        ]
+      })
+    )
+  </script>
+</body>
+
 </html>

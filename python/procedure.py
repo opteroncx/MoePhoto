@@ -8,8 +8,10 @@ import runDN
 import runSR
 import runSlomo
 import dehaze
+import videoSR
 from worker import context
 
+videoOps = {'slomo': runSlomo.WindowSize, 'VSR': videoSR.WindowSize}
 applyNonNull = lambda v, f: NonNullWrap(f)(v)
 NonNullWrap = lambda f: lambda x: f(x) if not x is None else None
 newNode = lambda opt, op, load=1, total=1: Node(op, load, total, name=opt.get('name', None))
@@ -57,6 +59,14 @@ def procSR(opt, out, *_):
   fs, ns = convertChannel(out) if out['channel'] and mode == 'gan' else ([], [])
   ns.append(appendFuncs(runSR.sr(SRopt), newNode(opt, dict(op='SR', model=mode, scale=scale), load * es), fs))
   return fs, ns, out
+
+def procVSR(opt, out, *_):
+  load = out['load']
+  scale = 4
+  out['load'] = load * scale * scale
+  fs, ns = convertChannel(out) if out['channel'] else ([], [])
+  ns.append(newNode(opt, dict(op='VSR', learn=0), load))
+  return fs + [videoSR.doVSR], ns, out
 
 def procSlomo(opt, out, *_):
   load = out['load']
@@ -111,36 +121,36 @@ procs = dict(
     procInput('file', 8, [context.getFile, readFile(nodes, context)], dict(bitDepth=8, channel=0, source=0))),
   buffer=(lambda opt, *_:
     procInput('buffer', opt['bitDepth'], [toNumPy(opt['bitDepth'])], dict(bitDepth=opt['bitDepth'], channel=1, source=1))),
-  DN=procDN, SR=procSR, output=procOutput, slomo=procSlomo, dehaze=procDehaze, resize=procResize
+  DN=procDN, SR=procSR, output=procOutput, slomo=procSlomo, dehaze=procDehaze, resize=procResize, VSR=procVSR
   )
 
+stepOpts = dict(
+  SR={'toInt': ['scale', 'ensemble'], 'getOpt': runSR},
+  resize={'toInt': ['width', 'height']},
+  DN={'getOpt': runDN},
+  dehaze={'getOpt': dehaze},
+  slomo={'toInt': ['sf'], 'getOpt': runSlomo},
+  VSR={'getOpt': videoSR}
+)
 def genProcess(steps, root=True, outType=None):
   funcs=[]
   nodes=[]
   last = identity
   rf = lambda im: reduce(apply, funcs, im)
   if root:
+    stepOffset = 0 if steps[0]['op'] == 'file' else 2
     for i, opt in enumerate(steps):
-      opt['name'] = i + (0 if steps[0]['op'] == 'file' else 2)
-    for opt in filter((lambda opt: opt['op'] == 'SR'), steps):
-      toInt(opt, ['scale', 'ensemble'])
-      opt['opt'] = runSR.getOpt(opt)
-    for opt in filter((lambda opt: opt['op'] == 'resize'), steps):
-      toInt(opt, ['width', 'height'])
-      if 'scaleW' in opt:
-        opt['scaleW'] = float(opt['scaleW'])
-      if 'scaleH' in opt:
-        opt['scaleH'] = float(opt['scaleH'])
-    for opt in filter((lambda opt: opt['op'] == 'DN'), steps):
-      opt['opt'] = runDN.getOpt(opt)
-    for opt in filter((lambda opt: opt['op'] == 'dehaze'), steps):
-      opt['opt'] = dehaze.getOpt(opt)
-    slomos = [*filter((lambda opt: opt['op'] == 'slomo'), steps)]
-    for opt in slomos:
-      toInt(opt, ['sf'])
-      opt['opt'] = runSlomo.getOpt(opt)
-    if len(slomos):
-      slomos[-1]['opt'].notLast = 0
+      opt['name'] = i + stepOffset
+      if opt['op'] == 'resize':
+        if 'scaleW' in opt:
+          opt['scaleW'] = float(opt['scaleW'])
+        if 'scaleH' in opt:
+          opt['scaleH'] = float(opt['scaleH'])
+      if opt['op'] in stepOpts:
+        stepOpt = stepOpts[opt['op']]
+        toInt(opt, stepOpt.get('toInt', []))
+        if 'getOpt' in stepOpt:
+          opt['opt'] = stepOpt['getOpt'].getOpt(opt)
     if steps[-1]['op'] != 'output':
       steps.append(dict(op='output'))
     config.getFreeMem(True)
@@ -152,16 +162,16 @@ def genProcess(steps, root=True, outType=None):
     fs, ns, outType = procs[op](opt, outType, nodes)
     funcs.extend(fs)
     nodes.extend(ns)
-    if op == 'slomo':
+    if op in videoOps:
       if i + 1 < len(steps):
         f, nodesAfter = genProcess(steps[i + 1:], False, outType)
       else:
         f = identity
         nodesAfter = []
-      slomoOpt = opt['opt']
-      slomo = funcs[-1](f, nodes[-1], slomoOpt)
-      funcs[-1] = windowWrap(slomo, slomoOpt, 2)
-      nodeAfter = Node({}, total=opt['sf'], learn=0)
+      videoOpt = opt['opt']
+      func = funcs[-1](f, nodes[-1], videoOpt)
+      funcs[-1] = windowWrap(func, videoOpt, videoOps[op]) if videoOps[op] > 1 else func
+      nodeAfter = Node({}, total=opt.get('sf', 1), learn=0)
       for node in nodesAfter:
         nodeAfter.append(node)
       nodes.append(nodeAfter)

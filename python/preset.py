@@ -24,7 +24,7 @@ def loadPreset(path):
       try:
         with open(filename, 'r', encoding='utf-8') as fp:
           text = fp.read()
-          item = json.loads(text, encoding='utf-8')
+          item = json.loads(text)
           name = item['name'] # should equals name
           if compareVersion(version, item['version']) < 0:
             return 'Incompatible version' if raw else None
@@ -38,7 +38,7 @@ def savePreset(path):
   def f(data):
     if not os.path.exists(path):
       os.mkdir(path)
-    brief = getBrief(json.loads(data, encoding='utf-8'))
+    brief = getBrief(json.loads(data))
     name = brief['name']
     with open(getFilePath(path, name), 'w', encoding='utf-8') as fp:
       fp.write(data)
@@ -67,8 +67,8 @@ def preset():
           return '', 404
       else:
         if os.path.exists(path):
-          return json.dumps([*filter(None, map(loadPreset(path), os.listdir(path)))]
-            , ensure_ascii=False, separators=(',', ':')), 200
+          res = [*filter(None, map(loadPreset(path), os.listdir(path)))]
+          return json.dumps(res , ensure_ascii=False, separators=(',', ':')), 200
         else:
           return '[]', 200
   except:

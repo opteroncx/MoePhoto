@@ -64,3 +64,6 @@ install.exe
 
 # include default presets
 !/.user/preset_video/benchmark.json
+
+# development
+*.so

@@ -4,8 +4,10 @@ import torch
 import torch.nn as nn
 import math
 import torch.nn.functional as F
-from imageProcess import apply, reduce, identity, split, flat
+from torch.nn.modules.utils import _pair, _single
+from torchvision.ops import deform_conv2d
 from collections import OrderedDict
+from imageProcess import apply, reduce, identity, split, flat
 
 def initParameters(model):
   for i, convt in enumerate(model.convt_F):
@@ -432,6 +434,27 @@ def pixel_unshuffle(scale):
     return x_view.permute(0, 1, 3, 5, 2, 4).reshape(b, out_channel, h, w)
   return f
 
+class ResidualBlockNoBN(nn.Module):
+  """Residual block without BN.
+  It has a style of:
+    ---Conv-ReLU-Conv-+-
+      |________________|
+  Args:
+    num_feat (int): Channel number of intermediate features. Default: 64.
+    res_scale (float): Residual scale. Default: 1.
+  """
+
+  def __init__(self, num_feat=64, res_scale=1):
+    super(ResidualBlockNoBN, self).__init__()
+    self.res_scale = res_scale
+    self.conv1 = conv2d311(num_feat, num_feat)
+    self.conv2 = conv2d311(num_feat, num_feat)
+    self.relu = nn.ReLU(inplace=True)
+
+  def forward(self, x):
+    out = self.conv2(self.relu(self.conv1(x)))
+    return x + out * self.res_scale
+
 class ResidualDenseBlock(nn.Module):
   """Residual Dense Block.
   Used in RRDB block in ESRGAN.
@@ -524,3 +547,68 @@ class RRDBNet(nn.Module):
     feat = self.lrelu(self.conv_up2(F.interpolate(feat, scale_factor=2, mode='nearest')))
     out = self.conv_last(self.lrelu(self.conv_hr(feat)))
     return out
+
+class ModulatedDeformConvPack(nn.Module):
+  """A ModulatedDeformable Conv Encapsulation that acts as normal Conv layers.
+
+  Args:
+    in_channels (int): Same as nn.Conv2d.
+    out_channels (int): Same as nn.Conv2d.
+    kernel_size (int or tuple[int]): Same as nn.Conv2d.
+    stride (int or tuple[int]): Same as nn.Conv2d.
+    padding (int or tuple[int]): Same as nn.Conv2d.
+    dilation (int or tuple[int]): Same as nn.Conv2d.
+    groups (int): Same as nn.Conv2d.
+    bias (bool or str): If specified as `auto`, it will be decided by the
+      norm_cfg. Bias will be set as True if norm_cfg is None, otherwise
+      False.
+  """
+
+  _version = 2
+
+  def __init__(self,
+      in_channels,
+      out_channels,
+      kernel_size,
+      stride=1,
+      padding=0,
+      dilation=1,
+      groups=1,
+      deformable_groups=1,
+      bias=True):
+    super(ModulatedDeformConvPack, self).__init__()
+    self.in_channels = in_channels
+    self.out_channels = out_channels
+    self.kernel_size = _pair(kernel_size)
+    self.stride = stride
+    self.padding = padding
+    self.dilation = dilation
+    self.groups = groups
+    self.deformable_groups = deformable_groups
+    self.with_bias = bias
+    # enable compatibility with nn.Conv2d
+    self.transposed = False
+    self.output_padding = _single(0)
+
+    self.weight = nn.Parameter(torch.Tensor(out_channels, in_channels // groups, *self.kernel_size))
+    if bias:
+      self.bias = nn.Parameter(torch.Tensor(out_channels))
+    else:
+      self.register_parameter('bias', None)
+
+    self.conv_offset = nn.Conv2d(
+      self.in_channels,
+      self.deformable_groups * 3 * self.kernel_size[0] * self.kernel_size[1],
+      kernel_size=self.kernel_size,
+      stride=_pair(self.stride),
+      padding=_pair(self.padding),
+      dilation=_pair(self.dilation),
+      bias=True)
+
+  def forward(self, x, feat):
+    out = self.conv_offset(feat)
+    o1, o2, mask = torch.chunk(out, 3, dim=1)
+    offset = torch.cat((o1, o2), dim=1)
+    mask = torch.sigmoid(mask)
+    return deform_conv2d(x, offset, self.weight, self.bias, self.stride, self.padding,
+                        self.dilation, mask)

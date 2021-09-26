@@ -5,13 +5,16 @@ import sys
 import threading
 import logging
 import signal
+from math import ceil
 from queue import Queue, Empty
-from gevent import spawn_later, idle
+from gevent import idle
 from config import config
-from imageProcess import clean, writeFile, BGR2RGB
+from imageProcess import clean
 from procedure import genProcess
 from progress import Node, initialETA
 from worker import context, begin
+from runSlomo import RefTime as SlomoRefs
+from videoSR import RefTime as VSRRefs
 
 log = logging.getLogger('Moe')
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
@@ -27,9 +30,12 @@ reMatchFrame = re.compile(r'frame=')
 reSearchFrame = re.compile(r'frame=[\s]*([\d]+) ')
 reMatchAudio = re.compile(r'Stream #0:1')
 reMatchOutput = re.compile(r'Output #0,')
-creationflag = sp.CREATE_NEW_PROCESS_GROUP if isWindows else 0
 formats = {'.mp4', '.ts', '.mkv'}
+creationflag = sp.CREATE_NEW_PROCESS_GROUP if isWindows else 0
 sigint = signal.CTRL_BREAK_EVENT if isWindows else signal.SIGINT
+lookback = dict(slomo=SlomoRefs >> 1, VSR=VSRRefs >> 1)
+lookahead = dict(slomo=(SlomoRefs - 1) >> 1, VSR=(VSRRefs - 1) >> 1)  # assume all models have symmetrical windows
+resizeOp = {'SR', 'resize', 'VSR'}
 popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, creationflags=creationflag)
 popenText = lambda command: sp.Popen(command, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
 insert1 = lambda t, s: ''.join((t[0], s, *t[1:]))
@@ -150,13 +156,37 @@ def prepare(video, by, steps):
   traceDetail = config.progressDetail or bench  # pylint: disable=E1101
   root = begin(Node({'op': 'video'}, 1, 2, 0), nodes, traceDetail, bench, clear)
   context.root = root
-  slomos = [*filter((lambda opt: opt['op'] == 'slomo'), procSteps)]
+  slomos = [step for step in procSteps if step['op'] == 'slomo']
+  refs, ahead = 0, 0
   if start < 0:
     start = 0
-  if start and len(slomos): # should generate intermediate frames between start-1 and start
-    start -= 1
-    for opt in slomos:
-      opt['opt'].firstTime = 0
+  for i in range(len(procSteps) - 1, -1, -1): # gather some reference frames before start point for video models
+    step = procSteps[i]
+    if step['op'] == 'slomo':
+      step['opt'].outStart = -refs % step['sf'] if refs else 1
+      step['opt'].outEnd = -(-ahead % step['sf'])
+      refs = max(ceil(refs / step['sf']), lookback[step['op']])
+      ahead = max(ceil(ahead / step['sf']), lookahead[step['op']])
+    elif step['op'] == 'VSR':
+      step['opt'].start = 0
+      step['opt'].end = 0
+      refs += lookback[step['op']]
+      ahead += lookahead[step['op']]
+  if start < refs: # no enough reference frames
+    arefs = start
+    for step in procSteps:
+      if arefs >= refs:
+        break
+      if step['op'] == 'slomo':
+        refs = refs * step['sf'] - step['opt'].outStart
+        step['opt'].outStart = 0
+        arefs = arefs * step['sf']
+      elif step['op'] == 'VSR':
+        step['opt'].start = min(refs - arefs, lookback[step['op']])
+        refs -= step['opt'].start
+    start = 0
+  else:
+    start -= refs
   stop = int(optRange.get('stop', -1))
   if stop <= start:
     stop = -1
@@ -217,8 +247,8 @@ def prepare(video, by, steps):
   frameRate = optEncode.get('frameRate', 0)
   width = optDecode.get('width', 0)
   height = optDecode.get('height', 0)
-  sizes = filter((lambda opt: opt['op'] == 'SR' or opt['op'] == 'resize'), procSteps)
-  return outputPath, process, start, stop, root, commandIn, commandVideo, commandOut, slomos, sizes, width, height, frameRate
+  sizes = [step for step in procSteps if step['op'] in resizeOp]
+  return outputPath, process, start, stop, ahead, root, commandIn, commandVideo, commandOut, slomos, sizes, width, height, frameRate
 
 def setupInfo(by, outputPath, root, commandIn, commandVideo, commandOut, slomos, sizes, start, width, height, frameRate, totalFrames, videoOnly):
   if root.total < 0 and totalFrames > 0:
@@ -231,6 +261,9 @@ def setupInfo(by, outputPath, root, commandIn, commandVideo, commandOut, slomos,
     if opt['op'] == 'SR':
       outWidth *= opt['scale']
       outHeight *= opt['scale']
+    elif opt['op'] == 'VSR':
+      outWidth *= 4
+      outHeight *= 4
     else: # resize
       outWidth = round(outWidth * opt['scaleW']) if 'scaleW' in opt else opt['width']
       outHeight = round(outHeight * opt['scaleH']) if 'scaleH' in opt else opt['height']
@@ -283,13 +316,14 @@ def SR_vid(video, by, *steps):
           procOut.stdin.write(buffer)
     if raw_image:
       root.trace()
+    return 0 if bufs is None else len(bufs)
 
   context.stopFlag.clear()
   outputPath, process, *args = prepare(video, by, steps)
-  start, stop, root = args[:3]
+  start, stop, refs, root = args[:4]
   width, height, *more = getVideoInfo(video, by, *args[-3:])
   root.callback(root, dict(shape=[height, width], fps=more[0]))
-  commandIn, commandVideo, commandOut = setupInfo(by, outputPath, *args[2:8], start, width, height, *more)
+  commandIn, commandVideo, commandOut = setupInfo(by, outputPath, *args[3:9], start, width, height, *more)
   procIn = popen(commandIn)
   procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=0)
   procMerge = 0
@@ -300,8 +334,9 @@ def SR_vid(video, by, *steps):
     createEnqueueThread(procIn.stderr)
     createEnqueueThread(procOut.stderr)
     i = 0
-    while (stop < 0 or i <= stop) and not context.stopFlag.is_set():
-      raw_image = procIn.stdout.read(width * height * pixBytes) # read width*height*6 bytes (= 1 frame)
+    frameBytes = width * height * pixBytes # read 1 frame
+    while (stop < 0 or i <= stop + refs) and not context.stopFlag.is_set():
+      raw_image = procIn.stdout.read(frameBytes)
       if len(raw_image) == 0:
         break
       readSubprocess(qOut)
@@ -312,6 +347,18 @@ def SR_vid(video, by, *steps):
       i += 1
       idle()
     os.kill(procIn.pid, sigint)
+    if len(raw_image) == 0: # tell VSR to pad frames
+      arefs = 0 if stop <= 0 or i < stop else i - stop
+      for step in steps:
+        if arefs >= refs:
+          break
+        if step['op'] == 'slomo':
+          refs = refs * step['sf'] + step['opt'].outEnd # outEnd is negative
+          step['opt'].outEnd = 0
+          arefs = arefs * step['sf']
+        elif step['op'] == 'VSR':
+          step['opt'].end = -min(refs - arefs, lookahead[step['op']])
+          refs += step['opt'].end
     p()
 
     procOut.communicate(timeout=300)
@@ -319,7 +366,7 @@ def SR_vid(video, by, *steps):
     readSubprocess(qOut)
     procMerge, err = mergeAV(commandOut)
   finally:
-    log.info('Video processing end at frame #{}.'.format(i))
+    log.info('Video processing end at frame #{}.'.format(i - refs))
     procIn.terminate()
     procOut.terminate()
     if procMerge:
@@ -335,4 +382,4 @@ def SR_vid(video, by, *steps):
     else:
       outputPath = cleanAV(commandOut, outputPath)
   readSubprocess(qOut)
-  return outputPath, i
+  return outputPath, i - refs
