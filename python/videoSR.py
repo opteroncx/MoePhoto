@@ -3,8 +3,8 @@ import torch
 from torch import nn as nn
 from torch.nn import functional as F
 
-from imageProcess import getPadBy32, doCrop, StreamState, identity
-from models import DCNv2Pack, ResidualBlockNoBN, make_layer, conv2d311
+from imageProcess import getPadBy32, StreamState, identity, doCrop
+from models import ModulatedDeformConvPack, ResidualBlockNoBN, make_layer, conv2d311
 from slomo import backWarp
 from runSlomo import getOptS, setOutShape
 from progress import Node
@@ -113,12 +113,12 @@ class PCDAlignment(nn.Module):
         self.offset_conv2[level] = conv2d311(num_feat * 2, num_feat)
         self.offset_conv3[level] = conv2d311(num_feat, num_feat)
 
-      self.dcn_pack[level] = DCNv2Pack(num_feat, num_feat, 3, padding=1, deformable_groups=deformable_groups)
+      self.dcn_pack[level] = ModulatedDeformConvPack(num_feat, num_feat, 3, padding=1, deformable_groups=deformable_groups)
 
     # Cascading dcn
     self.cas_offset_conv1 = conv2d311(num_feat * 2, num_feat)
     self.cas_offset_conv2 = conv2d311(num_feat, num_feat)
-    self.cas_dcnpack = DCNv2Pack(num_feat, num_feat, 3, padding=1, deformable_groups=deformable_groups)
+    self.cas_dcnpack = ModulatedDeformConvPack(num_feat, num_feat, 3, padding=1, deformable_groups=deformable_groups)
 
     self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
     self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
@@ -393,7 +393,7 @@ class EDVRFeatureExtractor(nn.Module):
     self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
 
   def forward(self, x):
-    b, n, c, h, w = x.size()
+    b, n, c, h, w = x.shape
 
     # extract features for each frame
     # L1
@@ -424,7 +424,7 @@ class EDVRFeatureExtractor(nn.Module):
     aligned_feat = torch.stack(aligned_feat, dim=1)  # (b, t, c, h, w)
 
     # TSA fusion
-    return self.fusion(aligned_feat)
+    return self.fusion(aligned_feat)  # (b, c, h, w)
 
 class KeyFrameState():
   def __init__(self, window):
@@ -447,6 +447,7 @@ class KeyFrameState():
     return res
 
 def getKeyframeFeature(opt, keyframe, isKeyFrame, **_):
+  # do not batchify to ensure consistent memory usage
   return [(doCrop(opt.edvr, torch.stack(w).unsqueeze(0)) if b else None) for w, b in zip(keyframe, isKeyFrame)]
 
 def calcFlowBackward(opt, flowInp, last):
@@ -463,16 +464,15 @@ def calcBackward(opt, inp, flowInp, keyframeFeature, last):
   feat_prop = inp.new_zeros(1, NumFeat, h, w) # batch, channel, height, width
   out = []
   if last: # require at least 2 backward reference frames
-    out = [0, 0] # pad 2 empties for the last window
+    out = [None, None] # pad 2 empties for the last window
   for i in range(n - 1, -1, -1):
     if i < n - 1 or not last:
       feat_prop = opt.flow_warp(feat_prop, flowInp[i])
     if keyframeFeature[i] != None:
       feat_prop = torch.cat([feat_prop, keyframeFeature[i]], dim=1)
       feat_prop = doCrop(opt.backward_fusion, feat_prop)
-    feat_prop = torch.cat([inp[i], feat_prop], dim=1)
+    feat_prop = torch.cat([inp[i:i + 1], feat_prop], dim=1)
     feat_prop = doCrop(opt.backward_trunk, feat_prop)
-    feat_prop = inp[i]
     out.insert(0, feat_prop)
   return out # only window[0] for window in out is used
 
@@ -491,9 +491,9 @@ def calcFlowForward(opt, state, flowInp, **_):
   out.extend(list(flows))
   return out
 
-def calcForward(opt, inp, flowInp, keyframeFeature, backward, **_):
-  n, _, h, w = inp.shape
-  feat_prop = inp.new_zeros(1, NumFeat, h, w) # batch, channel, height, width
+def calcForward(opt, state, inp, flowInp, keyframeFeature, backward, **_):
+  n, _, h, w = inp.shape # batch, channel, height, width
+  feat_prop = inp.new_zeros(1, NumFeat, h, w) if state.feat_prop == None else state.feat_prop
   out = []
   for i in range(n):
     if flowInp[i] != None:
@@ -501,12 +501,13 @@ def calcForward(opt, inp, flowInp, keyframeFeature, backward, **_):
     if keyframeFeature[i] != None:
       feat_prop = torch.cat([feat_prop, keyframeFeature[i]], dim=1)
       feat_prop = doCrop(opt.forward_fusion, feat_prop)
-    feat_prop = torch.cat([inp[i], backward[i][0], feat_prop], dim=1)
+    feat_prop = torch.cat([inp[i:i + 1], backward[i][0], feat_prop], dim=1)
     feat_prop = doCrop(opt.forward_trunk, feat_prop)
-    out.append(feat_prop)
+    out.append(feat_prop.squeeze(0))
+  state.feat_prop = feat_prop
   return out
 
-def doUpsample(opt, inp, forward):
+def doUpsample(opt, inp, forward, **_):
   setBatchSize(opt.upsample, inp)
   out = doCrop(opt.upsample, forward)
   base = F.interpolate(inp, scale_factor=4, mode='bilinear', align_corners=False)
@@ -537,6 +538,7 @@ modules = dict(
 def getOpt(_):
   opt = getOptS(modelPath, modules, ramCoef)
   opt.flow_warp = None
+  opt.startPadding = 0
   opt.i = 0
   return opt
 
@@ -553,12 +555,12 @@ def doVSR(func, node, opt):
   flowForwardInp = StreamState(offload=False).setPadding(1)
   flowBackwardInp = StreamState(offload=False)
   isKeyFrame = KeyFrameState(RefTime)
-  opt.keyframeFeatureInp = StreamState(RefTime, tensor=False, reserve=1, offload=False)
+  keyframeFeatureInp = StreamState(RefTime, tensor=False, reserve=1, offload=False)
   StreamState.pipe(identity, [opt.inp], [inp1, inp2, flowInp, backwardInp])
   StreamState.pipe(identity, [flowInp], [flowForwardInp, flowBackwardInp])
   keyframeFeature = StreamState(tensor=False, offload=False)
   n1 = Node({'IconVSR' :'KeyframeFeature'})
-  StreamState.pipe(n1.bindFunc(getKeyframeFeature), [opt.keyframeFeatureInp, isKeyFrame], [keyframeFeature], args=[opt], size=7)
+  StreamState.pipe(n1.bindFunc(getKeyframeFeature), [keyframeFeatureInp, isKeyFrame], [keyframeFeature], args=[opt], size=7)
   keyframeFeature1 = StreamState(tensor=False)
   keyframeFeature2 = StreamState(tensor=False)
   StreamState.pipe(identity, [keyframeFeature], [keyframeFeature1, keyframeFeature2])
@@ -573,8 +575,9 @@ def doVSR(func, node, opt):
   n4 = Node({'IconVSR' :'Flow'})
   opt.flowForward = StreamState.pipe(n4.bindFunc(calcFlowForward), [flowForwardInp], [flowForward], args=[opt, flowForward], size=1)
   forward = StreamState(offload=False)
+  forward.feat_prop = None
   n5 = Node({'IconVSR' :'Forward'})
-  StreamState.pipe(n5.bindFunc(calcForward), [inp1, flowForward, keyframeFeature2, backward], [forward], args=[opt])
+  StreamState.pipe(n5.bindFunc(calcForward), [inp1, flowForward, keyframeFeature2, backward], [forward], args=[opt, forward])
   upsample = StreamState(store=False)
   n6 = Node({'IconVSR' :'upsample'})
   opt.out = StreamState.pipe(n6.bindFunc(doUpsample), [inp2, forward], [upsample], args=[opt], size=1)
@@ -584,26 +587,27 @@ def doVSR(func, node, opt):
     node.trace(0, p='VSR start')
 
     if opt.flow_warp is None:
+      *_, h, w = x.shape
       width, height, opt.pad, _ = getPadBy32(x, opt)
-      opt.width = width << 2
-      opt.height = height << 2
+      w = w << 2
+      h = h << 2
       opt.flow_warp = backWarp(width, height, device=x.device, dtype=x.dtype)
-      opt.unpad = lambda im: im[:, :opt.width, :opt.height]
+      opt.unpad = lambda im: im[:, :h, :w]
       setOutShape(modules, opt, height, width, lambda *_: 1)
 
     if opt.end:
-      opt.keyframeFeatureInp.setPadding(opt.end)
+      keyframeFeatureInp.setPadding(opt.end)
       opt.end = 0
     if opt.start:
       opt.startPadding = opt.start
-      opt.keyframeFeatureInp.setPadding(opt.start)
+      keyframeFeatureInp.setPadding(opt.start)
       opt.start = 0
     last = True if x is None else None
     if not last:
       x = opt.pad(x.unsqueeze(0))
       if opt.i + opt.startPadding >= RefTime >> 1:
         opt.inp.push(x)
-      opt.keyframeFeatureInp.push(x)
+      keyframeFeatureInp.push(x)
       opt.i += 1
     out = []
     extend(out, opt.out.send(last))

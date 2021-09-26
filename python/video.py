@@ -359,7 +359,6 @@ def SR_vid(video, by, *steps):
         elif step['op'] == 'VSR':
           step['opt'].end = -min(refs - arefs, lookahead[step['op']])
           refs += step['opt'].end
-      refs = 0
     p()
 
     procOut.communicate(timeout=300)

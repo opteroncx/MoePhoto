@@ -11,7 +11,7 @@ from video import SR_vid
 
 context.stopFlag = Event()
 context.shared = None
-video = 'upload\\realshort.mp4'
-copyfile('test\\realshort.mp4', video)
-steps = [{'op': 'decode'}, {'op': 'range'}, {'codec': 'h264_nvenc -pix_fmt yuv420p', 'op': 'encode', 'file': 'download/realshort.mkv'}]
+video = 'upload/realshort.mp4'
+copyfile('test/realshort.mp4', video)
+steps = [{'op': 'decode'}, {'op': 'range'}, {'op': 'VSR'}, {'codec': 'h264_nvenc -pix_fmt yuv420p', 'op': 'encode', 'file': 'download/realshort.mkv'}]
 print(SR_vid(video, False, *steps))

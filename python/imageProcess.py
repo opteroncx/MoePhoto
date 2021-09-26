@@ -33,15 +33,26 @@ def getAnchors(s, ns, l, pad, af, sc):
   # clip = [0:l, pad:l - pad, ..., end[-2] - s:l]
   return start.tolist(), end.tolist(), clip, step, endSc.tolist()
 
+def wrapPad2D(p):
+  def f(x):
+    if x.dim() > 4:
+      s0 = x.shape[:-3]
+      s1 = x.shape[-3:]
+      x = p(x.view(-1, *s1))
+      return x.view(*s0, *x.shape[-3:])
+    else:
+      return p(x)
+  return f
+
 def getPad(aw, w, ah, h):
   if aw > 2 * w - 1 or ah > 2 * h - 1:
     tw = max(0, min(w - 1, aw - w))
     th = max(0, min(h - 1, ah - h))
     rw = aw - tw
     rh = ah - th
-    return lambda x: F.pad(F.pad(x, (0, tw, 0, th), mode='reflect'), (0, rw, 0, rh))
+    return wrapPad2D(lambda x: F.pad(F.pad(x, (0, tw, 0, th), mode='reflect'), (0, rw, 0, rh)))
   else:
-    return padImageReflect((0, aw - w, 0, ah - h))
+    return wrapPad2D(padImageReflect((0, aw - w, 0, ah - h)))
 
 def memoryError(ram):
   raise MemoryError('Free memory space is {} bytes, which is not enough.'.format(ram))
@@ -365,7 +376,7 @@ class Option():
     self.unsqueeze = lambda x: x.unsqueeze(0)
 
 offload = lambda b: [t.cpu() if isinstance(t, torch.Tensor) else t for t in b] if type(b) == list else b.cpu()
-load2device = lambda b, device: [t.to(device) if isinstance(t, torch.Tensor) else t for t in b] if type(b) == list else b.to(device)
+load2device = lambda b, device: b.to(device) if isinstance(b, torch.Tensor) else (b if b == None else [load2device(t, device) for t in b])
 
 def DefaultStreamSource(last=None):
   flag = True

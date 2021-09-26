@@ -206,7 +206,7 @@ const panels = {
             value: 'gan',
             text: 'GAN',
             notes: [
-              'GAN模型仅适用于RGB图像，遇到带alpha通道的图像会出错错',
+              'GAN模型仅适用于RGB图像，遇到带alpha通道的图像会出错错，反正我遇到的alpha通道都是多余的，用随便什么图片编辑去掉吧',
               'GAN模型能放大2或4倍，可以在后面添加“缩放”步骤配合使用',
               '来自于<a href="https://github.com/xinntao/Real-ESRGAN">Xintao Wang的Real-ESRGAN</a>'
             ]
@@ -399,7 +399,10 @@ const panels = {
     text: '视频放大',
     description: '专用于视频的4倍放大，带一点去模糊能力',
     draggable: 1,
-    notes: ['一定要有老黄家的显卡才行哟']
+    notes: [
+      '切块分批什么的都还没做啦，所以得有张好显卡',
+      '来自于<a href="https://github.com/xinntao/BasicSR/tree/master/basicsr/ops/dcn">Xintao Wang的IconVSR</a>'
+    ]
   },
   decode: {
     text: '输入解码',
