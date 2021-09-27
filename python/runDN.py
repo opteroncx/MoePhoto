@@ -1,6 +1,5 @@
 # -*- coding:utf-8 -*-
 import numpy as np
-from torch import load
 from imageProcess import initModel, Option
 from models import NetDN, SEDN
 from config import config
@@ -29,5 +28,5 @@ def getOpt(optDN):
   opt.modelCached = initModel(opt, opt.model, 'DN' + model)
   opt.squeeze = lambda x: x.squeeze(1)
   opt.unsqueeze = lambda x: x.unsqueeze(1)
-  opt.padding = 5
+  opt.padding = 15
   return opt

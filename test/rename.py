@@ -40,7 +40,7 @@ reT = lambda t: ((t[0],), t[1], t[2], None, None)
 
 def renameByRules(models, rsts='', subs=''):
   for mC, kwargs, root, *paths in models:
-    m = mC(**kwargs)
+    m = mC(**kwargs) if mC else None
     for modelPath in paths:
       print(modelPath)
       weights = torch.load(modelPath, map_location='cpu')
@@ -48,14 +48,20 @@ def renameByRules(models, rsts='', subs=''):
         weights = weights[root]
       cc(weights)(rsts)
       cc(weights, getSubNames)(subs)
-      m.load_state_dict(weights)
-      torch.save(m.state_dict(), modelPath + '.new', pickle_protocol=4)
-  return m
+      if m:
+        m.load_state_dict(weights)
+        torch.save(m.state_dict(), modelPath + '.new', pickle_protocol=4)
+  return m if m else weights
 
 def pp(m, l=0):
+  t = '\t' * l
   for key in m:
-    if type(m[key]) == torch.Tensor:
-      print(('\t' * l) + key, m[key].shape)
+    v = m[key]
+    tl = t + str(key)
+    if type(v) == torch.Tensor:
+      print(tl, v.shape)
+    elif type(v) in {bool, int, float, str, list, tuple, set}:
+      print(tl, v)
     else:
-      print(('\t' * l) + key + ':')
-      pp(m[key], l + 1)
+      print(tl + ':')
+      pp(v, l + 1)

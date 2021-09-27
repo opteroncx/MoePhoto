@@ -66,4 +66,5 @@ install.exe
 !/.user/preset_video/benchmark.json
 
 # development
-*.so
+/model/ESTRNN/
+/model/MPRNet/
