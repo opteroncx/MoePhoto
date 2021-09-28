@@ -25,11 +25,17 @@ getMatch = lambda o: o.group(1 if len(o.groups()) else 0)
 find = lambda names, r: set(getMatch(o) for o in filter(None, map(re.compile(r).match, names)))
 findRs = lambda w, rs: reduce(set.union, (find(w.keys(), r) for r in rs))
 def changeName(w, old, new):
+  if not old in w: return
   if new:
     w[new] = w[old]
     print('rename {} to {}'.format(old, new))
   del w[old]
-changeNames = lambda w, names: [changeName(w, old, new) for old, new in names]
+def changeNames(w, names):
+  values = dict((new, w[old]) for old, new in names)
+  for old, _ in names:
+    if old in w:
+      del w[old]
+  w.update(values)
 pf = lambda f, w, r: lambda p, s: [] if p is None else f(w, r, p, s)
 getNames = lambda w: lambda rst: reduce(lambda a, r: a + pf(replaces, w, r)(rst[1], rst[2]) + pf(inserts, w, r)(rst[3], rst[4]), findRs(w, rst[0]), [])
 getSubNames = lambda w: lambda rst: [(k, re.sub(rst[0], rst[1], k)) for k in w.keys() if re.match(rst[0], k)]

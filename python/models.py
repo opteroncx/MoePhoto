@@ -47,14 +47,11 @@ eF = lambda t: t[1] if type(t) is tuple else t
 extractFuncs = lambda args: map(eF, args)
 
 def toModule(f):
-  class M(nn.Module):
-    def __init__(self, *fs):
-      super(M, self).__init__()
-      addModules(self, fs)
-      self.f = f(*fs)
-
-    def forward(self, *args): return self.f(*args)
-  return M
+  def C(self, *fs):
+    super(self.__class__, self).__init__()
+    addModules(self, fs)
+    self.f = f(*fs)
+  return type('', (nn.Module,), {'__init__': C, 'forward': lambda self, *args: self.f(*args)})
 
 Residual = toModule(lambda *fs: lambda x: sum(f(x) for f in extractFuncs(fs)) + x)
 
@@ -188,7 +185,7 @@ class _Conv_Block(nn.Module):
       64 // 4, 64 * 4, kernel_size=1, bias=False)
     self.sig = nn.Sigmoid()
 
-  def resBlock1(self, x):
+  def forward(self, x):
     out=self.rblock(x)
     out1 = self.global_pool(out)
     out1 = self.conv_down(out1)
@@ -199,9 +196,6 @@ class _Conv_Block(nn.Module):
     out = self.trans(out)
     out = x + out
     return out
-
-  def forward(self, x):
-    return self.resBlock1(x)
 
 make_layer = lambda block, num_of_layer: nn.Sequential(*(block() for _ in range(num_of_layer)))
 
@@ -267,15 +261,15 @@ class Space_attention(torch.nn.Module):
 
 class FRM(nn.Module):
   '''The feature recalibration module'''
-  def __init__(self, channel, reduction=16):
+  def __init__(self, channel, reduction=16, bias=True):
     super(FRM, self).__init__()
     # global average pooling: feature --> point
     self.avg_pool = nn.AdaptiveAvgPool2d(1)
     # feature channel downscale and upscale --> channel weight
     self.conv_du = nn.Sequential(
-      nn.Conv2d(channel, channel // reduction, 1, padding=0, bias=True),
+      nn.Conv2d(channel, channel // reduction, 1, padding=0, bias=bias),
       nn.ReLU(inplace=True),
-      nn.Conv2d(channel // reduction, channel, 1, padding=0, bias=True),
+      nn.Conv2d(channel // reduction, channel, 1, padding=0, bias=bias),
       nn.Sigmoid()
     )
 
