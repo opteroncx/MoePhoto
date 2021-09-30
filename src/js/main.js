@@ -31,6 +31,7 @@ const scaleModelMapping = {
   gan: [0, 1, 0, 1],
   gana: [1, 1, 0, 1]
 }
+const MPRNetNote = '来自<a href="https://github.com/swz30/MPRNet">Syed Waqas Zamir</a>'
 var getResizeView = (by, scale, size) =>
   by === 'scale' ? scale + '倍' : appendText('pixel')(size)
 const getFileName = opt => ({
@@ -332,11 +333,16 @@ const panels = {
     args: {
       model: {
         type: 'radio',
-        text: '降噪强度',
+        text: '降噪模型',
         values: [
           { value: 'lite5', text: '弱', checked: 1 },
           { value: 'lite10', text: '中' },
-          { value: 'lite15', text: '强' }
+          { value: 'lite15', text: '强' },
+          {
+            value: 'MPRNet_denoising',
+            text: 'MPRNet',
+            notes: [MPRNetNote]
+          }
         ]
       }
     }
@@ -360,9 +366,27 @@ const panels = {
     }
   },
   dehaze: {
-    text: '去雾',
-    description: '去雾AODnet',
-    draggable: 1
+    text: '去雨去雾去模糊',
+    description: '三个模型分别能够去除静态画面中的雨滴、雾气和模糊效果',
+    draggable: 1,
+    args: {
+      model: {
+        type: 'radio',
+        text: '功能',
+        values: [
+          { value: 'dehaze', text: '去雾' },
+          {
+            value: 'MPRNet_deblurring', text: '去模糊',
+            checked: 1,
+            notes: [MPRNetNote]
+          },
+          {
+            value: 'MPRNet_deraining', text: '去雨',
+            notes: [MPRNetNote]
+          }
+        ]
+      }
+    }
   },
   demoire: {
     op: 'dehaze',
