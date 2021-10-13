@@ -334,6 +334,7 @@ const panels = {
       model: {
         type: 'radio',
         text: '降噪模型',
+        change: _ => 1,
         values: [
           { value: 'lite5', text: '弱', checked: 1 },
           { value: 'lite10', text: '中' },
@@ -373,6 +374,7 @@ const panels = {
       model: {
         type: 'radio',
         text: '功能',
+        change: _ => 1,
         values: [
           { value: 'dehaze', text: '去雾' },
           {
