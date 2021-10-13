@@ -408,7 +408,7 @@ const panels = {
             value: 'moire_obj',
             text: '自然模型',
             checked: 1,
-            notes: ['自然模型比较擅长保留对象的纹理']
+            notes: ['自然模型比较擅长保留对象的纹理，也比较占资源']
           },
           {
             value: 'moire_screen_gan',
@@ -422,8 +422,7 @@ const panels = {
   VSR: {
     text: '视频放大',
     description: [
-      '专用于视频的4倍放大，带一点去模糊能力',
-      '切块分批什么的都还没做啦，所以得有张好显卡',
+      '专用于视频的4倍放大，比单张图片的放大快多了，效果说不定还好一点',
       '来自于<a href="https://github.com/xinntao/BasicSR/blob/master/basicsr/archs/basicvsr_arch.py">Xintao Wang的IconVSR</a>'
     ].join('<br />'),
     draggable: 1
