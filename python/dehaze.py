@@ -9,16 +9,16 @@ from MPRNet import MPRNet
 from imageProcess import initModel, identity, doCrop, Option
 from config import config
 normalize = Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-ramCoef = .95 / np.array([[443., 160., 152.], [503.1, 275.34, 276.], [41951.3, 16788.7, 7029.7], [99., 99., 99.2], [99., 99., 99.2]])
-ram2 = np.array([[[85<<23, -43520., 115/128], [-18<<20, 38272., 89/128], [-141<<20, 39488., 19/1536]],
-[[61<<22, 600., 1/3920], [123<<22, 2200., 1/784], [619<<20, 1496., 1/1890]]])
+ramCoef = .95 / np.array([[1329., 480., 456.], [1509.3, 826.02, 828.], [69981, 9616, 5040], [30069, 3960, 2120]])
+ram2 = np.array([[[18196, 32868., 25/32], [-89<<20, 6336., 533 / 768], [-68<<22, 7264., 282/829]],
+[[-98<<16, 6640., 1/771], [68<<19, 1152., 0], [53<<18, 1088., 0]]])
 mode_switch = {
   'dehaze': ('./model/dehaze/AOD_net_epoch_relu_10.pth', AODnet, ramCoef[0], 1, 8, normalize),
   'sun': ('./model/demoire/sun_epoch_200.pth', SUNNet, ramCoef[1], 9, 32, identity),
   'moire_obj': ('./model/demoire/moire_obj.pth', ObjNet, ram2[0], 9, 128, identity),
   'moire_screen_gan': ('./model/demoire/moire_screen_gan.pth', GANNet, ram2[1], 17, 512, identity),
-  'MPRNet_deblurring': ('./model/MPRNet/model_deblurring.pth', MPRNet, ramCoef[3], 7, 8, identity),
-  'MPRNet_deraining': ('./model/MPRNet/model_deraining.pth', (lambda: MPRNet(n_feat=40, scale_unetfeats=20, scale_orsnetfeats=16)), ramCoef[4], 7, 8, identity),
+  'MPRNet_deblurring': ('./model/MPRNet/model_deblurring.pth', MPRNet, ramCoef[2], 7, 8, identity),
+  'MPRNet_deraining': ('./model/MPRNet/model_deraining.pth', (lambda: MPRNet(n_feat=40, scale_unetfeats=20, scale_orsnetfeats=16)), ramCoef[3], 7, 8, identity),
 }
 
 def getOpt(optDe):

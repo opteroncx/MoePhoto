@@ -66,9 +66,9 @@ def solveRam(m, c, k):
     v = m  / c - k[0]
     return (np.sqrt(k[1] * k[1] + 4 * k[2] * v) - k[1]) / 2 / k[2]
 
-def prepare(shape, ram, ramCoef, pad, sc, align=8, cropsize=0):
+def prepare(shape, ram, opt, pad, sc, align=8, cropsize=0):
   *_, c, h, w = shape
-  n = solveRam(ram, c, ramCoef)
+  n = solveRam(ram, opt.fixChannel or c, opt.ramCoef)
   af = alignF[align]
   s = af(minSize + pad * 2)
   if n < s * s:
@@ -135,8 +135,8 @@ def prepareOpt(opt, shape):
       raise MemoryError('Can not calculate free memory.')
     if opt.ensemble > 0:
       opt2 = copy(opt)
-      opt2.iterClip, opt2.padImage, opt2.unpad, *_ = prepare(transposeShape(shape), freeRam, opt.ramCoef, pad, sc, opt.align, opt.cropsize)
-    opt.iterClip, opt.padImage, opt.unpad, outShape, opt.blend = prepare(shape, freeRam, opt.ramCoef, pad, sc, opt.align, opt.cropsize)
+      opt2.iterClip, opt2.padImage, opt2.unpad, *_ = prepare(transposeShape(shape), freeRam, opt, pad, sc, opt.align, opt.cropsize)
+    opt.iterClip, opt.padImage, opt.unpad, outShape, opt.blend = prepare(shape, freeRam, opt, pad, sc, opt.align, opt.cropsize)
     if (not hasattr(opt, 'outShape')) or opt.outShape is None:
       opt.outShape = outShape
     if opt.ensemble > 0:
@@ -367,7 +367,7 @@ def transposeShape(shape):
 class Option():
   def __init__(self, path=''):
     self.ramCoef = 1e-3
-    self.padding, self.scale, self.cropsize, self.align = 1, 1, 0, 8
+    self.padding, self.scale, self.cropsize, self.align, self.fixChannel = 1, 1, 0, 8, 1
     self.ensemble = 0
     self.model = path
     self.outShape = None

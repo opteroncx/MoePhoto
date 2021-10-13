@@ -5,7 +5,7 @@ from models import NetDN, SEDN
 from MPRNet import MPRNet
 from config import config
 
-ramCoef = .9 / np.array([[2700., 2400., 1253.4], [4106.9, 7405., 4304.2], [99., 99., 99.2]])
+ramCoef = .9 / np.array([[2700., 2400., 1253.4], [4106.9, 7405., 4304.2], [60493., 8400., 4288.]])
 mode_switch = {
   '15': ('./model/l15/model_new.pth', SEDN, ramCoef[1], 1),
   '25': ('./model/l25/model_new.pth', SEDN, ramCoef[1], 1),
@@ -30,6 +30,7 @@ def getOpt(optDN):
   opt.modelCached = initModel(opt, opt.model, 'DN' + model)
   sd = mode_switch[model][3]
   if sd:
+    opt.fixChannel = 0
     opt.squeeze = lambda x: x.squeeze(sd)
     opt.unsqueeze = lambda x: x.unsqueeze(sd)
   opt.padding = 15

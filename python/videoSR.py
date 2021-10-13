@@ -410,24 +410,23 @@ def doUpsample(opt, inp, forward, **_):
   return out
 
 modelPath = './model/vsr/IconVSR_Vimeo90K_BDx4-cfcb7e00.pth'
-# TODO: measure ram coefs
-ramCoef = [.9 / x for x in (100., 100., 100., 100., 100., 1., 1., 100., 100., 100., 100., 100., 1., 1., 100., 100., 100., 100., 100.)]
-fusionRamCoef = [.9 / x for x in (100., 100., 100.)]
+ramCoef = [.9 / x for x in (98610., 1535.625, 15616., 15616., 14528., 1., 1., 14048., 1504., 2144., 2400., 11072., 1., 1., 7936., 1376., 1472., 1600., 10072.)]
+fusionRamCoef = [.9 / x for x in (256., 1344., 1280.)]
 newFusion = lambda *_: conv2d311(2 * NumFeat, NumFeat)
 modules = dict(
-  edvr={'weight': 'edvr', 'outShape': (1, NumFeat, 1, 1), 'staticDims': [0],
-    'f': lambda *_: EDVRFeatureExtractor(RefTime, NumFeat)},
-  spynet={'weight': 'spynet', 'f': SpyNet, 'streams': ['flowBackward', 'flowForward']},
-  backward_trunk={'weight': 'backward_trunk', 'outShape': (1, NumFeat, 1, 1), 'staticDims': [0],
-    'f': lambda *_: ConvResidualBlocks(NumFeat + 3, NumFeat, 30)},
-  forward_trunk={'weight': 'forward_trunk', 'outShape': (1, NumFeat, 1, 1), 'staticDims': [0],
-    'f': lambda *_: ConvResidualBlocks(2 * NumFeat + 3, NumFeat, 30)},
-  upsample={'weight': 'upsample', 'outShape': (1, 3, 4, 4),
-    'f': Upsample, 'streams': ['out']},
-  backward_fusion={'weight': 'backward_fusion', 'outShape': (1, NumFeat, 1, 1), 'staticDims': [0],
-    'f': newFusion, 'ramCoef': fusionRamCoef},
-  forward_fusion={'weight': 'forward_fusion', 'outShape': (1, NumFeat, 1, 1), 'staticDims': [0],
-    'f': newFusion, 'ramCoef': fusionRamCoef}
+  edvr=dict(weight='edvr', outShape=(1, NumFeat, 1, 1), staticDims=[0],
+    f=lambda *_: EDVRFeatureExtractor(RefTime, NumFeat)),
+  spynet=dict(weight='spynet', f=SpyNet, streams=['flowBackward', 'flowForward']),
+  backward_trunk=dict(weight='backward_trunk', outShape=(1, NumFeat, 1, 1), staticDims=[0],
+    f=lambda *_: ConvResidualBlocks(NumFeat + 3, NumFeat, 30)),
+  forward_trunk=dict(weight='forward_trunk', outShape=(1, NumFeat, 1, 1), staticDims=[0],
+    f=lambda *_: ConvResidualBlocks(2 * NumFeat + 3, NumFeat, 30)),
+  upsample=dict(weight='upsample', outShape=(1, 3, 4, 4),
+    f=Upsample, streams=['out'], scale=4),
+  backward_fusion=dict(weight='backward_fusion', outShape=(1, NumFeat, 1, 1), staticDims=[0],
+    f=newFusion, ramCoef=fusionRamCoef),
+  forward_fusion=dict(weight='forward_fusion', outShape=(1, NumFeat, 1, 1), staticDims=[0],
+    f=newFusion, ramCoef=fusionRamCoef)
 )
 
 def getOpt(_):
