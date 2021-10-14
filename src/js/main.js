@@ -427,7 +427,13 @@ const panels = {
       '专用于视频的4倍放大，比单张图片的放大快多了，效果说不定还好一点',
       '来自于<a href="https://github.com/xinntao/BasicSR/blob/master/basicsr/archs/basicvsr_arch.py">Xintao Wang的IconVSR</a>'
     ].join('<br />'),
-    draggable: 1
+    draggable: 1,
+    args: {
+      _scale: {
+        value: 4,
+        summary: { op: '*', keys: ['scaleW', 'scaleH'] }
+      }
+    }
   },
   decode: {
     text: '输入解码',

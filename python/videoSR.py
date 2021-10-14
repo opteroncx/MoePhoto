@@ -410,7 +410,7 @@ def doUpsample(opt, inp, forward, **_):
   return out
 
 modelPath = './model/vsr/IconVSR_Vimeo90K_BDx4-cfcb7e00.pth'
-ramCoef = [.9 / x for x in (98610., 1535.625, 15616., 15616., 14528., 1., 1., 14048., 1504., 2144., 2400., 11072., 1., 1., 7936., 1376., 1472., 1600., 10072.)]
+ramCoef = [.6 / x for x in (98610., 1535.625, 15616., 15616., 14528., 1., 1., 14048., 1504., 2144., 2400., 11072., 1., 1., 7936., 1376., 1472., 1600., 10072.)]
 fusionRamCoef = [.9 / x for x in (256., 1344., 1280.)]
 newFusion = lambda *_: conv2d311(2 * NumFeat, NumFeat)
 modules = dict(
@@ -489,7 +489,7 @@ def doVSR(func, node, opt):
       h = h << 2
       opt.flow_warp = backWarp(width, height, device=x.device, dtype=x.dtype)
       opt.unpad = lambda im: im[:, :h, :w]
-      setOutShape(modules, opt, height, width, lambda *_: 1)
+      setOutShape(modules, opt, height, width)
 
     if opt.end:
       keyframeFeatureInp.setPadding(opt.end)

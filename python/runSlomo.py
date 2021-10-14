@@ -66,7 +66,7 @@ def setOutShape(modules, opt, height, width, bf=getBatchSize):
       if 'staticDims' in o:
         for i in o['staticDims']:
           od[key].outShape[i] = q[i]
-    if 'streams' in o:
+    if 'streams' in o and (not 0 in o.get('staticDims', {})):
       for name in o['streams']:
         od[name].send((None, batchSize))
   return opt
