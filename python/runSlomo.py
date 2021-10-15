@@ -13,7 +13,7 @@ log = logging.getLogger('Moe')
 modelPath = './model/slomo/SuperSloMo.ckpt'
 RefTime = 2
 WindowSize = 2
-ramCoef = [.95 / x for x in (2700., 828., 2700., 822., 1338., 360.)]
+ramCoef = [.95 / x for x in (8100., 2484., 8100., 2466., 4014., 1080.)]
 getFlowComp = lambda *_: UNet(6, 4)
 getFlowIntrp = lambda *_: UNet(20, 5)
 getFlowBack = lambda opt: backWarp(opt.width, opt.height, config.device(), config.dtype())
@@ -22,12 +22,13 @@ modules = dict(
   flowComp={'weight': 'state_dictFC', 'f': getFlowComp, 'outShape': (1, 4, 1, 1)},
   ArbTimeFlowIntrp={'weight': 'state_dictAT', 'f': getFlowIntrp, 'outShape': (1, 5, 1, 1)})
 
-def newOpt(func, ramCoef, align=32, padding=45, **_):
+def newOpt(func, ramCoef, align=32, padding=45, scale=1, **_):
   opt = Option()
   opt.modelCached = lambda x: (func(x),) # compatibility with doCrop calling f(x)[-1]
   opt.ramCoef = ramCoef
   opt.align = align
   opt.padding = padding
+  opt.scale = scale
   opt.squeeze = identity
   opt.unsqueeze = identity
   return opt
@@ -42,9 +43,7 @@ def getOptS(modelPath, modules, ramCoef):
     wKey = m['weight']
     constructor = m.get('f', 0)
     rc = m['ramCoef'][config.getRunType()] if 'ramCoef' in m else ramCoef[opt.ramOffset + i]
-    o = dict()
-    if 'align' in m: o['align'] = m['align']
-    if 'padding' in m: o['padding'] = m['padding']
+    o = dict((k, m[k]) for k in ('align', 'padding', 'scale') if k in m)
     model = initModel(opt, weights[wKey], key, constructor)
     if 'outShape' in m:
       opt.__dict__[key] = newOpt(model, rc, **o)
@@ -64,7 +63,7 @@ def setOutShape(modules, opt, height, width, bf=getBatchSize):
       if 'staticDims' in o:
         for i in o['staticDims']:
           od[key].outShape[i] = q[i]
-    if 'streams' in o:
+    if 'streams' in o and (not 0 in o.get('staticDims', {})):
       for name in o['streams']:
         od[name].send((None, batchSize))
   return opt

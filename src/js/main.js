@@ -31,6 +31,7 @@ const scaleModelMapping = {
   gan: [0, 1, 0, 1],
   gana: [1, 1, 0, 1]
 }
+const MPRNetNote = '来自<a href="https://github.com/swz30/MPRNet">Syed Waqas Zamir</a>'
 var getResizeView = (by, scale, size) =>
   by === 'scale' ? scale + '倍' : appendText('pixel')(size)
 const getFileName = opt => ({
@@ -332,11 +333,17 @@ const panels = {
     args: {
       model: {
         type: 'radio',
-        text: '降噪强度',
+        text: '降噪模型',
+        change: _ => 1,
         values: [
           { value: 'lite5', text: '弱', checked: 1 },
           { value: 'lite10', text: '中' },
-          { value: 'lite15', text: '强' }
+          { value: 'lite15', text: '强' },
+          {
+            value: 'MPRNet_denoising',
+            text: 'MPRNet',
+            notes: [MPRNetNote]
+          }
         ]
       }
     }
@@ -360,9 +367,28 @@ const panels = {
     }
   },
   dehaze: {
-    text: '去雾',
-    description: '去雾AODnet',
-    draggable: 1
+    text: '去雨去雾去模糊',
+    description: '三个模型分别能够去除静态画面中的雨滴、雾气和模糊效果',
+    draggable: 1,
+    args: {
+      model: {
+        type: 'radio',
+        text: '功能',
+        change: _ => 1,
+        values: [
+          { value: 'dehaze', text: '去雾' },
+          {
+            value: 'MPRNet_deblurring', text: '去模糊',
+            checked: 1,
+            notes: [MPRNetNote]
+          },
+          {
+            value: 'MPRNet_deraining', text: '去雨',
+            notes: [MPRNetNote]
+          }
+        ]
+      }
+    }
   },
   demoire: {
     op: 'dehaze',
@@ -384,7 +410,7 @@ const panels = {
             value: 'moire_obj',
             text: '自然模型',
             checked: 1,
-            notes: ['自然模型比较擅长保留对象的纹理']
+            notes: ['自然模型比较擅长保留对象的纹理，也比较占资源']
           },
           {
             value: 'moire_screen_gan',
@@ -398,11 +424,16 @@ const panels = {
   VSR: {
     text: '视频放大',
     description: [
-      '专用于视频的4倍放大，带一点去模糊能力',
-      '切块分批什么的都还没做啦，所以得有张好显卡',
+      '专用于视频的4倍放大，比单张图片的放大快多了，效果说不定还好一点',
       '来自于<a href="https://github.com/xinntao/BasicSR/blob/master/basicsr/archs/basicvsr_arch.py">Xintao Wang的IconVSR</a>'
     ].join('<br />'),
-    draggable: 1
+    draggable: 1,
+    args: {
+      _scale: {
+        value: 4,
+        summary: { op: '*', keys: ['scaleW', 'scaleH'] }
+      }
+    }
   },
   decode: {
     text: '输入解码',
