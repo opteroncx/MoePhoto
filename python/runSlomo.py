@@ -43,10 +43,7 @@ def getOptS(modelPath, modules, ramCoef):
     wKey = m['weight']
     constructor = m.get('f', 0)
     rc = m['ramCoef'][config.getRunType()] if 'ramCoef' in m else ramCoef[opt.ramOffset + i]
-    o = dict()
-    if 'align' in m: o['align'] = m['align']
-    if 'padding' in m: o['padding'] = m['padding']
-    if 'scale' in m: o['scale'] = m['scale']
+    o = dict((k, m[k]) for k in ('align', 'padding', 'scale') if k in m)
     model = initModel(opt, weights[wKey], key, constructor)
     if 'outShape' in m:
       opt.__dict__[key] = newOpt(model, rc, **o)
