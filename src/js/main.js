@@ -435,6 +435,32 @@ const panels = {
       }
     }
   },
+  demob: {
+    text: '清晰动作',
+    description: '消除运动模糊，让运动物体清晰起来，是个快乎乎的模型',
+    draggable: 1,
+    args: {
+      model: {
+        type: 'radio',
+        text: '时间区间',
+        values: [
+          {
+            value: '1ms8ms',
+            text: '1到8毫秒'
+          },
+          {
+            value: '2ms16ms',
+            text: '2到16毫秒'
+          },
+          {
+            value: '3ms24ms',
+            text: '3到24毫秒'
+          }
+        ],
+        notes: ['来自于<a href="https://github.com/zzh-tech/ESTRNN">Zhihang Zhong的ESTRNN</a>']
+      }
+    }
+  },
   decode: {
     text: '输入解码',
     description:

@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from imageProcess import ceilBy, StreamState, identity, doCrop
 from models import ModulatedDeformConvPack, ResidualBlockNoBN, make_layer, conv2d311
 from slomo import backWarp
-from runSlomo import getOptS, setOutShape
+from runSlomo import getOptS, getOptP, makeStreamFunc
 from progress import Node
 
 RefTime = 7
@@ -403,7 +403,6 @@ def calcForward(opt, state, inp, flowInp, keyframeFeature, backward, **_):
   return out
 
 def doUpsample(opt, inp, forward, **_):
-  setBatchSize(opt.upsample, inp)
   out = doCrop(opt.upsample, forward)
   base = F.interpolate(inp, scale_factor=4, mode='bilinear', align_corners=False)
   out += base
@@ -428,20 +427,22 @@ modules = dict(
   forward_fusion=dict(weight='forward_fusion', outShape=(1, NumFeat, 1, 1), staticDims=[0],
     f=newFusion, ramCoef=fusionRamCoef)
 )
+getOpt = lambda *_: getOptP(getOptS(modelPath, modules, ramCoef))
 
-def getOpt(_):
-  opt = getOptS(modelPath, modules, ramCoef)
-  opt.flow_warp = None
-  opt.startPadding = 0
-  opt.i = 0
-  return opt
+def initFunc(opt, x):
+  *_, h, w = x.shape
+  width = ceilBy(64)(w)
+  height = ceilBy(64)(h)
+  opt.pad = nn.ReflectionPad2d((0, width - w, 0, height - h))
+  w = w << 2
+  h = h << 2
+  opt.flow_warp = backWarp(width, height, device=x.device, dtype=x.dtype)
+  opt.unpad = lambda im: im[:, :h, :w]
+  return height, width
 
-def setBatchSize(opt, x):
-  opt.outShape[0] = x.shape[0]
-
-extend = lambda out, res: out.extend(tuple(res)) if res != None else None
 def doVSR(func, node, opt):
-  opt.inp = StreamState(offload=False)
+  nodes = [Node({'IconVSR': key}) for key in ('KeyframeFeature', 'Flow', 'Backward', 'Flow', 'Forward', 'upsample')]
+  inp = StreamState(offload=False)
   inp1 = StreamState()
   inp2 = StreamState()
   backwardInp = StreamState()
@@ -450,74 +451,33 @@ def doVSR(func, node, opt):
   flowBackwardInp = StreamState(offload=False)
   isKeyFrame = KeyFrameState(RefTime)
   keyframeFeatureInp = StreamState(RefTime, tensor=False, reserve=1, offload=False)
-  StreamState.pipe(identity, [opt.inp], [inp1, inp2, flowInp, backwardInp])
+  StreamState.pipe(identity, [inp], [inp1, inp2, flowInp, backwardInp])
   StreamState.pipe(identity, [flowInp], [flowForwardInp, flowBackwardInp])
   keyframeFeature = StreamState(tensor=False, offload=False)
-  n1 = Node({'IconVSR' :'KeyframeFeature'})
-  StreamState.pipe(n1.bindFunc(getKeyframeFeature), [keyframeFeatureInp, isKeyFrame], [keyframeFeature], args=[opt], size=7)
+  StreamState.pipe(nodes[0].bindFunc(getKeyframeFeature),
+    [keyframeFeatureInp, isKeyFrame], [keyframeFeature], args=[opt], size=7)
   keyframeFeature1 = StreamState(tensor=False)
   keyframeFeature2 = StreamState(tensor=False)
   StreamState.pipe(identity, [keyframeFeature], [keyframeFeature1, keyframeFeature2])
   flowBackward = StreamState(tensor=False)
-  n2 = Node({'IconVSR' :'Flow'})
-  opt.flowBackward = StreamState.pipe(n2.bindFunc(calcFlowBackward), [flowBackwardInp], [flowBackward], args=[opt], size=1)
+  opt.flowBackward = StreamState.pipe(nodes[1].bindFunc(calcFlowBackward),
+    [flowBackwardInp], [flowBackward], args=[opt], size=1)
   backward = StreamState(3, tensor=False)
-  n3 = Node({'IconVSR' :'Backward'})
-  StreamState.pipe(n3.bindFunc(calcBackward), [backwardInp, flowBackward, keyframeFeature1], [backward], args=[opt], size=20)
+  StreamState.pipe(nodes[2].bindFunc(calcBackward),
+    [backwardInp, flowBackward, keyframeFeature1], [backward], args=[opt], size=20)
   flowForward = StreamState(tensor=False, offload=False)
   flowForward.first = 1 # signal alignment for frame 0, 1
-  n4 = Node({'IconVSR' :'Flow'})
-  opt.flowForward = StreamState.pipe(n4.bindFunc(calcFlowForward), [flowForwardInp], [flowForward], args=[opt, flowForward], size=1)
+  opt.flowForward = StreamState.pipe(nodes[3].bindFunc(calcFlowForward),
+    [flowForwardInp], [flowForward], args=[opt, flowForward], size=1)
   forward = StreamState(offload=False)
   forward.feat_prop = None
-  n5 = Node({'IconVSR' :'Forward'})
-  StreamState.pipe(n5.bindFunc(calcForward), [inp1, flowForward, keyframeFeature2, backward], [forward], args=[opt, forward])
+  StreamState.pipe(nodes[4].bindFunc(calcForward),
+    [inp1, flowForward, keyframeFeature2, backward], [forward], args=[opt, forward])
   upsample = StreamState(store=False)
-  n6 = Node({'IconVSR' :'upsample'})
-  opt.out = StreamState.pipe(n6.bindFunc(doUpsample), [inp2, forward], [upsample], args=[opt], size=1)
-  node.append(n1).append(n2).append(n3).append(n4).append(n5).append(n6)
-  def f(x):
-    node.reset()
-    node.trace(0, p='VSR start')
-
-    if opt.flow_warp is None:
-      *_, h, w = x.shape
-      width = ceilBy(64)(w)
-      height = ceilBy(64)(h)
-      opt.pad = nn.ReflectionPad2d((0, width - w, 0, height - h))
-      w = w << 2
-      h = h << 2
-      opt.flow_warp = backWarp(width, height, device=x.device, dtype=x.dtype)
-      opt.unpad = lambda im: im[:, :h, :w]
-      setOutShape(modules, opt, height, width)
-
-    if opt.end:
-      keyframeFeatureInp.setPadding(opt.end)
-      opt.end = 0
-    if opt.start:
-      opt.startPadding = opt.start
-      keyframeFeatureInp.setPadding(opt.start)
-      opt.start = 0
-    last = True if x is None else None
-    if not last:
-      x = opt.pad(x.unsqueeze(0))
-      if opt.i + opt.startPadding >= RefTime >> 1:
-        opt.inp.push(x)
-      keyframeFeatureInp.push(x)
-      opt.i += 1
-    out = []
-    extend(out, opt.out.send(last))
-    node.trace()
-    while last:
-      try:
-        extend(out, opt.out.send(last))
-      except StopIteration: break
-    res = []
-    for item in out:
-      item = func(opt.unpad(item))
-      if type(item) == list:
-        res.extend(item)
-      elif not item is None:
-        res.append(item)
-    return res
-  return f
+  opt.out = StreamState.pipe(nodes[5].bindFunc(doUpsample),
+    [inp2, forward], [upsample], args=[opt], size=1)
+  def pushFunc(x):
+    if opt.i + opt.startPadding >= RefTime >> 1:
+      inp.push(x)
+    keyframeFeatureInp.push(x)
+  return makeStreamFunc(func, node, opt, nodes, 'VSR', [keyframeFeatureInp], initFunc, pushFunc)

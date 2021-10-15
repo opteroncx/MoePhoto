@@ -34,10 +34,6 @@ manifest.json
 # ignore developments
 /node_modules/
 
-# ignore WIP
-/templates/deblur.html
-/templates/lab.html
-
 # ignore old checkpoints
 /model/a2/model.pth
 /model/a3/model.pth
@@ -66,4 +62,3 @@ install.exe
 !/.user/preset_video/benchmark.json
 
 # development
-/model/ESTRNN/

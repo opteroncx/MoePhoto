@@ -15,6 +15,7 @@ toTorch = lambda x: torch.from_numpy(np.array(x)).permute(2, 0, 1).to(dtype=conf
 def context():pass
 readFile = readFile(context=context)
 readPic = lambda path: toTorch(readFile(path))
+modules = None
 
 import re
 from functools import reduce
@@ -43,8 +44,12 @@ cc = lambda w, f=getNames: lambda rsts: tuple(changeNames(w, f(w)(rst)) for rst 
 removeRoot = lambda w, r: tuple(changeName(w, old, None) for old in getRoot(w, r))
 fm1 = lambda i, s0, s1, s2: (s0.format(i + 1), s1.format(i + 1), s2.format(i))
 reT = lambda t: ((t[0],), t[1], t[2], None, None)
+# {'{name}.*' => '{name}': {'*'} for name in rules}
+namespaced = lambda w, rules: dict(
+  (name, dict((key.removeprefix('{}.'.format(name)), w[key]) for key in getRoot(w, name))) for name in rules
+)
 
-def renameByRules(models, rsts='', subs=''):
+def renameByRules(models, rsts='', subs='', rules=0):
   for mC, kwargs, root, *paths in models:
     m = mC(**kwargs) if mC else None
     for modelPath in paths:
@@ -54,9 +59,12 @@ def renameByRules(models, rsts='', subs=''):
         weights = weights[root]
       cc(weights)(rsts)
       cc(weights, getSubNames)(subs)
+      if rules:
+        weights = namespaced(weights, rules)
       if m:
-        m.load_state_dict(weights)
-        torch.save(m.state_dict(), modelPath + '.new', pickle_protocol=4)
+        print(m.load_state_dict(weights))
+        weights = m.state_dict()
+      torch.save(weights, modelPath + '.new', pickle_protocol=4)
   return m if m else weights
 
 def pp(m, l=0):
