@@ -15,6 +15,7 @@ from progress import Node, initialETA
 from worker import context, begin
 from runSlomo import RefTime as SlomoRefs
 from videoSR import RefTime as VSRRefs
+from ESTRNN import para as ESTRNNpara
 
 log = logging.getLogger('Moe')
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
@@ -33,9 +34,10 @@ reMatchOutput = re.compile(r'Output #0,')
 formats = {'.mp4', '.ts', '.mkv'}
 creationflag = sp.CREATE_NEW_PROCESS_GROUP if isWindows else 0
 sigint = signal.CTRL_BREAK_EVENT if isWindows else signal.SIGINT
-lookback = dict(slomo=SlomoRefs >> 1, VSR=VSRRefs >> 1)
-lookahead = dict(slomo=(SlomoRefs - 1) >> 1, VSR=(VSRRefs - 1) >> 1)  # assume all models have symmetrical windows
+lookback = dict(slomo=SlomoRefs >> 1, VSR=VSRRefs >> 1, demob=ESTRNNpara.past_frames)
+lookahead = dict(slomo=(SlomoRefs - 1) >> 1, VSR=(VSRRefs - 1) >> 1, demob=ESTRNNpara.future_frames)
 resizeOp = {'SR', 'resize', 'VSR'}
+padOp = {'VSR', 'demob'}
 popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, creationflags=creationflag)
 popenText = lambda command: sp.Popen(command, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
 insert1 = lambda t, s: ''.join((t[0], s, *t[1:]))
@@ -167,7 +169,7 @@ def prepare(video, by, steps):
       step['opt'].outEnd = -(-ahead % step['sf'])
       refs = max(ceil(refs / step['sf']), lookback[step['op']])
       ahead = max(ceil(ahead / step['sf']), lookahead[step['op']])
-    elif step['op'] == 'VSR':
+    elif step['op'] in padOp:
       step['opt'].start = 0
       step['opt'].end = 0
       refs += lookback[step['op']]
@@ -181,7 +183,7 @@ def prepare(video, by, steps):
         refs = refs * step['sf'] - step['opt'].outStart
         step['opt'].outStart = 0
         arefs = arefs * step['sf']
-      elif step['op'] == 'VSR':
+      elif step['op'] in padOp:
         step['opt'].start = min(refs - arefs, lookback[step['op']])
         refs -= step['opt'].start
     start = 0
@@ -356,7 +358,7 @@ def SR_vid(video, by, *steps):
           refs = refs * step['sf'] + step['opt'].outEnd # outEnd is negative
           step['opt'].outEnd = 0
           arefs = arefs * step['sf']
-        elif step['op'] == 'VSR':
+        elif step['op'] in padOp:
           step['opt'].end = -min(refs - arefs, lookahead[step['op']])
           refs += step['opt'].end
     p()

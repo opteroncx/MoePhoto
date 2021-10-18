@@ -334,6 +334,7 @@ const panels = {
       model: {
         type: 'radio',
         text: '降噪模型',
+        change: _ => 1,
         values: [
           { value: 'lite5', text: '弱', checked: 1 },
           { value: 'lite10', text: '中' },
@@ -373,6 +374,7 @@ const panels = {
       model: {
         type: 'radio',
         text: '功能',
+        change: _ => 1,
         values: [
           { value: 'dehaze', text: '去雾' },
           {
@@ -408,7 +410,7 @@ const panels = {
             value: 'moire_obj',
             text: '自然模型',
             checked: 1,
-            notes: ['自然模型比较擅长保留对象的纹理']
+            notes: ['自然模型比较擅长保留对象的纹理，也比较占资源']
           },
           {
             value: 'moire_screen_gan',
@@ -422,11 +424,42 @@ const panels = {
   VSR: {
     text: '视频放大',
     description: [
-      '专用于视频的4倍放大，带一点去模糊能力',
-      '切块分批什么的都还没做啦，所以得有张好显卡',
+      '专用于视频的4倍放大，比单张图片的放大快多了，效果说不定还好一点',
       '来自于<a href="https://github.com/xinntao/BasicSR/blob/master/basicsr/archs/basicvsr_arch.py">Xintao Wang的IconVSR</a>'
     ].join('<br />'),
-    draggable: 1
+    draggable: 1,
+    args: {
+      _scale: {
+        value: 4,
+        summary: { op: '*', keys: ['scaleW', 'scaleH'] }
+      }
+    }
+  },
+  demob: {
+    text: '清晰动作',
+    description: '消除运动模糊，让运动物体清晰起来，是个快乎乎的模型',
+    draggable: 1,
+    args: {
+      model: {
+        type: 'radio',
+        text: '时间区间',
+        values: [
+          {
+            value: '1ms8ms',
+            text: '1到8毫秒'
+          },
+          {
+            value: '2ms16ms',
+            text: '2到16毫秒'
+          },
+          {
+            value: '3ms24ms',
+            text: '3到24毫秒'
+          }
+        ],
+        notes: ['来自于<a href="https://github.com/zzh-tech/ESTRNN">Zhihang Zhong的ESTRNN</a>']
+      }
+    }
   },
   decode: {
     text: '输入解码',

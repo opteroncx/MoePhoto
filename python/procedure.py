@@ -9,9 +9,10 @@ import runSR
 import runSlomo
 import dehaze
 import videoSR
+import ESTRNN
 from worker import context
 
-videoOps = {'slomo': runSlomo.WindowSize, 'VSR': videoSR.WindowSize}
+videoOps = dict(slomo=runSlomo.WindowSize, VSR=videoSR.WindowSize, demob=ESTRNN.WindowSize)
 applyNonNull = lambda v, f: NonNullWrap(f)(v)
 NonNullWrap = lambda f: lambda x: f(x) if not x is None else None
 newNode = lambda opt, op, load=1, total=1: Node(op, load, total, name=opt.get('name', None))
@@ -74,6 +75,11 @@ def procSlomo(opt, out, *_):
   node = newNode(opt, dict(op='slomo'), load, opt['sf'])
   return fs + [runSlomo.doSlomo], ns + [node], out
 
+def procDemob(opt, out, *_):
+  fs, ns = convertChannel(out) if out['channel'] else ([], [])
+  ns.append(newNode(opt, dict(op='ESTRNN', learn=0), out['load']))
+  return fs + [ESTRNN.doESTRNN], ns, out
+
 def procDehaze(opt, out, *_):
   load = out['load']
   dehazeOpt = opt['opt']
@@ -121,7 +127,8 @@ procs = dict(
     procInput('file', 8, [context.getFile, readFile(nodes, context)], dict(bitDepth=8, channel=0, source=0))),
   buffer=(lambda opt, *_:
     procInput('buffer', opt['bitDepth'], [toNumPy(opt['bitDepth'])], dict(bitDepth=opt['bitDepth'], channel=1, source=1))),
-  DN=procDN, SR=procSR, output=procOutput, slomo=procSlomo, dehaze=procDehaze, resize=procResize, VSR=procVSR
+  DN=procDN, SR=procSR, output=procOutput, slomo=procSlomo,
+  dehaze=procDehaze, resize=procResize, VSR=procVSR, demob=procDemob
   )
 
 stepOpts = dict(
@@ -130,7 +137,8 @@ stepOpts = dict(
   DN={'getOpt': runDN},
   dehaze={'getOpt': dehaze},
   slomo={'toInt': ['sf'], 'getOpt': runSlomo},
-  VSR={'getOpt': videoSR}
+  VSR={'getOpt': videoSR},
+  demob={'getOpt': ESTRNN}
 )
 def genProcess(steps, root=True, outType=None):
   funcs=[]

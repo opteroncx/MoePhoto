@@ -6,14 +6,14 @@ code refered from https://github.com/avinashpaliwal/Super-SloMo.git
 import logging
 import torch
 from slomo import UNet, backWarp
-from imageProcess import initModel, getStateDict, getPadBy32, doCrop, identity, Option
+from imageProcess import initModel, getStateDict, getPadBy32, doCrop, identity, Option, extend
 from config import config
 
 log = logging.getLogger('Moe')
 modelPath = './model/slomo/SuperSloMo.ckpt'
 RefTime = 2
 WindowSize = 2
-ramCoef = [.95 / x for x in (2700., 828., 2700., 822., 1338., 360.)]
+ramCoef = [.95 / x for x in (8100., 2484., 8100., 2466., 4014., 1080.)]
 getFlowComp = lambda *_: UNet(6, 4)
 getFlowIntrp = lambda *_: UNet(20, 5)
 getFlowBack = lambda opt: backWarp(opt.width, opt.height, config.device(), config.dtype())
@@ -22,12 +22,13 @@ modules = dict(
   flowComp={'weight': 'state_dictFC', 'f': getFlowComp, 'outShape': (1, 4, 1, 1)},
   ArbTimeFlowIntrp={'weight': 'state_dictAT', 'f': getFlowIntrp, 'outShape': (1, 5, 1, 1)})
 
-def newOpt(func, ramCoef, align=32, padding=45, **_):
+def newOpt(func, ramCoef, align=32, padding=45, scale=1, **_):
   opt = Option()
-  opt.modelCached = lambda x: (func(x),) # compatibility with doCrop calling f(x)[-1]
+  opt.modelCached = func
   opt.ramCoef = ramCoef
   opt.align = align
   opt.padding = padding
+  opt.scale = scale
   opt.squeeze = identity
   opt.unsqueeze = identity
   return opt
@@ -35,16 +36,14 @@ def newOpt(func, ramCoef, align=32, padding=45, **_):
 def getOptS(modelPath, modules, ramCoef):
   opt = Option(modelPath)
   weights = getStateDict(modelPath)
-  opt.modulesCount = len(modules)
+  opt.modules = modules
   opt.ramOffset = config.getRunType() * len(modules)
   for i, key in enumerate(modules):
     m = modules[key]
     wKey = m['weight']
     constructor = m.get('f', 0)
     rc = m['ramCoef'][config.getRunType()] if 'ramCoef' in m else ramCoef[opt.ramOffset + i]
-    o = dict()
-    if 'align' in m: o['align'] = m['align']
-    if 'padding' in m: o['padding'] = m['padding']
+    o = dict((k, m[k]) for k in ('align', 'padding', 'scale') if k in m)
     model = initModel(opt, weights[wKey], key, constructor)
     if 'outShape' in m:
       opt.__dict__[key] = newOpt(model, rc, **o)
@@ -53,21 +52,67 @@ def getOptS(modelPath, modules, ramCoef):
       opt.__dict__[key] = model
   return opt
 
-def setOutShape(modules, opt, height, width, bf=getBatchSize):
+def setOutShape(opt, height, width):
   load = width * height
   od = opt.__dict__
-  for key, o in modules.items():
-    batchSize = bf(load, od[key].ramCoef)
+  for key, o in opt.modules.items():
+    batchSize = opt.bf(load, od[key].ramCoef)
     if 'outShape' in o:
       q = o['outShape']
       od[key].outShape = [batchSize, *q[1:-2], int(height * q[-2]), int(width * q[-1])]
       if 'staticDims' in o:
         for i in o['staticDims']:
           od[key].outShape[i] = q[i]
-    if 'streams' in o:
+    if 'streams' in o and (not 0 in o.get('staticDims', {})):
       for name in o['streams']:
         od[name].send((None, batchSize))
   return opt
+
+def getOptP(opt, bf=getBatchSize):
+  opt.startPadding = 0
+  opt.i = 0
+  opt.bf = bf
+  return opt
+
+def makeStreamFunc(func, node, opt, nodes, name, padStates, initFunc, pushFunc):
+  for n in nodes:
+    node.append(n)
+  def f(x):
+    node.reset()
+    node.trace(0, p='{} start'.format(name))
+
+    if not opt.i:
+      setOutShape(opt, *initFunc(opt, x))
+
+    if opt.end:
+      for s in padStates:
+        s.setPadding(opt.end)
+      opt.end = 0
+    if opt.start:
+      opt.startPadding = opt.start
+      for s in padStates:
+        s.setPadding(opt.start)
+      opt.start = 0
+    last = True if x is None else None
+    if not last:
+      pushFunc(opt.pad(x.unsqueeze(0)))
+      opt.i += 1
+    out = []
+    extend(out, opt.out.send(last))
+    node.trace()
+    while last:
+      try:
+        extend(out, opt.out.send(last))
+      except StopIteration: break
+    res = []
+    for item in out:
+      item = func(opt.unpad(item))
+      if type(item) == list:
+        res.extend(item)
+      elif not item is None:
+        res.append(item)
+    return res
+  return f
 
 def getOpt(option):
   opt = getOptS(modelPath, modules, ramCoef)
