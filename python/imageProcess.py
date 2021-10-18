@@ -145,15 +145,15 @@ def prepareOpt(opt, shape):
       opt.transposedOpt = opt2
   return sc, padSc
 
-def doCrop(opt, x, *args):
+def doCrop(opt, x, *args, **_):
   sc, padSc = prepareOpt(opt, x.shape)
-  f, bl = opt.modelCached, opt.blend
+  bl = opt.blend
   x = opt.padImage(opt.unsqueeze(x))
-  tmp_image = torch.zeros(opt.outShape, dtype=x.dtype, device=x.device)
+  tmp_image = x.new_zeros((x.size(0), *opt.outShape[1:]))
 
   for top, bottom, left, right, topT, leftT, bsc, rsc in opt.iterClip():
     s = x[..., top:bottom, left:right]
-    r = opt.squeeze(f(s, *args)[-1])
+    r = opt.squeeze(opt(s, *args))
     t = tmp_image[..., top * sc:bsc, left * sc:rsc]
     q, _ = blend(*blend(opt.unpad(r), t, topT, padSc, -2, bl.t()), leftT, padSc, -1, bl)
     *_, h, w = q.shape
@@ -375,6 +375,12 @@ class Option():
     self.squeeze = lambda x: x.squeeze(0)
     self.unsqueeze = lambda x: x.unsqueeze(0)
 
+  def __call__(self, x, *args, **kwargs):
+    out = self.modelCached(x, *args, **kwargs)
+    if type(out) == list:
+      out = out[-1]
+    return out
+
 offload = lambda b: [t.cpu() if isinstance(t, torch.Tensor) else t for t in b] if type(b) == list else b.cpu()
 load2device = lambda b, device: b.to(device) if isinstance(b, torch.Tensor) else (b if b == None else [load2device(t, device) for t in b])
 
@@ -386,7 +392,7 @@ def DefaultStreamSource(last=None):
     flag &= not last
 
 class StreamState():
-  def __init__(self, window=None, device=config.device(), offload=True, store=True, tensor=True, name=None, **_):
+  def __init__(self, window=None, device=config.device(), offload=True, store=True, tensor=True, name=None, reserve=0, **_):
     self.source = DefaultStreamSource()
     next(self.source)
     self.wm1 = window - 1 if window else 0
@@ -399,6 +405,8 @@ class StreamState():
     self.start = 0
     self.end = 0
     self.state = []
+    self.reserve = reserve # ensure enough items to pad
+    self.stateR = []
 
   def clear(self):
     self.state.clear()
@@ -419,6 +427,8 @@ class StreamState():
     if not r:
       return
     batch = [self.batchFunc(self.state[i:i + self.wm1 + 1]) for i in range(r)] if self.wm1 else self.state[:r]
+    if self.reserve:
+      self.stateR = (self.stateR + self.state[r - self.reserve: r])[-self.reserve:]
     self.state = self.state[r:]
     batch = self.batchFunc(batch)
     return load2device(batch, self.device) if self.offload else batch
@@ -433,11 +443,12 @@ class StreamState():
       return 0
     absPad = abs(padding)
     size = 1 + absPad * 2
-    if len(self.state) < size:
+    if len(self.stateR) + len(self.state) < size:
       return 0
     offset = padding - 2 if padding < 0 else 0
     ids = (torch.arange(absPad, 0, -1) + padding + offset).tolist()
-    batch = [self.state[i] for i in ids]
+    state = self.stateR + self.state
+    batch = [state[i] for i in ids]
     self.state = (self.state + batch) if padding < 0 else (batch + self.state)
     return padding
 
@@ -551,3 +562,4 @@ which = [getTransposedOpt, identity, identity, getTransposedOpt, getTransposedOp
 ensemble = lambda opt: lambda x: reduce((lambda v, t: (v + t[2](doCrop(t[3](opt), t[1](x)))).detach()), zip(range(opt.ensemble), trans, transInv, which), doCrop(opt, x))
 split = lambda *ps: lambda x: tuple(split(*ps[1:])(c) for c in x.split(ps[0], x.ndim - len(ps))) if len(ps) else x
 flat = lambda x: tuple(chain(*(flat(t) for t in x))) if len(x) and type(x[0]) is tuple else x
+extend = lambda out, res: out.extend(tuple(res)) if res != None else None
