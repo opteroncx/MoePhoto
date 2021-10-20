@@ -139,6 +139,7 @@ def prepareOpt(opt, shape):
     opt.iterClip, opt.padImage, opt.unpad, outShape, opt.blend = prepare(shape, freeRam, opt, pad, sc, opt.align, opt.cropsize)
     if (not hasattr(opt, 'outShape')) or opt.outShape is None:
       opt.outShape = outShape
+    opt.outShape = list(opt.outShape)
     if opt.ensemble > 0:
       opt2.blend = opt.blend
       opt2.outShape = transposeShape(opt.outShape)
@@ -148,8 +149,9 @@ def prepareOpt(opt, shape):
 def doCrop(opt, x, *args, **_):
   sc, padSc = prepareOpt(opt, x.shape)
   bl = opt.blend
+  opt.outShape[0] = x.size(0)
   x = opt.padImage(opt.unsqueeze(x))
-  tmp_image = x.new_zeros((x.size(0), *opt.outShape[1:]))
+  tmp_image = x.new_zeros(opt.outShape)
 
   for top, bottom, left, right, topT, leftT, bsc, rsc in opt.iterClip():
     s = x[..., top:bottom, left:right]
