@@ -21,10 +21,10 @@ conv2d110 = lambda in_channels, out_channels:\
 
 """Basic Module for SpyNet."""
 BasicModule = lambda: nn.Sequential(
-  conv2d713(8, 32), nn.ReLU(inplace=False),
-  conv2d713(32, 64), nn.ReLU(inplace=False),
-  conv2d713(64, 32), nn.ReLU(inplace=False),
-  conv2d713(32, 16), nn.ReLU(inplace=False),
+  conv2d713(8, 32), nn.ReLU(inplace=True),
+  conv2d713(32, 64), nn.ReLU(inplace=True),
+  conv2d713(64, 32), nn.ReLU(inplace=True),
+  conv2d713(32, 16), nn.ReLU(inplace=True),
   conv2d713(16, 2))
 
 class SpyNet(nn.Module):

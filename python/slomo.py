@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 Conv2dS1 = lambda inC, outC, fSize: nn.Conv2d(inC, outC, fSize, stride=1, padding=(fSize - 1) // 2)
-leaky_relu = nn.LeakyReLU(.1)
+leaky_relu = nn.LeakyReLU(.1, inplace=True)
 
 class down(nn.Module):
   """

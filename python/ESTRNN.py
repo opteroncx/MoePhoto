@@ -25,15 +25,16 @@ conv3x3 = lambda in_channels, out_channels, stride=1: nn.Conv2d(
 conv5x5 = lambda in_channels, out_channels, stride=1: nn.Conv2d(
   in_channels, out_channels, kernel_size=5, stride=stride, padding=2, bias=True)
 
+Inplace = {'inplace': True}
 ActFuncs = dict(
-  relu=nn.ReLU,
-  relu6=nn.ReLU6,
-  leakyrelu=(nn.LeakyReLU, 0.1),
+  relu=(nn.ReLU, ),
+  relu6=(nn.ReLU6, Inplace),
+  leakyrelu=(nn.LeakyReLU, dict(negative_slope=0.1, inplace=True)),
   prelu=nn.PReLU,
-  rrelu=(nn.RReLU, 0.1, 0.3),
-  selu=nn.SELU,
-  celu=nn.CELU,
-  elu=nn.ELU,
+  rrelu=(nn.RReLU, dict(lower=0.1, upper=0.3, inplace=True)),
+  selu=(nn.SELU, Inplace),
+  celu=(nn.CELU, Inplace),
+  elu=(nn.ELU, Inplace),
   gelu=nn.GELU,
   tanh=nn.Tanh)
 def actFunc(act):
@@ -41,7 +42,7 @@ def actFunc(act):
   if not act in ActFuncs:
     raise NotImplementedError
   act = ActFuncs[act]
-  return act[0](*act[1:]) if type(act) == tuple else act()
+  return act[0](**act[1]) if type(act) == tuple else act()
 
 class dense_layer(nn.Module):
   def __init__(self, in_channels, growthRate, activation='relu'):
