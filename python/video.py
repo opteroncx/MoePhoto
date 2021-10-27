@@ -45,7 +45,7 @@ splitext = lambda p: os.path.splitext(p)
 fixExt = lambda t: ''.join((*t[:-1], t[-1] if t[-1] in formats else '.mkv'))
 suffix = lambda p, s: insert1(splitext(p), s)
 clipList = lambda l, start, end: l[:start] + l[end:]
-commandVideoSkip = lambda command: clipList(command, 13, 23)
+commandVideoSkip = lambda command: clipList(command, 15, 25)
 
 def removeFile(path):
   try:
@@ -220,6 +220,7 @@ def prepare(video, by, steps):
     '-pix_fmt', pix_fmt,
     '-s', '',
     '-r', '',
+    '-thread_queue_size', '64',
     '-i', '-',
     '-i', dataPath,
     '-map', '0:v',
@@ -245,7 +246,7 @@ def prepare(video, by, steps):
       outputPath
     ]
   else:
-    commandVideo[14] = video
+    commandVideo[16] = video
   frameRate = optEncode.get('frameRate', 0)
   width = optDecode.get('width', 0)
   height = optDecode.get('height', 0)

@@ -74,6 +74,7 @@ def getOptP(opt, bf=getBatchSize):
   opt.bf = bf
   return opt
 
+extendRes = lambda res, item: res.extend(item) if type(item) == list else (None if item is None else res.append(item))
 def makeStreamFunc(func, node, opt, nodes, name, padStates, initFunc, pushFunc):
   for n in nodes:
     node.append(n)
@@ -106,11 +107,7 @@ def makeStreamFunc(func, node, opt, nodes, name, padStates, initFunc, pushFunc):
       except StopIteration: break
     res = []
     for item in out:
-      item = func(opt.unpad(item))
-      if type(item) == list:
-        res.extend(item)
-      elif not item is None:
-        res.append(item)
+      extendRes(res, func(opt.unpad(item)))
     return res
   return f
 
@@ -120,6 +117,7 @@ def getOpt(option):
   opt.outStart = 0
   opt.batchSize = 0
   opt.sf = option['sf']
+  opt.bf = getBatchSize
   if opt.sf < 2:
     raise RuntimeError('Error: --sf/slomo factor has to be at least 2')
   return opt
@@ -139,7 +137,7 @@ def doSlomo(func, node, opt):
       opt.width = width
       opt.height = height
       opt.flowBackWarp = initModel(opt, None, None, getFlowBack)
-      setOutShape(modules, opt, height, width)
+      setOutShape(opt, height, width)
       opt.batchSize = opt.flowComp.outShape[0]
       log.info('Slomo batch size={}'.format(opt.batchSize))
     else:
@@ -197,14 +195,9 @@ def doSlomo(func, node, opt):
     if data is None and opt.outEnd:
       tempOut = tempOut[:opt.outEnd]
       opt.outEnd = 0
-    for i in range(opt.outStart, len(tempOut)):
-      tempOut[i] = func(tempOut[i])
     res = []
     for item in tempOut[opt.outStart:]:
-      if type(item) == list:
-        res.extend(item)
-      elif not item is None:
-        res.append(item)
+      extendRes(res, func(item))
     opt.outStart = max(0, opt.outStart - len(tempOut))
     return res
   return f

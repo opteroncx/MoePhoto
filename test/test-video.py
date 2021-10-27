@@ -13,6 +13,6 @@ context.stopFlag = Event()
 context.shared = None
 video = 'upload/realshort.mp4'
 copyfile('test/realshort.mp4', video)
-op2 = {'op': 'VSR'}
+op2 = {'op': 'slomo', 'sf': 2}
 steps = [{'op': 'decode'}, {'op': 'range'}, op2, {'codec': 'libx264 -pix_fmt yuv420p', 'op': 'encode', 'file': 'download/realshort.mkv'}]
 print(SR_vid(video, False, *steps))

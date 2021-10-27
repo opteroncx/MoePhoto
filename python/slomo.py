@@ -199,7 +199,8 @@ class backWarp(nn.Module):
     """
     super(backWarp, self).__init__()
     # create a grid
-    gridY, gridX = torch.meshgrid(torch.arange(H), torch.arange(W)) # pylint: disable=E1101
+    kwarg = {'indexing': 'ij'} if torch.__version__ >= '1.10' else {}
+    gridY, gridX = torch.meshgrid(torch.arange(H), torch.arange(W), **kwarg) # pylint: disable=E1101
     self.W = W
     self.H = H
     self.gridX = gridX.to(dtype=dtype, device=device) # pylint: disable=E1101
