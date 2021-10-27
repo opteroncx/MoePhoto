@@ -3092,7 +3092,12 @@ input[type='file'] {
 }
 .btn-group-justified > .btn-lg {
   float: left;
+  width: fit-content;
   min-width: 120px;
+  margin-left: 16px;
+  margin-right: 16px;
+  padding-left: 0;
+  padding-right: 0;
 }
 #steps .running {
   background: linear-gradient(-45deg, #aaee52, #ec3f81, #23d5cc, #23d54f);
