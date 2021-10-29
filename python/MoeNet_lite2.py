@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from imageProcess import apply, reduce
 from models import FRM

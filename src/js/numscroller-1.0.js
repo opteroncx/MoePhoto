@@ -2,9 +2,9 @@
 * jQuery scroroller Plugin 1.0
 *
 * http://www.tinywall.net/
-* 
+*
 * Developers: Arun David, Boobalan
-* Copyright (c) 2014 
+* Copyright (c) 2014
 */
 (function($){
     $(window).on("load",function(){
@@ -26,9 +26,9 @@
         var i=0;
         $('.numscroller').each(function() {
             i++;
-           $(this).attr('data-slno',i); 
+           $(this).attr('data-slno',i);
            $(this).addClass("roller-title-number-"+i);
-        });        
+        });
     };
     $.fn.scrollzip = function(options){
         var settings = $.extend({
@@ -64,8 +64,8 @@
         });
     };
     function numberRoller(slno){
-            var min=$('.roller-title-number-'+slno).attr('data-min');
-            var max=$('.roller-title-number-'+slno).attr('data-max');
+            var min=+$('.roller-title-number-'+slno).attr('data-min');
+            var max=+$('.roller-title-number-'+slno).attr('data-max');
             var timediff=$('.roller-title-number-'+slno).attr('data-delay');
             var increment=$('.roller-title-number-'+slno).attr('data-increment');
             var numdiff=max-min;
@@ -74,7 +74,7 @@
                 //increment=Math.floor((timediff*1000)/10);
             //}//alert(increment);
             numberRoll(slno,min,max,increment,timeout);
-            
+
     }
     function numberRoll(slno,min,max,increment,timeout){//alert(slno+"="+min+"="+max+"="+increment+"="+timeout);
         if(min<=max){

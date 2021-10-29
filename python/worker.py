@@ -1,4 +1,3 @@
-import json
 from io import BytesIO
 from traceback import format_exc
 from gevent import idle
@@ -58,7 +57,7 @@ def enhance(f, verbose=True):
       saveOps(opsPath, True)
       if verbose:
         log.info(getInfo(f, args))
-    except:
+    except Exception:
       info = getInfo(f, args)
       log.exception(info)
       res = {

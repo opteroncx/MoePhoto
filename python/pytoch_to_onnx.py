@@ -8,7 +8,7 @@ An example of convert Pytroch model to onnx.
 You should import your model and provide input according your model.
 """
 import torch
-import MoeNet_lite2,moire_obj,moire_screen_gan
+import MoeNet_lite2 #,moire_obj,moire_screen_gan
 import os
 
 def dp_to_single_model(saved_state):
@@ -17,7 +17,7 @@ def dp_to_single_model(saved_state):
     for k, v in saved_state.items():
         namekey = k[7:]  #去掉'module.'
         new_state_dict[namekey] = v
-    return new_state_dict    
+    return new_state_dict
 
 def get_onnx(model, onnx_save_path, example_tensor):
 
@@ -49,4 +49,3 @@ if __name__ == '__main__':
 
     # 导出模型
     get_onnx(model, onnx_save_path, example_tensor)
-

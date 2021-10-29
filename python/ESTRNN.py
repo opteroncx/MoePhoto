@@ -159,7 +159,7 @@ Reconstructor = lambda *_: nn.Sequential(
 )
 
 def calcForward(opt, state, x, **_):
-  if state.feat_hidden == None:
+  if state.feat_hidden is None:
     height, width = x.shape[-2:] # (1, 3, height, width)
     s_height = height >> DS_ratio
     s_width = width >> DS_ratio

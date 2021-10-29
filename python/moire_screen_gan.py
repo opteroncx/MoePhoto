@@ -15,7 +15,6 @@ def calc_mean_std(feat):
 
 def din(content_feat, encode_feat, eps=1e-4):
   # eps is a small value added to the variance to avoid divide-by-zero.
-  size = content_feat.size()
   content_mean, content_std = calc_mean_std(content_feat)
   encode_mean, encode_std = calc_mean_std(encode_feat)
   normalized_feat = (content_feat - content_mean) / (content_std + eps)

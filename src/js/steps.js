@@ -17,7 +17,7 @@ const setSubText = target => (item, key) =>
   isType('object')(target[key]) &&
     (isType('object')(item) || isType('string')(item))
     ? setPanelTexts(target[key], item)
-    : (target[key] = item)
+    : key === "__proto__" || key === "constructor" || (target[key] = item)
 const setPanelTexts = (target, t) => {
   Array.isArray(t)
     ? t.forEach(setSubText(target))
@@ -213,7 +213,7 @@ const getArgHTML = (item, opt, hr = true) =>
     `<label class="${hr ? 'argName col-sm-2' + getClassList(item.labelClasses) : 'opValue'
     }" for="${item.name}">${item.text}</label>`,
     elementTypeMapping[item.type](item, opt),
-    hr ? getNotes(item, opt) : ''
+    hr ? getNotes(item) : ''
   ].join('')
 const deduplicate = arr => [...new Set(arr)]
 const getCheckedItem = (item, opt) =>

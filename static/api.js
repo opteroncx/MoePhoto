@@ -82,7 +82,7 @@ const responsePromise = res => {
   res.on('data', chunk => (rawData += chunk))
   res.on('end', _ => {
     try {
-      data = rawData.length ? JSON.parse(rawData) : void 0
+      let data = rawData.length ? JSON.parse(rawData) : void 0
       return _resolve(data)
     } catch (e) {
       console.error(rawData)

@@ -9,7 +9,7 @@ import shutil
 import json
 sys.path.append('./python')
 sys.path.append('./pyc')
-from moe_utils import compile_pyc
+#from moe_utils import compile_pyc
 from moe_utils import copyfile
 from mt_download import download_file
 from userConfig import compareVersion
@@ -75,8 +75,8 @@ def update(manifest):
         url_new_version = manifest['ufile']+'MoePhoto-'+v+'_update.zip'
         # download zip
         print('downloading from ',url_new_version)
-        url = url_new_version 
-        r = requests.get(url) 
+        url = url_new_version
+        r = requests.get(url)
         with open("./update_tmp/tmp.zip", "wb") as code:
             code.write(r.content)
         # extract zip
@@ -94,7 +94,7 @@ def update(manifest):
             #     # recompile pyc
             # elif f[-4:] == '.txt':
             copyfile('./update_tmp/'+f,'./'+f)
-        print('升级完成,请重启软件')        
+        print('升级完成,请重启软件')
         #clean temp files
         shutil.rmtree('./update_tmp')
         result = '升级完成,请重启软件'

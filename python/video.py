@@ -100,14 +100,14 @@ def getVideoInfo(videoPath, by, width, height, frameRate):
             height = int(videoInfo[1])
           if not frameRate:
             frameRate = float(videoInfo[2])
-        except:
+        except Exception:
           log.error(line)
           raise error
         matchInfo = False
       if matchFrame and reMatchFrame.match(line):
         try:
           totalFrames = int(reSearchFrame.search(line).groups()[0])
-        except:
+        except Exception:
           log.error(line)
 
     procIn.stderr.flush()
@@ -124,7 +124,7 @@ def enqueueOutput(out, queue):
     for line in iter(out.readline, b''):
       queue.put(line)
     out.flush()
-  except: pass
+  except Exception: pass
 
 def createEnqueueThread(pipe, *args):
   t = threading.Thread(target=enqueueOutput, args=(pipe, qOut, *args))
@@ -378,7 +378,7 @@ def SR_vid(video, by, *steps):
     try:
       if not by:
         removeFile(video)
-    except:
+    except Exception:
       log.warning('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(video))
     if err:
       log.warning('Unable to merge video and other tracks with exit code {}.'.format(err))

@@ -363,7 +363,7 @@ def calcBackward(opt, inp, flowInp, keyframeFeature, last):
   for i in range(n - 1, -1, -1):
     if i < n - 1 or not last:
       feat_prop = opt.flow_warp(feat_prop, flowInp[i])
-    if keyframeFeature[i] != None:
+    if keyframeFeature[i] is not None:
       feat_prop = torch.cat([feat_prop, keyframeFeature[i]], dim=1)
       feat_prop = doCrop(opt.backward_fusion, feat_prop)
     feat_prop = torch.cat([inp[i:i + 1], feat_prop], dim=1)
@@ -388,12 +388,12 @@ def calcFlowForward(opt, state, flowInp, **_):
 
 def calcForward(opt, state, inp, flowInp, keyframeFeature, backward, **_):
   n, _, h, w = inp.shape # batch, channel, height, width
-  feat_prop = inp.new_zeros(1, NumFeat, h, w) if state.feat_prop == None else state.feat_prop
+  feat_prop = inp.new_zeros(1, NumFeat, h, w) if state.feat_prop is None else state.feat_prop
   out = []
   for i in range(n):
-    if flowInp[i] != None:
+    if flowInp[i] is not None:
       feat_prop = opt.flow_warp(feat_prop, flowInp[i])
-    if keyframeFeature[i] != None:
+    if keyframeFeature[i] is not None:
       feat_prop = torch.cat([feat_prop, keyframeFeature[i]], dim=1)
       feat_prop = doCrop(opt.forward_fusion, feat_prop)
     feat_prop = torch.cat([inp[i:i + 1], backward[i][0], feat_prop], dim=1)

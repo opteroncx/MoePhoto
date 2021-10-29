@@ -30,7 +30,7 @@ def setConfig(config, version=VERSION, dir='.'):
     with open(join(dir, configPath), 'r', encoding='utf-8') as fp:
       try:
         userConfig = json.load(fp)
-      except:
+      except Exception:
         raise UserWarning('Loading user config failed, fallback to defaults.')
       c = compareVersion(version, userConfig['version'])
       del userConfig['version']

@@ -131,7 +131,7 @@ def prepareOpt(opt, shape):
   if opt.iterClip is None:
     try:
       freeRam = config.calcFreeMem()
-    except:
+    except Exception:
       raise MemoryError('Can not calculate free memory.')
     if opt.ensemble > 0:
       opt2 = copy(opt)
@@ -163,11 +163,10 @@ def doCrop(opt, x, *args, **_):
 
   return tmp_image.detach()
 
-def resize(opt, out, pos=0, nodes=[]):
+def resize(opt, out, pos=0, nodes=[], h=1, w=1):
   opt['update'] = True
   if not 'method' in opt:
     opt['method'] = 'bilinear'
-  h = w = 1
   def f(im):
     nonlocal h, w
     if opt['update']:
@@ -187,10 +186,9 @@ def resize(opt, out, pos=0, nodes=[]):
     return resizeByTorch(im, w, h, opt['method'])
   return f
 
-def restrictSize(width, height=0, method='bilinear'):
+def restrictSize(width, height=0, method='bilinear', h=0, w=0, flag=0):
   if not height:
     height = width
-  h = w = flag = 0
   def f(im):
     nonlocal h, w, flag
     if not h:
@@ -225,7 +223,7 @@ def windowWrap(f, opt, window=2):
   def g(inp=None):
     nonlocal h
     b = min(max(1, opt.batchSize), maxBatch)
-    if inp != None:
+    if inp is not None:
       cache[h] = inp
       h += 1
       if h >= wm1 + b:
@@ -384,7 +382,7 @@ class Option():
     return out
 
 offload = lambda b: [t.cpu() if isinstance(t, torch.Tensor) else t for t in b] if type(b) == list else b.cpu()
-load2device = lambda b, device: b.to(device) if isinstance(b, torch.Tensor) else (b if b == None else [load2device(t, device) for t in b])
+load2device = lambda b, device: b.to(device) if isinstance(b, torch.Tensor) else (b if b is None else [load2device(t, device) for t in b])
 
 def DefaultStreamSource(last=None):
   flag = True
@@ -564,4 +562,4 @@ which = [getTransposedOpt, identity, identity, getTransposedOpt, getTransposedOp
 ensemble = lambda opt: lambda x: reduce((lambda v, t: (v + t[2](doCrop(t[3](opt), t[1](x)))).detach()), zip(range(opt.ensemble), trans, transInv, which), doCrop(opt, x))
 split = lambda *ps: lambda x: tuple(split(*ps[1:])(c) for c in x.split(ps[0], x.ndim - len(ps))) if len(ps) else x
 flat = lambda x: tuple(chain(*(flat(t) for t in x))) if len(x) and type(x[0]) is tuple else x
-extend = lambda out, res: out.extend(tuple(res)) if res != None else None
+extend = lambda out, res: None if res is None else out.extend(tuple(res))

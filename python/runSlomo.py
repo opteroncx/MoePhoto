@@ -140,8 +140,6 @@ def doSlomo(func, node, opt):
       setOutShape(opt, height, width)
       opt.batchSize = opt.flowComp.outShape[0]
       log.info('Slomo batch size={}'.format(opt.batchSize))
-    else:
-      width, height = opt.width, opt.height
     flowBackWarp = opt.flowBackWarp
 
     opt.flowComp.outShape[0] = batchSize
