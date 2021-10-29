@@ -1,13 +1,12 @@
 import os
 import json
 import time
-from flask import request
+from flask import request, safe_join
 from userConfig import compareVersion, VERSION
 version = VERSION
 
 cache = {}
 
-getFilePath = lambda path, filename, ext='.json': '{}/{}{}'.format(path, filename, ext)
 getBrief = lambda item: dict(name=item['name'], notes=item.get('notes', []))
 
 def loadPreset(path):
@@ -15,7 +14,7 @@ def loadPreset(path):
     if not filename.endswith('.json'):
       return
     name = filename.rpartition('.')[0]
-    filename = getFilePath(path, filename, '')
+    filename = safe_join(path, filename)
     if not os.path.exists(filename):
       return
     mtime = cache[name][0] if name in cache else 0
@@ -40,7 +39,7 @@ def savePreset(path):
       os.mkdir(path)
     brief = getBrief(json.loads(data))
     name = brief['name']
-    with open(getFilePath(path, name), 'w', encoding='utf-8') as fp:
+    with open(safe_join(path, name + '.json'), 'w', encoding='utf-8') as fp:
       fp.write(data)
       cache[name] = (time.time(), data, brief)
     return name
@@ -53,7 +52,10 @@ def initPreset(config):
 
 def preset():
   try:
-    path = '.user/preset_' + request.values['path']
+    pType = request.values['path']
+    if not pType in {'video', 'image'}:
+      return '', 403
+    path = '.user/preset_' + pType
     name = request.values['name'] if 'name' in request.values else None
     data = request.values['data'] if 'data' in request.values else None
     if data:
@@ -71,5 +73,5 @@ def preset():
           return json.dumps(res , ensure_ascii=False, separators=(',', ':')), 200
         else:
           return '[]', 200
-  except:
-    return '', 400
+  except Exception:
+    return '', 403

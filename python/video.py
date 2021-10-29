@@ -15,6 +15,7 @@ from progress import Node, initialETA
 from worker import context, begin
 from runSlomo import RefTime as SlomoRefs
 from videoSR import RefTime as VSRRefs
+from ESTRNN import para as ESTRNNpara
 
 log = logging.getLogger('Moe')
 ffmpegPath = os.path.realpath('ffmpeg/bin/ffmpeg') # require full path to spawn in shell
@@ -33,9 +34,10 @@ reMatchOutput = re.compile(r'Output #0,')
 formats = {'.mp4', '.ts', '.mkv'}
 creationflag = sp.CREATE_NEW_PROCESS_GROUP if isWindows else 0
 sigint = signal.CTRL_BREAK_EVENT if isWindows else signal.SIGINT
-lookback = dict(slomo=SlomoRefs >> 1, VSR=VSRRefs >> 1)
-lookahead = dict(slomo=(SlomoRefs - 1) >> 1, VSR=(VSRRefs - 1) >> 1)  # assume all models have symmetrical windows
+lookback = dict(slomo=SlomoRefs >> 1, VSR=VSRRefs >> 1, demob=ESTRNNpara.past_frames)
+lookahead = dict(slomo=(SlomoRefs - 1) >> 1, VSR=(VSRRefs - 1) >> 1, demob=ESTRNNpara.future_frames)
 resizeOp = {'SR', 'resize', 'VSR'}
+padOp = {'VSR', 'demob'}
 popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, creationflags=creationflag)
 popenText = lambda command: sp.Popen(command, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
 insert1 = lambda t, s: ''.join((t[0], s, *t[1:]))
@@ -43,7 +45,7 @@ splitext = lambda p: os.path.splitext(p)
 fixExt = lambda t: ''.join((*t[:-1], t[-1] if t[-1] in formats else '.mkv'))
 suffix = lambda p, s: insert1(splitext(p), s)
 clipList = lambda l, start, end: l[:start] + l[end:]
-commandVideoSkip = lambda command: clipList(command, 13, 23)
+commandVideoSkip = lambda command: clipList(command, 15, 25)
 
 def removeFile(path):
   try:
@@ -98,14 +100,14 @@ def getVideoInfo(videoPath, by, width, height, frameRate):
             height = int(videoInfo[1])
           if not frameRate:
             frameRate = float(videoInfo[2])
-        except:
+        except Exception:
           log.error(line)
           raise error
         matchInfo = False
       if matchFrame and reMatchFrame.match(line):
         try:
           totalFrames = int(reSearchFrame.search(line).groups()[0])
-        except:
+        except Exception:
           log.error(line)
 
     procIn.stderr.flush()
@@ -122,7 +124,7 @@ def enqueueOutput(out, queue):
     for line in iter(out.readline, b''):
       queue.put(line)
     out.flush()
-  except: pass
+  except Exception: pass
 
 def createEnqueueThread(pipe, *args):
   t = threading.Thread(target=enqueueOutput, args=(pipe, qOut, *args))
@@ -167,7 +169,7 @@ def prepare(video, by, steps):
       step['opt'].outEnd = -(-ahead % step['sf'])
       refs = max(ceil(refs / step['sf']), lookback[step['op']])
       ahead = max(ceil(ahead / step['sf']), lookahead[step['op']])
-    elif step['op'] == 'VSR':
+    elif step['op'] in padOp:
       step['opt'].start = 0
       step['opt'].end = 0
       refs += lookback[step['op']]
@@ -181,7 +183,7 @@ def prepare(video, by, steps):
         refs = refs * step['sf'] - step['opt'].outStart
         step['opt'].outStart = 0
         arefs = arefs * step['sf']
-      elif step['op'] == 'VSR':
+      elif step['op'] in padOp:
         step['opt'].start = min(refs - arefs, lookback[step['op']])
         refs -= step['opt'].start
     start = 0
@@ -218,6 +220,7 @@ def prepare(video, by, steps):
     '-pix_fmt', pix_fmt,
     '-s', '',
     '-r', '',
+    '-thread_queue_size', '64',
     '-i', '-',
     '-i', dataPath,
     '-map', '0:v',
@@ -243,7 +246,7 @@ def prepare(video, by, steps):
       outputPath
     ]
   else:
-    commandVideo[14] = video
+    commandVideo[16] = video
   frameRate = optEncode.get('frameRate', 0)
   width = optDecode.get('width', 0)
   height = optDecode.get('height', 0)
@@ -356,7 +359,7 @@ def SR_vid(video, by, *steps):
           refs = refs * step['sf'] + step['opt'].outEnd # outEnd is negative
           step['opt'].outEnd = 0
           arefs = arefs * step['sf']
-        elif step['op'] == 'VSR':
+        elif step['op'] in padOp:
           step['opt'].end = -min(refs - arefs, lookahead[step['op']])
           refs += step['opt'].end
     p()
@@ -375,7 +378,7 @@ def SR_vid(video, by, *steps):
     try:
       if not by:
         removeFile(video)
-    except:
+    except Exception:
       log.warning('Timed out waiting ffmpeg to terminate, need to remove {} manually.'.format(video))
     if err:
       log.warning('Unable to merge video and other tracks with exit code {}.'.format(err))

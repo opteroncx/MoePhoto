@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 Conv2dS1 = lambda inC, outC, fSize: nn.Conv2d(inC, outC, fSize, stride=1, padding=(fSize - 1) // 2)
-leaky_relu = nn.LeakyReLU(.1)
+leaky_relu = nn.LeakyReLU(.1, inplace=True)
 
 class down(nn.Module):
   """
@@ -199,7 +199,8 @@ class backWarp(nn.Module):
     """
     super(backWarp, self).__init__()
     # create a grid
-    gridY, gridX = torch.meshgrid(torch.arange(H), torch.arange(W)) # pylint: disable=E1101
+    kwarg = {'indexing': 'ij'} if torch.__version__ >= '1.10' else {}
+    gridY, gridX = torch.meshgrid(torch.arange(H), torch.arange(W), **kwarg) # pylint: disable=E1101
     self.W = W
     self.H = H
     self.gridX = gridX.to(dtype=dtype, device=device) # pylint: disable=E1101

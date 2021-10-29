@@ -1,6 +1,5 @@
 import requests
 import threading
-import datetime
 
 
 def Handler(start, end, url, filename):
@@ -11,7 +10,6 @@ def Handler(start, end, url, filename):
     # 写入文件对应位置
     with open(filename, "r+b") as fp:
         fp.seek(start)
-        var = fp.tell()
         fp.write(r.content)
 
 
@@ -24,7 +22,7 @@ def download_file(url, num_thread = 5,fname = ''):
         else:
             file_name = fname
         file_size = int(r.headers['content-length'])   # Content-Length获得文件主体的大小，当http服务器使用Connection:keep-alive时，不支持Content-Length
-    except:
+    except Exception:
         print("检查URL，或不支持多线程下载")
         return
 

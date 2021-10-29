@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from functools import reduce
 from models import Conv3x3

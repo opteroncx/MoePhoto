@@ -185,7 +185,7 @@ def gallery(req):
   dirName = req.values['dir'] if 'dir' in req.values else outDir
   try:
     items = os.listdir(dirName)
-  except:pass
+  except Exception:pass
   images = filter((lambda item:item.endswith('.png') or item.endswith('.jpg')), items)
   doc = []
   images = [*map(lambda image:ndoc.format(image=image, dirName=dirName), images)]

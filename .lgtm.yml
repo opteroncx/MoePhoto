@@ -1,0 +1,9 @@
+path_classifiers:
+  vendors:
+    - exclude: site-packages
+    - exclude: "**/*.min.*"
+
+extraction:
+  python:
+    python_setup:
+      version: 3

@@ -79,7 +79,7 @@ const setup = opt => {
       let result = event.data.result
       if (result === 'Fail' && !onError(0, 400, event.data.exception)) return
       if (result != null && result !== 'Fail') onSuccess(event.data)
-      else running || ((running = 1) && runButton.attr('disabled', true))
+      else running || ((running = 1), runButton.attr('disabled', true))
     } else {
       messager.abort()
       running &&

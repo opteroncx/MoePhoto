@@ -80,5 +80,5 @@ if args.copy:
     v = cleanFiles[key]
     try:
       shutil.copytree(src=getDev(v),dst=getBuild(v))
-    except: 
+    except Exception:
       shutil.copy(src=getDev(v),dst=getBuild(v))

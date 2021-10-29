@@ -96,10 +96,9 @@ def multi_gpu_run(model, im_path, outpath, gpus):
     trans = transforms.Compose([
         transforms.ToPILImage(),
     ])
-    for iter, batch in enumerate(loader, 1):
+    for _, batch in enumerate(loader, 1):
         y = batch[0]
         bicubic = batch[1]
-        names = batch[2]
         # print(y)
         if torch.cuda.is_available():
             y = y.cuda()

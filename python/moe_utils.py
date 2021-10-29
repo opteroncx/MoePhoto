@@ -1,4 +1,4 @@
-import py_compile 
+import py_compile
 import os
 import shutil
 
@@ -10,7 +10,7 @@ def copyfile(srcfile,dstfile):
         if not os.path.exists(fpath):
             os.makedirs(fpath)                #创建路径
         shutil.copyfile(srcfile,dstfile)      #复制文件
-        print("copy %s -> %s"%( srcfile,dstfile)) 
+        print("copy %s -> %s"%( srcfile,dstfile))
 
 def compile_pyc(path = './python/'):
     if os.path.exists(path+'__pycache__'):
@@ -19,7 +19,7 @@ def compile_pyc(path = './python/'):
     items = os.listdir(path)
     try:
         items.remove('old_files')
-    except:
+    except Exception:
         print('No deprecated old files')
     print(items)
     for item in items:
