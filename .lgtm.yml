@@ -1,6 +1,6 @@
 path_classifiers:
   vendors:
-    - exclude: site-packages
+    - exclude: site-packages/**/*
     - exclude: "**/*.min.*"
 
 extraction:

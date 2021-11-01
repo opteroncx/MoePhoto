@@ -6,14 +6,13 @@ import os
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
-import torch.utils.data as data
 from PIL import Image
 from torchvision import transforms
 # from skimage import transform,color
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 
-class DatasetFromImage(data.Dataset):
+class DatasetFromImage(Dataset):
     def __init__(self, file_path, scale=2):
         super(DatasetFromImage, self).__init__()
         self.ims = os.listdir(file_path)
