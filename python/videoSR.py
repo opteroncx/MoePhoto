@@ -1,7 +1,7 @@
 import logging
 import torch
-from torch import nn as nn
-from torch.nn import functional as F
+import torch.nn as nn
+import torch.nn.functional as F
 
 from imageProcess import ceilBy, StreamState, identity, doCrop
 from models import ModulatedDeformConvPack, ResidualBlockNoBN, make_layer, conv2d311
