@@ -186,7 +186,7 @@ def gallery(req):
   try:
     items = os.listdir(dirName)
   except Exception:pass
-  images = filter((lambda item:item.endswith('.png') or item.endswith('.jpg')), items)
+  images = filter((lambda item:item.split('.')[-1] in {'png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'}), items)
   doc = []
   images = [*map(lambda image:ndoc.format(image=image, dirName=dirName), images)]
   for i in range((len(images) - 1) // 3 + 1):
