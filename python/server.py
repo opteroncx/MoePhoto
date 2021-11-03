@@ -50,6 +50,12 @@ commonJs = assetMapping['common.js'] if 'common.js' in assetMapping else None
 getKey = lambda session, request: request.values['path'] + str(session) if 'path' in request.values else current.key
 toResponse = lambda obj, code=200: obj if type(obj) is tuple else (json.dumps(obj, ensure_ascii=False, separators=(',', ':')), code)
 
+def tryFunc(f, *args):
+  try:
+    return f(*args)
+  except Exception:
+    return None
+
 def pollNote():
   key = current.key
   while current.key:
@@ -183,10 +189,8 @@ ndoc = '<a href="{dirName}/{image}" class="w3effct-agile"><img src="{dirName}/{i
 def gallery(req):
   items = ()
   dirName = req.values['dir'] if 'dir' in req.values else outDir
-  try:
-    items = os.listdir(dirName)
-  except Exception:pass
-  images = filter((lambda item:item.endswith('.png') or item.endswith('.jpg')), items)
+  items = tryFunc(lambda s: os.listdir(s), dirName)
+  images = filter((lambda item:item.split('.')[-1] in {'png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'}), items)
   doc = []
   images = [*map(lambda image:ndoc.format(image=image, dirName=dirName), images)]
   for i in range((len(images) - 1) // 3 + 1):
@@ -199,24 +203,24 @@ def getSystemInfo(info):
   import readgpu
   cuda, cudnn = readgpu.getCudaVersion()
   info.update({
-    'cpu_count_phy': psutil.cpu_count(logical=False),
-    'cpu_count_log': psutil.cpu_count(logical=True),
-    'cpu_freq': psutil.cpu_freq().max,
-    'disk_total': psutil.disk_usage(cwd).total // 2**20,
-    'mem_total': psutil.virtual_memory().total // 2**20,
-    'python': readgpu.getPythonVersion(),
-    'torch': readgpu.getTorchVersion(),
+    'cpu_count_phy': tryFunc(lambda: psutil.cpu_count(logical=False)),
+    'cpu_count_log': tryFunc(lambda: psutil.cpu_count(logical=True)),
+    'cpu_freq': tryFunc(lambda: psutil.cpu_freq().max),
+    'disk_total': tryFunc(lambda: psutil.disk_usage(cwd).total // 2**20),
+    'mem_total': tryFunc(lambda: psutil.virtual_memory().total // 2**20),
+    'python': tryFunc(readgpu.getPythonVersion),
+    'torch': tryFunc(readgpu.getTorchVersion),
     'cuda': cuda,
     'cudnn': cudnn,
-    'gpus': readgpu.getGPUProperties()
+    'gpus': tryFunc(readgpu.getGPUProperties)
   })
   readgpu.uninstall()
   del readgpu
   return info
 
 def getDynamicInfo(_):
-  disk_free = psutil.disk_usage(cwd).free // 2**20
-  mem_free = psutil.virtual_memory().free // 2**20
+  disk_free = tryFunc(lambda: psutil.disk_usage(cwd).total // 2**20)
+  mem_free = tryFunc(lambda: psutil.virtual_memory().total // 2**20)
   return disk_free, mem_free, current.session, current.path
 
 def setOutputName(args, fp):
