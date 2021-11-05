@@ -5,7 +5,10 @@ import torch.nn as nn
 import math
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair, _single
-from torchvision.ops import deform_conv2d
+try:
+  from torchvision.ops import deform_conv2d
+except:
+  print('unsupported option')
 from collections import OrderedDict
 from imageProcess import apply, reduce, identity, split, flat
 

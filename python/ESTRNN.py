@@ -7,6 +7,15 @@ from imageProcess import ceilBy, StreamState, identity, doCrop
 from runSlomo import getOptS, getOptP, makeStreamFunc
 from progress import Node
 from MPRNet import Residual
+import numpy as np
+
+class GELU(nn.Module):
+    def __init__(self):
+        super(GELU, self).__init__()
+
+    def forward(self, x):
+        return 0.5*x*(1+F.tanh(np.sqrt(2/np.pi)*(x+0.044715*torch.pow(x,3))))
+
 
 para = type('', (), {})()
 para.future_frames = 2
@@ -26,6 +35,11 @@ conv5x5 = lambda in_channels, out_channels, stride=1: nn.Conv2d(
   in_channels, out_channels, kernel_size=5, stride=stride, padding=2, bias=True)
 
 Inplace = {'inplace': True}
+try:
+  gelu_class = nn.GELU
+except:
+  gelu_class = GELU
+
 ActFuncs = dict(
   relu=(nn.ReLU, ),
   relu6=(nn.ReLU6, Inplace),
@@ -35,7 +49,7 @@ ActFuncs = dict(
   selu=(nn.SELU, Inplace),
   celu=(nn.CELU, Inplace),
   elu=(nn.ELU, Inplace),
-  gelu=nn.GELU,
+  gelu=gelu_class,
   tanh=nn.Tanh)
 def actFunc(act):
   act = act.lower()
