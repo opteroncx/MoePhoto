@@ -42,11 +42,8 @@ jarallax($('.jarallax'), {
 $(_ => {
   $('#vertical-ticker').totemticker({
     row_height: '100px',
-    next: '#ticker-next',
-    previous: '#ticker-previous',
-    stop: '#stop',
-    start: '#start',
-    mousestop: true
+    mousestop: true,
+    interval: 3000
   })
 })
 $(_ => {
