@@ -32,7 +32,7 @@ def changeName(w, old, new):
     print('rename {} to {}'.format(old, new))
   del w[old]
 def changeNames(w, names):
-  values = dict((new, w[old]) for old, new in names)
+  values = dict((new, w[old]) for old, new in names if new)
   for old, _ in names:
     if old in w:
       del w[old]
