@@ -16,6 +16,7 @@ __pycache__
 /python/tester.py
 /tmpSuperSloMo/
 site-packages/nvidia-ml-py/t*
+.DS_Store
 
 # ignore user files
 /download/
