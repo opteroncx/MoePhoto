@@ -79,4 +79,5 @@ class Net(nn.Module):
     initConvParameters(self)
 
   def forward(self, x):
-    return reduce((lambda a, fs: (fs[0](a[0]), fs[2](fs[1](a[0])) + a[1])), zip(self.down2, self.branches, self.scales), (x, 0))
+    out = reduce((lambda a, fs: (fs[0](a[0]), fs[2](fs[1](a[0])) + a[1])), zip(self.down2, self.branches, self.scales), (x, 0))
+    return out[1]
