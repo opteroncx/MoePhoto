@@ -1,7 +1,8 @@
 import os
 import json
 import time
-from flask import request, safe_join
+from flask import request
+from werkzeug.security import safe_join
 from userConfig import compareVersion, VERSION
 version = VERSION
 
