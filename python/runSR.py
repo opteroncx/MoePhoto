@@ -33,7 +33,7 @@ def getOpt(optSR):
   opt.scale = optSR['scale']
   nmode = opt.mode+str(opt.scale)
   if not nmode in mode_switch:
-    return
+    return None
   if opt.mode[:3] != 'gan':
     opt.fixChannel = 0
     opt.squeeze = lambda x: x.squeeze(1)

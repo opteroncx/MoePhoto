@@ -24,7 +24,7 @@ mode_switch = {
 def getOpt(optDN):
   model = optDN['model']
   if not model in mode_switch:
-    return
+    return None
   opt = Option(mode_switch[model][0])
   _, opt.modelDef, ramCoef, sd, opt.padding, opt.align = mode_switch[model]
 

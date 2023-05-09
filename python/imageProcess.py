@@ -230,6 +230,7 @@ def windowWrap(f, opt, window=2):
         data = getData()
         reset(True)
         return f(data)
+      return None
     elif h:
       data = getData() if h > wm1 else [cache[:h]]
       reset()
@@ -246,7 +247,7 @@ def toNumPy(bitDepth):
   def f(args):
     buffer, height, width = args
     if not buffer:
-      return
+      return None
     image = np.frombuffer(buffer, dtype=dtype)
     return image.reshape((height, width, 3)).astype(np.float32)
   return f
@@ -446,7 +447,7 @@ class StreamState():
       self.end -= self.pad(self.end)
     r = self.getSize(size)
     if not r:
-      return
+      return None
     batch = [self.batchFunc(self.state[i:i + self.wm1 + 1]) for i in range(r)] if self.wm1 else self.state[:r]
     if self.reserve:
       self.stateR = (self.stateR + self.state[r - self.reserve: r])[-self.reserve:]
@@ -475,7 +476,7 @@ class StreamState():
 
   def push(self, batch: Union[torch.Tensor, List[torch.Tensor]], *_, **__):
     if batch is None:
-      return
+      return None
     if self.offload:
       batch = offload(batch)
     self.store and self.state.extend(t for t in batch)

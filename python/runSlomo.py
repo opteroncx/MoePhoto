@@ -131,7 +131,7 @@ def doSlomo(func, node, opt):
     node.trace(0, p='slomo start')
     batchSize = len(data)
     if not batchSize or len(data[0]) < 2:
-      return
+      return None
     if opt.flowBackWarp is None:
       width, height, opt.pad, opt.unpad = getPadBy32(data[0][0], opt)
       opt.width = width

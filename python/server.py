@@ -1,4 +1,5 @@
 import os
+import logging
 import time
 import json
 import codecs
@@ -17,7 +18,7 @@ try:
   initPreset(config)
   dVer = {'version': config['version']}
 except Exception as e:
-  print(e)
+  logging.warning(e)
 staticMaxAge = 86400
 app = Flask(__name__, root_path='.')
 app.config['SERVER_NAME'] = '.'
@@ -33,7 +34,7 @@ current.fileSize = 0
 E403 = ('Not authorized.', 403)
 E404 = ('Not Found', 404)
 OK = ('', 200)
-cache = Cache(config['maxResultsKept'], OK, lambda *args: print('abandoned', *args))
+cache = Cache(config['maxResultsKept'], OK, lambda *args: logging.info('abandoned', *args))
 busy = lambda: (jsonify(result='Busy', eta=current.eta), 503)
 cwd = os.getcwd()
 outDir = config['outDir']
@@ -274,7 +275,7 @@ readOpt = lambda req: json.loads(req.values['steps'])
 onRequestCache = lambda session, request: cache.pop(getKey(session, request))
 controlPoint('/stop', stopCurrent, lambda: E403, lambda *_: E404)
 controlPoint('/msg', onConnect, busy, onRequestCache, checkMsgMatch)
-app.route('/log', endpoint='log')(lambda: send_file(logPath, add_etags=False))
+app.route('/log', endpoint='log')(lambda: send_file(logPath, etag=False))
 app.route('/favicon.ico', endpoint='favicon')(lambda: send_from_directory(app.root_path, 'logo3.ico'))
 app.route("/{}/.preview.{}".format(outDir, previewFormat), endpoint="preview")(
   lambda: Response(current.getPreview(), mimetype="image/{}".format(previewFormat)))
@@ -318,7 +319,7 @@ def batchEnhance():
     os.makedirs(output_path)
   opt = readOpt(request)
   total = len(fileList)
-  print('batch total: {}'.format(total))
+  logging.info('batch total: {}'.format(total))
   opt.append(dict(trace=False, op='output'))
   current.setETA = False
   for image in fileList:
@@ -368,7 +369,7 @@ def runserver(taskInSender, taskOutReceiver, noteReceiver, stopEvent, mm, isWind
     app.debug = False
     app.config['SERVER_NAME'] = None
     server = pywsgi.WSGIServer((host, port), app, environ={'SERVER_NAME': ''})
-    print('Current working directory: {}'.format(cwd))
-    print('Server starts to listen on http://{}:{}/, press Ctrl+C to exit.'.format(host, port))
+    logging.info('Current working directory: {}'.format(cwd))
+    logging.info('Server starts to listen on http://{}:{}/, press Ctrl+C to exit.'.format(host, port))
     server.serve_forever()
   return f

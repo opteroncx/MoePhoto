@@ -37,7 +37,7 @@ conv5x5 = lambda in_channels, out_channels, stride=1: nn.Conv2d(
 Inplace = {'inplace': True}
 try:
   gelu_class = nn.GELU
-except:
+except Exception:
   gelu_class = GELU
 
 ActFuncs = dict(

@@ -1,7 +1,7 @@
 import sys
 import os
 import torch
-from torch import nn
+import torch.nn as nn
 sys.path.append(os.path.abspath('../python'))
 sys.path.append('../site-packages/nvidia-ml-py')
 from PIL import Image

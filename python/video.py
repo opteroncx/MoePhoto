@@ -41,7 +41,7 @@ padOp = {'VSR', 'demob'}
 popen = lambda command: sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=bufsize, creationflags=creationflag)
 popenText = lambda command: sp.Popen(command, stderr=sp.PIPE, encoding='utf_8', errors='ignore')
 insert1 = lambda t, s: ''.join((t[0], s, *t[1:]))
-splitext = lambda p: os.path.splitext(p)
+splitext = os.path.splitext
 fixExt = lambda t: ''.join((*t[:-1], t[-1] if t[-1] in formats else '.mkv'))
 suffix = lambda p, s: insert1(splitext(p), s)
 clipList = lambda l, start, end: l[:start] + l[end:]
@@ -123,8 +123,10 @@ def enqueueOutput(out, queue):
   try:
     for line in iter(out.readline, b''):
       queue.put(line)
+  except Exception:
+    queue.put('FFMpeg output pipe Exception')
+  finally:
     out.flush()
-  except Exception: pass
 
 def createEnqueueThread(pipe, *args):
   t = threading.Thread(target=enqueueOutput, args=(pipe, qOut, *args))

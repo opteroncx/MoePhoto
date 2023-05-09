@@ -13,11 +13,11 @@ getBrief = lambda item: dict(name=item['name'], notes=item.get('notes', []))
 def loadPreset(path):
   def f(filename, raw=False):
     if not filename.endswith('.json'):
-      return
+      return None
     name = filename.rpartition('.')[0]
     filename = safe_join(path, filename)
     if not os.path.exists(filename):
-      return
+      return None
     mtime = cache[name][0] if name in cache else 0
     st_mtime = os.stat(filename).st_mtime
     if mtime < st_mtime:

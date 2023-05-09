@@ -52,7 +52,7 @@ const makeArg = (panel, argName, listeners) => {
       v.type = arg.type
       v.binds = v.binds && v.binds.map(bindChild(panel, v.checked))
       arg.bindFlag |= !!v.binds
-      v.checked ? (panel.initOpt[argName] = v.value) : 0
+      v.checked && (panel.initOpt[argName] = v.value)
     })
     arg.dataType ||
       arg.values.some(v => typeof v.value !== 'number') ||

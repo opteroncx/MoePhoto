@@ -4,7 +4,7 @@ from time import perf_counter
 import torch
 from torch.profiler import profile, schedule, ProfilerActivity
 from config import config
-from imageProcess import doCrop
+# from imageProcess import doCrop
 
 from videoSR import getOpt
 modelConfig = None

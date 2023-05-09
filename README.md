@@ -1,6 +1,6 @@
 # MoePhoto
 
-[![Badge](https://img.shields.io/badge/version-5.10-brightgreen.svg)](https://github.com/opteroncx/MoePhoto/blob/master/update_log.txt)
+[![Badge](https://img.shields.io/badge/version-5.11-brightgreen.svg)](https://github.com/opteroncx/MoePhoto/blob/master/update_log.txt)
 [![Badge](https://img.shields.io/badge/link-moephoto-blueviolet.svg)](http://moephoto.tech/)
 [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 
@@ -38,6 +38,8 @@ A deep learning based AI Image/Video quality enhancing software
 > 下载地址1 [天翼云](https://cloud.189.cn/t/6ne2MrMvy6vq)
 > 下载地址2 [分流镜像](https://mirrors.zhiccc.net/MoePhoto/)
 
+由于仓库容量限制，5.11版本之后更新的模型参数不再纳入git仓库
+
 ### 协助开发 (Development)
 
 > 需要安装以下软件 (Build requirements)
@@ -46,7 +48,7 @@ A deep learning based AI Image/Video quality enhancing software
 > Flask >= 2
 > cudatoolkit 11
 > Pytorch >= 1.9
-> torchvision >= 0.10
+> torchvision >= 1.0
 > Pillow >= 7
 > requests >= 2
 > numpy
