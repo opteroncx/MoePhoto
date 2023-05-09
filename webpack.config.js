@@ -6,7 +6,7 @@ const { WebpackManifestPlugin } = require('webpack-manifest-plugin')
 
 module.exports = (env, argv) => {
   return {
-    mode: 'production',
+    mode: env.production ? 'production' : 'development',
     target: ["web", "es2020"],
     stats: 'normal',
     entry: {

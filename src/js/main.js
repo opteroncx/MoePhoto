@@ -32,6 +32,42 @@ const scaleModelMapping = {
   gana: [1, 1, 0, 1]
 }
 const MPRNetNote = '来自<a href="https://github.com/swz30/MPRNet">Syed Waqas Zamir</a>'
+const NAFNetNote = '来自<a href="https://github.com/megvii-research/NAFNet">旷视研究院</a>'
+const DehazeModelValues = [
+  {
+    value: 'dehaze',
+    text: '去雾模型',
+    hidden: true,
+    func: 'dehaze'
+  },
+  {
+    value: 'MPRNet_deblurring', text: 'MPRNet',
+    notes: [MPRNetNote],
+    func: 'deblur'
+  },
+  {
+    value: 'NAFNet_deblur_32', text: 'NAFNet小',
+    notes: [NAFNetNote],
+    func: 'deblur'
+  },
+  {
+    value: 'NAFNet_deblur_64', text: 'NAFNet大',
+    checked: 1,
+    notes: [NAFNetNote, '比小个的慢一点，据说效果也好一点'],
+    func: 'deblur'
+  },
+  {
+    value: 'NAFNet_deblur_JPEG_64', text: 'NAFNet_JPEG',
+    notes: [NAFNetNote, '这个据说还有修复JPEG的技能'],
+    func: 'deblur'
+  },
+  {
+    value: 'MPRNet_deraining', text: 'MPRNet',
+    notes: [MPRNetNote],
+    hidden: true,
+    func: 'derain'
+  }
+]
 var getResizeView = (by, scale, size) =>
   by === 'scale' ? scale + '倍' : appendText('pixel')(size)
 const getFileName = opt => ({
@@ -336,13 +372,24 @@ const panels = {
         text: '降噪模型',
         change: _ => 1,
         values: [
-          { value: 'lite5', text: '弱', checked: 1 },
+          { value: 'lite5', text: '弱' },
           { value: 'lite10', text: '中' },
           { value: 'lite15', text: '强' },
           {
             value: 'MPRNet_denoising',
             text: 'MPRNet',
             notes: [MPRNetNote]
+          },
+          {
+            value: 'NAFNet_32',
+            text: 'NAFNet小',
+            notes: [NAFNetNote]
+          },
+          {
+            value: 'NAFNet_64',
+            text: 'NAFNet大',
+            checked: 1,
+            notes: [NAFNetNote, '比小个的慢一点，据说效果也好一点']
           }
         ]
       }
@@ -371,22 +418,38 @@ const panels = {
     description: '三个模型分别能够去除静态画面中的雨滴、雾气和模糊效果',
     draggable: 1,
     args: {
-      model: {
+      func: {
         type: 'radio',
         text: '功能',
-        change: _ => 1,
+        change: (_, opt) => {
+          let models = []
+          for (let item of DehazeModelValues)
+            if (item.func === opt.func) {
+              item.hidden = false
+              models.push(item)
+            } else {
+              item.hidden = true
+              item.checked = false
+            }
+          let i = models.findIndex(item => !!item.checked)
+          if (i < 0) {
+            i = models.length - 1
+            models[i].checked = 1
+          }
+          opt.model = models[i].value
+          return 1
+        },
         values: [
           { value: 'dehaze', text: '去雾' },
-          {
-            value: 'MPRNet_deblurring', text: '去模糊',
-            checked: 1,
-            notes: [MPRNetNote]
-          },
-          {
-            value: 'MPRNet_deraining', text: '去雨',
-            notes: [MPRNetNote]
-          }
+          { value: 'deblur', text: '去模糊', checked: 1 },
+          { value: 'derain', text: '去雨' }
         ]
+      },
+      model: {
+        type: 'radio',
+        text: '模型',
+        change: _ => 1,
+        values: DehazeModelValues
       }
     }
   },

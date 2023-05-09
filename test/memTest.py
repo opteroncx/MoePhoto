@@ -6,12 +6,12 @@ from config import config
 from procedure import genProcess
 
 getMemUsed = lambda i: torch.cuda.memory_stats(i)['reserved_bytes.all.peak']
-step = dict(op='SR', model='gana', scale=4)
-t = torch.randn((3, 512, 512), dtype=config.dtype(), device=config.device()) # pylint: disable=E1101
+step = dict(op='dehaze', model='NAFNet_deblur_32', scale=1)
+t = torch.randn((3, 1024, 1024), dtype=config.dtype(), device=config.device()) # pylint: disable=E1101
 load = t.nelement()
 p, _ = genProcess([step], True, dict(bitDepth=8, channel=0, source=0, load=load))
 m = getMemUsed(config.device()) if config.cuda else None
-print(config.dtype(), config.device(), m)
+print(config.dtype(), config.device(), m, load)
 sys.stdin.readline()
 if config.cuda:
   p(t)

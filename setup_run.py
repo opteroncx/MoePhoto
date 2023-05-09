@@ -31,7 +31,7 @@ manifest = {
   'version': version,
   'releases': 'https://moephoto.tech/moephoto/version.html',
   'ufile': 'https://moephoto.tech/moephoto/files/',
-  'ffmpeg-win': 'https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-latest-win64-static.zip',
+  'ffmpeg-win': 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z',
   'ffmpeg-linux': 'https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz'
 }
 

@@ -58,6 +58,10 @@ def toModule(f):
 
 Residual = toModule(lambda *fs: lambda x: sum(f(x) for f in extractFuncs(fs)) + x)
 
+class LayerNorm2d(nn.LayerNorm):
+  def forward(self, x):
+    return super(LayerNorm2d, self).forward(x.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
+
 class ScaleLayer(nn.Module):
 
    def __init__(self, init_value=0.25):
