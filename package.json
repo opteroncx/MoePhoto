@@ -1,14 +1,14 @@
 {
   "name": "moephoto",
-  "version": "5.10.4",
+  "version": "5.11.0",
   "description": "MoePhoto Toolbox萌图工具箱   一个基于深度学习的AI图像修复软件（更新中...）   感兴趣的加QQ群320785467讨论   ### 基本功能 * 图像降噪 * 超分辨率 * 去雾 * 涂抹及风格化",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "webpack build --env development && python python\\MoePhoto.py -",
     "run": "python python\\MoePhoto.py",
-    "build": "webpack",
+    "build": "webpack build --env production",
     "watch": "webpack --watch"
   },
   "repository": {

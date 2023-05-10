@@ -4,9 +4,8 @@ sys.path.append('./site-packages/nvidia-ml-py')
 import os
 from os.path import split, splitext
 import torch
-from PIL import Image
 import numpy as np
-from imageProcess import toTorch, readFile, initModel, toFloat, toOutput, ensemble, writeFile, Option
+from imageProcess import toTorch, readFile, initModel, toFloat, toOutput, ensemble, writeFile
 from config import config
 from time import perf_counter
 

@@ -118,14 +118,13 @@ const setupProgress = opt => {
     }
     data.preview && setPreview(data.preview)
     data.gone && opt.setInputImg(data.gone)
-    data.total ? (total = data.total) : 0
+    data.total && (total = data.total)
     data.gone
       ? progress.setStatus(opt.onProgress(data.gone, total, data))
       : data.eta
-      ? progress.setStatus(texts.onBusy(null))
-      : 0
+      && progress.setStatus(texts.onBusy(null))
     data.skip && opt.onSkip && opt.onSkip(data.skip)
-    data.stage ? progress.setStage(data) : 0
+    data.stage && progress.setStage(data)
   }
   const messager = setup(opt)
   messager.on('message', onMessage).on('open', onMessage)

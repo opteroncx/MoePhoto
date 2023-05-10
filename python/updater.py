@@ -87,12 +87,6 @@ def update(manifest):
         print('copying files')
         py_files = os.listdir('./update_tmp')
         for f in py_files:
-            # if f[-3:] == '.py':
-            #     # copyfile('./update_tmp/'+f,'./python/update_tmp/'+f)
-            #     compile_pyc(path='./update_tmp/')
-            #     copyfile('./update_tmp/__pycache__/'+f[:-3]+'.pyc','./'+f[:-3]+'.pyc')
-            #     # recompile pyc
-            # elif f[-4:] == '.txt':
             copyfile('./update_tmp/'+f,'./'+f)
         print('升级完成,请重启软件')
         #clean temp files

@@ -18,7 +18,7 @@ import logging
 def getAnchors(s, ns, l, pad, af, sc):
   n = l - 2 * pad
   step = 1 if l >= af(s) else max(2, int(np.ceil(ns / n)))
-  start = np.arange(step, dtype=np.int) * n + pad
+  start = np.arange(step, dtype=int) * n + pad
   start[0] = 0
   end = start + l
   endSc = end * sc
@@ -74,7 +74,7 @@ def prepare(shape, ram, opt, pad, sc, align=8, cropsize=0):
   if n < s * s:
     memoryError(ram)
   ph, pw = max(1, h - pad * 3), max(1, w - pad * 3)
-  ns = np.arange(s / align, int(n / (align * s)) + 1, dtype=np.int)
+  ns = np.arange(s / align, int(n / (align * s)) + 1, dtype=int)
   ms = (n / (align * align) / ns).astype(int)
   ns, ms = ns * align, ms * align
   nn, mn = np.ceil(ph / (ns - 2 * pad)).clip(2), np.ceil(pw / (ms - 2 * pad)).clip(2)
@@ -230,6 +230,7 @@ def windowWrap(f, opt, window=2):
         data = getData()
         reset(True)
         return f(data)
+      return None
     elif h:
       data = getData() if h > wm1 else [cache[:h]]
       reset()
@@ -246,7 +247,7 @@ def toNumPy(bitDepth):
   def f(args):
     buffer, height, width = args
     if not buffer:
-      return
+      return None
     image = np.frombuffer(buffer, dtype=dtype)
     return image.reshape((height, width, 3)).astype(np.float32)
   return f
@@ -305,9 +306,10 @@ def readFile(nodes=[], context=None):
     if image.mode == 'P':
       context.palette = image
       image = image.convert('RGB')
-    summary = dict(mode=image.mode)
     image = np.array(image)
-    summary['shape'] = list(image.shape[:2])
+    if context.imageMode == 'RGBA':
+      context.imageMode, image = dedupeAlpha(image)
+    summary = dict(mode=context.imageMode, shape=list(image.shape[:2]))
     for n in nodes:
       n.multipleLoad(image.size)
       updateNode(n)
@@ -363,6 +365,26 @@ def transposeShape(shape):
   tShape[-1] = shape[-2]
   tShape[-2] = shape[-1]
   return tShape
+
+def extractAlpha(t):
+  def f(im):
+    if im.shape[0] == 4:
+      t['im'] = im[3]
+      return im[:3]
+    else:
+      return im
+  return f
+
+def mergeAlpha(t):
+  def f(im):
+    if len(t):
+      image = torch.empty((4, *im.shape[1:]), dtype=im.dtype, device=im.device)
+      image[:3] = im
+      image[3] = t['im']
+      return image
+    else:
+      return im
+  return f
 
 class Option():
   def __init__(self, path=''):
@@ -425,7 +447,7 @@ class StreamState():
       self.end -= self.pad(self.end)
     r = self.getSize(size)
     if not r:
-      return
+      return None
     batch = [self.batchFunc(self.state[i:i + self.wm1 + 1]) for i in range(r)] if self.wm1 else self.state[:r]
     if self.reserve:
       self.stateR = (self.stateR + self.state[r - self.reserve: r])[-self.reserve:]
@@ -454,7 +476,7 @@ class StreamState():
 
   def push(self, batch: Union[torch.Tensor, List[torch.Tensor]], *_, **__):
     if batch is None:
-      return
+      return None
     if self.offload:
       batch = offload(batch)
     self.store and self.state.extend(t for t in batch)
@@ -543,13 +565,14 @@ ceilBy = lambda d: lambda x: (-int(x) & -d ^ -1) + 1 # d needed to be a power of
 ceilBy32 = ceilBy(32)
 minSize = 28
 alignF = { 1: identity }
-alignF.update((1 << k, ceilBy(1 << k)) for k in (3, 5, 6, 7, 9))
+alignF.update((1 << k, ceilBy(1 << k)) for k in (3, 4, 5, 6, 7, 9))
 resizeByTorch = lambda x, width, height, mode='bilinear':\
   F.interpolate(x.unsqueeze(0), size=(height, width), mode=mode, align_corners=False).squeeze()
 clean = lambda: torch.cuda.empty_cache()
 BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
 BGR2RGBTorch = lambda im: torch.stack([im[2], im[1], im[0]])
 toOutput8 = toOutput(8)
+dedupeAlpha = lambda x: ('RGB', x[:, :, :3]) if (255 - x[:, :, 3]).astype(dtype=np.float32).sum() < 1 else ('RGBA', x)
 apply = lambda v, f: f(v)
 transpose = lambda x: x.transpose(-1, -2)
 flip = lambda x: x.flip(-1)

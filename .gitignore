@@ -7,8 +7,7 @@ __pycache__
 /update_tmp/
 /package/
 /build/
-/model/*.py
-/model/*.pyc
+/model
 /temp/
 /MoePhoto*.exe
 /old_versions
@@ -16,6 +15,7 @@ __pycache__
 /python/tester.py
 /tmpSuperSloMo/
 site-packages/nvidia-ml-py/t*
+/test/**/*.png
 .DS_Store
 
 # ignore user files
@@ -35,16 +35,6 @@ manifest.json
 # ignore developments
 /node_modules/
 
-# ignore old checkpoints
-/model/a2/model.pth
-/model/a3/model.pth
-/model/a4/model.pth
-/model/p2/model.pth
-/model/p3/model.pth
-/model/p4/model.pth
-/model/old/
-/model/slomo/*.ckpt
-
 # bat and vbs
 start.bat
 start.vbs
@@ -57,7 +47,6 @@ install.exe
 /ffmpeg
 *.dll
 *.pdb
-
 
 # include default presets
 !/.user/preset_video/benchmark.json

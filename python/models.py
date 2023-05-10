@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 # pylint: disable=E1101
+import logging
 import torch
 import torch.nn as nn
 import math
@@ -7,8 +8,8 @@ import torch.nn.functional as F
 from torch.nn.modules.utils import _pair, _single
 try:
   from torchvision.ops import deform_conv2d
-except:
-  print('unsupported option')
+except Exception:
+  logging.warning('unsupported option')
 from collections import OrderedDict
 from imageProcess import apply, reduce, identity, split, flat
 
@@ -57,6 +58,10 @@ def toModule(f):
   return type('', (nn.Module,), {'__init__': C, 'forward': lambda self, *args: self.f(*args)})
 
 Residual = toModule(lambda *fs: lambda x: sum(f(x) for f in extractFuncs(fs)) + x)
+
+class LayerNorm2d(nn.LayerNorm):
+  def forward(self, x):
+    return super(LayerNorm2d, self).forward(x.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
 
 class ScaleLayer(nn.Module):
 

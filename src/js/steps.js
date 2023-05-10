@@ -40,80 +40,82 @@ const bindChild = (panel, checked) => child => {
 }
 const setBinds = (binds, value) =>
   binds && binds.forEach(child => (child.disabled = value))
+const makeArg = (panel, argName, listeners) => {
+  let arg = panel.args[argName],
+    typify = identity
+  arg.summary && addSummary(getOp(panel), argName, arg.summary)
+  panel.changeSummary |= !!arg.summary
+  arg.bindFlag = 0
+  if (optionType[arg.type]) {
+    arg.values.forEach(v => {
+      v.name = argName
+      v.type = arg.type
+      v.binds = v.binds && v.binds.map(bindChild(panel, v.checked))
+      arg.bindFlag |= !!v.binds
+      v.checked && (panel.initOpt[argName] = v.value)
+    })
+    arg.dataType ||
+      arg.values.some(v => typeof v.value !== 'number') ||
+      (arg.dataType = 'number')
+    arg.dataType === 'number' && (typify = toNumber)
+  } else arg.ignore || (panel.initOpt[argName] = arg.value)
+  if (argName.startsWith('_') || !arg.type) return
+  arg.name || (arg.name = argName)
+  let tag = tags[arg.type] ? tags[arg.type] : 'input'
+  let selector = `${tag}[name=${arg.name}]`
+  arg.bindFlag |= !!arg.binds
+  arg.binds = arg.binds && arg.binds.map(bindChild(panel))
+  let changeOpt = arg.ignore
+    ? None
+    : arg.type === 'checkbox'
+      ? (ev, opt) => {
+        opt[argName] || (opt[argName] = {})
+        opt[argName][ev.target.value] = ev.target.checked
+      }
+      : arg.type === 'file'
+        ? (ev, opt) => (opt[argName] = ev.target.files)
+        : (ev, opt) => (opt[argName] = typify(ev.target.value)),
+    _c = arg.change ? arg.change.bind(arg) : _ => 0,
+    changeBinds =
+      arg.type === 'checkbox'
+        ? ev =>
+          setBinds(
+            arg.values.find(v => v.value === ev.target.value).binds,
+            !ev.target.checked
+          )
+        : arg.type === 'radio'
+          ? ev =>
+            arg.values.forEach(v =>
+              setBinds(v.binds, v.value !== ev.target.value)
+            )
+          : None
+  arg.change = (ev, opt) => {
+    changeOpt(ev, opt)
+    changeBinds(ev)
+    arg.summary && onSummaryChange()
+    context.refreshCurrentStep()
+    return _c(ev, opt) || arg.bindFlag
+  }
+  eventTypes
+    .filter(type => arg[type])
+    .forEach(type =>
+      listeners[type].push({
+        selector,
+        f: ev => {
+          Promise.resolve(arg[type](ev, context.getOpt())).then(
+            flag => flag && context.refreshPanel()
+          )
+        }
+      })
+    )
+}
 const addPanel = (panelName, panel) => {
   panel.name = panelName
   panel.changeSummary = false
   panel.initOpt = {}
   let listeners = {}
   eventTypes.forEach(type => (listeners[type] = []))
-  for (let argName in panel.args) {
-    let arg = panel.args[argName],
-      typify = identity
-    arg.summary && addSummary(getOp(panel), argName, arg.summary)
-    panel.changeSummary |= !!arg.summary
-    arg.bindFlag = 0
-    if (optionType[arg.type]) {
-      arg.values.forEach(v => {
-        v.name = argName
-        v.type = arg.type
-        v.binds = v.binds && v.binds.map(bindChild(panel, v.checked))
-        arg.bindFlag |= !!v.binds
-        v.checked ? (panel.initOpt[argName] = v.value) : 0
-      })
-      arg.dataType ||
-        arg.values.some(v => typeof v.value !== 'number') ||
-        (arg.dataType = 'number')
-      arg.dataType === 'number' && (typify = toNumber)
-    } else arg.ignore || (panel.initOpt[argName] = arg.value)
-    if (argName.startsWith('_') || !arg.type) continue
-    arg.name || (arg.name = argName)
-    let selector = `${tags[arg.type] ? tags[arg.type] : 'input'}[name=${arg.name}]`
-    arg.bindFlag |= !!arg.binds
-    arg.binds = arg.binds && arg.binds.map(bindChild(panel))
-    let changeOpt = arg.ignore
-      ? None
-      : arg.type === 'checkbox'
-        ? (ev, opt) => {
-          opt[argName] || (opt[argName] = {})
-          opt[argName][ev.target.value] = ev.target.checked
-        }
-        : arg.type === 'file'
-          ? (ev, opt) => (opt[argName] = ev.target.files)
-          : (ev, opt) => (opt[argName] = typify(ev.target.value)),
-      _c = arg.change ? arg.change.bind(arg) : _ => 0,
-      changeBinds =
-        arg.type === 'checkbox'
-          ? ev =>
-            setBinds(
-              arg.values.find(v => v.value === ev.target.value).binds,
-              !ev.target.checked
-            )
-          : arg.type === 'radio'
-            ? ev =>
-              arg.values.forEach(v =>
-                setBinds(v.binds, v.value !== ev.target.value)
-              )
-            : None
-    arg.change = (ev, opt) => {
-      changeOpt(ev, opt)
-      changeBinds(ev)
-      arg.summary && onSummaryChange()
-      context.refreshCurrentStep()
-      return _c(ev, opt) || arg.bindFlag
-    }
-    eventTypes
-      .filter(type => arg[type])
-      .forEach(type =>
-        listeners[type].push({
-          selector,
-          f: ev => {
-            Promise.resolve(arg[type](ev, context.getOpt())).then(
-              flag => flag && context.refreshPanel()
-            )
-          }
-        })
-      )
-  }
+  for (let argName in panel.args) makeArg(panel, argName, listeners)
   panel.listeners = listeners
   panels[panelName] = panel
 }
@@ -223,6 +225,7 @@ const getCheckedItem = (item, opt) =>
 const flatArray = arrs => arrs.reduce((res, arr) => res.concat(arr), [])
 const getInputCheck = (item, opt) =>
   item.values
+    .filter(v => !v.hidden)
     .map(v => getInputCheckOption(v, opt))
     .concat(flatArray(getCheckedItem(item, opt).map(getNotes)))
     .join('')

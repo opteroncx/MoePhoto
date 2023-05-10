@@ -1,7 +1,7 @@
 import sys
 import os
 import torch
-from torch import nn
+import torch.nn as nn
 sys.path.append(os.path.abspath('../python'))
 sys.path.append('../site-packages/nvidia-ml-py')
 from PIL import Image
@@ -76,6 +76,6 @@ def pp(m, l=0):
       print(tl, v.shape)
     elif type(v) in {bool, int, float, str, list, tuple, set}:
       print(tl, v)
-    else:
+    elif not v is None:
       print(tl + ':')
       pp(v, l + 1)

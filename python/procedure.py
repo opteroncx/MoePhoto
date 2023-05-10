@@ -3,7 +3,7 @@ from functools import reduce
 import numpy as np
 from config import config
 from progress import Node
-from imageProcess import toFloat, toOutput, toOutput8, toTorch, toNumPy, toBuffer, toInt, readFile, writeFile, BGR2RGB, BGR2RGBTorch, resize, restrictSize, windowWrap, apply, identity, previewFormat, previewPath, ensemble
+from imageProcess import toFloat, toOutput, toOutput8, toTorch, toNumPy, toBuffer, toInt, readFile, writeFile, BGR2RGB, BGR2RGBTorch, resize, restrictSize, windowWrap, apply, identity, previewFormat, previewPath
 import runDN
 import runSR
 import runSlomo
@@ -41,7 +41,7 @@ def procInput(source, bitDepth, fs, out):
 def procDN(opt, out, *_):
   DNopt = opt['opt']
   node = newNode(opt, dict(op='DN', model=opt['model']), out['load'])
-  return [NonNullWrap(node.bindFunc(ensemble(DNopt)))], [node], out
+  return [NonNullWrap(node.bindFunc(lambda im: runDN.denoise(DNopt, im)))], [node], out
 
 def convertChannel(out):
   out['channel'] = 0
