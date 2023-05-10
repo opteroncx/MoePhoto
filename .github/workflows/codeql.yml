@@ -51,6 +51,7 @@ jobs:
         # By default, queries listed here will override any specified in a config file.
         # Prefix the list here with "+" to use these queries and those in the config file.
         config: |
+          setup-python-dependencies: false
           queries:
             - uses: security-extended
             - uses: security-and-quality

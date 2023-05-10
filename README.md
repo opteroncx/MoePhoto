@@ -38,7 +38,11 @@ A deep learning based AI Image/Video quality enhancing software
 > 下载地址1 [天翼云](https://cloud.189.cn/t/6ne2MrMvy6vq)
 > 下载地址2 [分流镜像](https://mirrors.zhiccc.net/MoePhoto/)
 
-由于仓库容量限制，5.11版本之后更新的模型参数不再纳入git仓库
+### 模型下载
+
+由于仓库容量限制，5.11版本之后更新的模型参数不再纳入git仓库，此后更新的部分可以在这个[Google Drive](https://drive.google.com/drive/folders/1OPPwcxLzl8mSS2XlMMOISrmWFGk7pcLq?usp=share_link)处下载。
+
+使用安装包的用户无需额外下载，请忽略该步骤，clone该仓库的开发者需要再下载模型参数放在[model](./model)下。
 
 ### 协助开发 (Development)
 
