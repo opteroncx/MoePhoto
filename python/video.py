@@ -125,8 +125,9 @@ def enqueueOutput(out, queue):
       queue.put(line)
   except Exception:
     queue.put('FFMpeg output pipe Exception')
-  finally:
+  try:
     out.flush()
+  finally: pass
 
 def createEnqueueThread(pipe, *args):
   t = threading.Thread(target=enqueueOutput, args=(pipe, qOut, *args))

@@ -42,6 +42,7 @@ start.vbs
 # ignore build package
 install.exe
 *.pyc
+*.pyd
 
 # ignore third party files
 /ffmpeg

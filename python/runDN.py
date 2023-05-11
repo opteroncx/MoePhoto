@@ -3,7 +3,7 @@ import numpy as np
 from models import NetDN, SEDN
 from MPRNet import MPRNet
 from NAFNet import NAFNet
-from imageProcess import initModel, Option, extractAlpha, mergeAlpha, doCrop
+from imageProcess import initModel, Option
 from config import config
 
 ramCoef = .95 / np.array([[2700., 2400., 1253.4], [4106.9, 7405., 4304.2], [60493., 8400., 4288.], [3409., 693., 457.], [6815., 1169., 692.]])
@@ -23,10 +23,9 @@ mode_switch = {
 
 def getOpt(optDN):
   model = optDN['model']
-  if not model in mode_switch:
-    return None
   opt = Option(mode_switch[model][0])
   _, opt.modelDef, ramCoef, sd, opt.padding, opt.align = mode_switch[model]
+  opt.strength = optDN.get('strength', 1.0)
 
   opt.ramCoef = ramCoef[config.getRunType()]
   opt.cropsize = config.getConfig()[1 if model[:4] == 'lite' else 2]
@@ -35,12 +34,4 @@ def getOpt(optDN):
     opt.fixChannel = 0
     opt.squeeze = lambda x: x.squeeze(sd)
     opt.unsqueeze = lambda x: x.unsqueeze(sd)
-  opt.padding = 15
   return opt
-
-def denoise(opt, img):
-  t = {}
-  imgIn = extractAlpha(t)(img)
-
-  prediction = doCrop(opt, imgIn)
-  return mergeAlpha(t)(prediction)

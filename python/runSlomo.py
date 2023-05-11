@@ -100,7 +100,6 @@ def makeStreamFunc(func, node, opt, nodes, name, padStates, initFunc, pushFunc):
       opt.i += 1
     out = []
     extend(out, opt.out.send(last))
-    node.trace()
     while last:
       try:
         extend(out, opt.out.send(last))
@@ -108,6 +107,7 @@ def makeStreamFunc(func, node, opt, nodes, name, padStates, initFunc, pushFunc):
     res = []
     for item in out:
       extendRes(res, func(opt.unpad(item)))
+    node.trace(len(res))
     return res
   return f
 
@@ -157,7 +157,7 @@ def doSlomo(func, node, opt):
     flowOut = doCrop(opt.flowComp, torch.cat((I0, I1), dim=1))
     F_0_1 = flowOut[:,:2,:,:]
     F_1_0 = flowOut[:,2:,:,:]
-    node.trace()
+    node.trace(0)
 
     # Generate intermediate frames
     for intermediateIndex in range(1, sf):
@@ -188,7 +188,7 @@ def doSlomo(func, node, opt):
       for i in range(batchSize):
         tempOut[intermediateIndex + i * sf] = opt.unpad(Ft_p[i].detach())
 
-      node.trace()
+      node.trace(1 / sf)
 
     if data is None and opt.outEnd:
       tempOut = tempOut[:opt.outEnd]
@@ -197,5 +197,6 @@ def doSlomo(func, node, opt):
     for item in tempOut[opt.outStart:]:
       extendRes(res, func(item))
     opt.outStart = max(0, opt.outStart - len(tempOut))
+    node.trace(1 / sf)
     return res
   return f

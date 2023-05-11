@@ -33,6 +33,8 @@ const scaleModelMapping = {
 }
 const MPRNetNote = '来自<a href="https://github.com/swz30/MPRNet">Syed Waqas Zamir</a>'
 const NAFNetNote = '来自<a href="https://github.com/megvii-research/NAFNet">旷视研究院</a>'
+const AiLUTNote = '来自<a href="https://github.com/ImCharlesY/AdaInt">Yang Canqian</a>'
+const ESRGANNote = '来自<a href="https://github.com/xinntao/Real-ESRGAN">Xintao Wang的Real-ESRGAN</a>'
 const DehazeModelValues = [
   {
     value: 'dehaze',
@@ -68,6 +70,43 @@ const DehazeModelValues = [
     func: 'derain'
   }
 ]
+const RetouchModelValues = [
+  {
+    value: 'AiLUT_sRGB_3', text: 'AiLUT小',
+    notes: [AiLUTNote],
+    func: 'retouch'
+  },
+  {
+    value: 'AiLUT_sRGB_5', text: 'AiLUT大',
+    checked: 1,
+    notes: [AiLUTNote, '和小个的相比都挺快的，效果也看不出差别来'],
+    func: 'retouch'
+  },
+  {
+    value: 'AiLUT_XYZ_3', text: 'AiLUT小',
+    notes: [AiLUTNote, '相当不一样的色彩'],
+    hidden: true,
+    func: 'tone-remapping'
+  }
+]
+const changeFuncs = Values => (_, opt) => {
+  let models = []
+  for (let item of Values)
+    if (item.func === opt.func) {
+      item.hidden = false
+      models.push(item)
+    } else {
+      item.hidden = true
+      item.checked = false
+    }
+  let i = models.findIndex(item => !!item.checked)
+  if (i < 0) {
+    i = models.length - 1
+    models[i].checked = 1
+  }
+  opt.model = models[i].value
+  return 1
+}
 var getResizeView = (by, scale, size) =>
   by === 'scale' ? scale + '倍' : appendText('pixel')(size)
 const getFileName = opt => ({
@@ -245,7 +284,7 @@ const panels = {
             notes: [
               'GAN模型仅适用于RGB图像，遇到带alpha通道的图像会出错错，反正我遇到的alpha通道都是多余的，用随便什么图片编辑去掉吧',
               'GAN模型能放大2或4倍，可以在后面添加“缩放”步骤配合使用',
-              '来自于<a href="https://github.com/xinntao/Real-ESRGAN">Xintao Wang的Real-ESRGAN</a>'
+              ESRGANNote
             ]
           },
           {
@@ -254,7 +293,7 @@ const panels = {
             notes: [
               '仅适用于RGB动漫图像，遇到带alpha通道的图像会出错错',
               '仅能放大4倍，但是比较快，可以在后面添加“缩放”步骤配合使用',
-              '来自于<a href="https://github.com/xinntao/Real-ESRGAN">Real-ESRGAN</a>'
+              ESRGANNote
             ]
           }
         ]
@@ -392,6 +431,13 @@ const panels = {
             notes: [NAFNetNote, '比小个的慢一点，据说效果也好一点']
           }
         ]
+      },
+      strength: {
+        type: 'number',
+        text: '强度',
+        value: 1.0,
+        classes: ['input-number'],
+        attributes: ['step="0.05"']
       }
     }
   },
@@ -410,6 +456,13 @@ const panels = {
           { value: 'lite10', text: '中' },
           { value: 'lite15', text: '强' }
         ]
+      },
+      strength: {
+        type: 'number',
+        text: '强度',
+        value: 1.0,
+        classes: ['input-number'],
+        attributes: ['step="0.05"']
       }
     }
   },
@@ -421,24 +474,7 @@ const panels = {
       func: {
         type: 'radio',
         text: '功能',
-        change: (_, opt) => {
-          let models = []
-          for (let item of DehazeModelValues)
-            if (item.func === opt.func) {
-              item.hidden = false
-              models.push(item)
-            } else {
-              item.hidden = true
-              item.checked = false
-            }
-          let i = models.findIndex(item => !!item.checked)
-          if (i < 0) {
-            i = models.length - 1
-            models[i].checked = 1
-          }
-          opt.model = models[i].value
-          return 1
-        },
+        change: changeFuncs(DehazeModelValues),
         values: [
           { value: 'dehaze', text: '去雾' },
           { value: 'deblur', text: '去模糊', checked: 1 },
@@ -450,6 +486,13 @@ const panels = {
         text: '模型',
         change: _ => 1,
         values: DehazeModelValues
+      },
+      strength: {
+        type: 'number',
+        text: '强度',
+        value: 1.0,
+        classes: ['input-number'],
+        attributes: ['step="0.05"']
       }
     }
   },
@@ -481,6 +524,43 @@ const panels = {
             notes: ['屏幕模型比较强力地抹掉摩尔纹']
           }
         ]
+      },
+      strength: {
+        type: 'number',
+        text: '强度',
+        value: 1.0,
+        classes: ['input-number'],
+        attributes: ['step="0.05"']
+      }
+    }
+  },
+  retouch: {
+    op: 'dehaze',
+    text: '美化调色',
+    description: '让贫乏的图像变得更多彩一点点',
+    draggable: 1,
+    args: {
+      func: {
+        type: 'radio',
+        text: '功能',
+        change: changeFuncs(RetouchModelValues),
+        values: [
+          { value: 'retouch', text: '色彩美化', checked: 1 },
+          { value: 'tone-remapping', text: '重排色调' }
+        ]
+      },
+      model: {
+        type: 'radio',
+        text: '模型',
+        change: _ => 1,
+        values: RetouchModelValues
+      },
+      strength: {
+        type: 'number',
+        text: '强度',
+        value: 1.0,
+        classes: ['input-number'],
+        attributes: ['step="0.05"']
       }
     }
   },
@@ -513,7 +593,8 @@ const panels = {
           },
           {
             value: '2ms16ms',
-            text: '2到16毫秒'
+            text: '2到16毫秒',
+            checked: 1
           },
           {
             value: '3ms24ms',

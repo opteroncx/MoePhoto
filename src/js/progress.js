@@ -1,6 +1,7 @@
 import $ from 'jquery'
 import { getResource, getSession, texts } from './common.js'
 import { setup } from './app.js'
+const getLast = a => a && a.length && a[a.length - 1]
 const bindProgress = ($ele, context) => {
   var intervalId = 0,
     remain = 0,
@@ -104,9 +105,7 @@ const setupProgress = opt => {
     runButton = $('#RunButton'),
     total = 0
 
-  const [setPreview] = [opt.outputImg].map($ele =>
-    $ele && $ele.length ? setImg($ele) : _ => _
-  )
+  const setPreview = opt.outputImg && opt.outputImg.length ? setImg(opt.outputImg) : _ => _
   if (!opt.session) opt.session = getSession()
   if (!opt.onProgress) opt.onProgress = texts.onBusy
   const onMessage = e => {
@@ -117,8 +116,9 @@ const setupProgress = opt => {
       stopButton.attr('disabled', false).show()
     }
     data.preview && setPreview(data.preview)
-    data.gone && opt.setInputImg(data.gone)
+    data.gone && opt.setInputImg(data.gone - 1)
     data.total && (total = data.total)
+    data.result && data.result !== 'Fail' && (opt.setInputImg(total - 1), setPreview(getLast(data.result[2])))
     data.gone
       ? progress.setStatus(opt.onProgress(data.gone, total, data))
       : data.eta

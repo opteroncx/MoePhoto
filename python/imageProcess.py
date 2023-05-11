@@ -6,6 +6,7 @@ from itertools import chain
 from typing import Callable, List, Union
 import torch
 import torch.nn.functional as F
+from torch.cuda.amp import autocast
 import PIL
 PIL.PILLOW_VERSION = PIL.__version__
 from torchvision.transforms.functional import to_tensor
@@ -330,9 +331,19 @@ def getStateDict(path):
     weightCache[path] = torch.load(path, map_location='cpu')
   return weightCache[path]
 
+def castModel(model):
+  dtype = type(model).__dict__.get('castDtype', 'float16')
+  if dtype == 'float32':
+    _m = model.to(config.device())
+  elif dtype == 'autocast':
+    _m = autocast()(model.to(config.device()))
+  else:
+    return model.to(dtype=config.dtype(), device=config.device())
+  return lambda *args, **kwargs: _m(*args, **kwargs).to(config.dtype())
+
 def initModel(opt, weights=None, key=None, f=lambda opt: opt.modelDef()):
   if key and key in modelCache:
-    return modelCache[key].to(dtype=config.dtype(), device=config.device())
+    return castModel(modelCache[key])
   log.info('loading model {}'.format(opt.model))
   model = f(opt)
   if weights:
@@ -345,12 +356,7 @@ def initModel(opt, weights=None, key=None, f=lambda opt: opt.modelDef()):
   model.eval()
   if key:
     modelCache[key] = model
-  return model.to(dtype=config.dtype(), device=config.device())
-
-def toInt(o, keys):
-  for key in keys:
-    if key in o:
-      o[key] = int(o[key])
+  return castModel(model)
 
 def getPadBy32(img, _):
   *_, oriHeight, oriWidth = img.shape
@@ -386,14 +392,24 @@ def mergeAlpha(t):
       return im
   return f
 
+def _RGBFilter(opt, img):
+  t = {}
+  imgIn = opt.prepare(extractAlpha(t)(img))
+
+  prediction = doCrop(opt, imgIn)
+  out = strengthOp(prediction, imgIn, opt.strength)
+  return mergeAlpha(t)(out)
+RGBFilter = lambda opt: lambda img: _RGBFilter(opt, img)
+
 class Option():
   def __init__(self, path=''):
     self.ramCoef = 1e-3
     self.padding, self.scale, self.cropsize, self.align, self.fixChannel = 1, 1, 0, 8, 1
-    self.ensemble = 0
+    self.ensemble, self.strength = 0, 1.0
     self.model = path
     self.outShape = None
     self.iterClip = None
+    self.prepare = identity
     self.squeeze = lambda x: x.squeeze(0)
     self.unsqueeze = lambda x: x.unsqueeze(0)
 
@@ -573,6 +589,7 @@ BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
 BGR2RGBTorch = lambda im: torch.stack([im[2], im[1], im[0]])
 toOutput8 = toOutput(8)
 dedupeAlpha = lambda x: ('RGB', x[:, :, :3]) if (255 - x[:, :, 3]).astype(dtype=np.float32).sum() < 1 else ('RGBA', x)
+strengthOp = lambda x, inp, s=1: s * x + (1 - s) * inp
 apply = lambda v, f: f(v)
 transpose = lambda x: x.transpose(-1, -2)
 flip = lambda x: x.flip(-1)
