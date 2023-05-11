@@ -57,26 +57,27 @@ def tryFunc(f, *args):
   except Exception:
     return None
 
+def updateNote(key, note):
+  if note and len(note):
+    if current.setETA:
+      updateETA(note)
+    else:
+      note.pop('total', 0)
+      note.pop('gone', 0)
+      note.pop('eta', 0)
+    if 'fileSize' in note:
+      current.fileSize = note['fileSize']
+      del note['fileSize']
+    if len(note):
+      cache.update(key, note)
+
 def pollNote():
   key = current.key
   while current.key:
     while current.key and not noter.poll():
       idle()
-    res = None
     while noter.poll():
-      res = noter.recv()
-    if res and len(res):
-      if current.setETA:
-        updateETA(res)
-      else:
-        res.pop('total', 0)
-        res.pop('gone', 0)
-        res.pop('eta', 0)
-      if 'fileSize' in res:
-        current.fileSize = res['fileSize']
-        del res['fileSize']
-      if len(res):
-        cache.update(key, res)
+      updateNote(key, noter.recv())
 
 def acquireSession(request):
   if current.session:

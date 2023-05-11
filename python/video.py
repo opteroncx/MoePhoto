@@ -123,11 +123,9 @@ def enqueueOutput(out, queue):
   try:
     for line in iter(out.readline, b''):
       queue.put(line)
+    out.flush()
   except Exception:
     queue.put('FFMpeg output pipe Exception')
-  try:
-    out.flush()
-  finally: pass
 
 def createEnqueueThread(pipe, *args):
   t = threading.Thread(target=enqueueOutput, args=(pipe, qOut, *args))
@@ -320,8 +318,6 @@ def SR_vid(video, by, *steps):
       for buffer in bufs:
         if buffer:
           procOut.stdin.write(buffer)
-    if raw_image:
-      root.trace()
     return 0 if bufs is None else len(bufs)
 
   context.stopFlag.clear()

@@ -44,7 +44,7 @@ fPreview = [
 funcPreview = lambda im: reduce(applyNonNull, fPreview, im)
 
 def procInput(source, bitDepth, fs, out):
-  out['load'] = 1
+  out['load'], out['sf']  = 1, 1
   node = Node({'op': 'toTorch', 'bits': bitDepth})
   fs.append(NonNullWrap(node.bindFunc(toTorch(bitDepth, config.dtype(), config.device()))))
   return fs, [node], out
@@ -82,6 +82,7 @@ def procVSR(opt, out, *_):
 
 def procSlomo(opt, out, *_):
   load = out['load']
+  out['sf'] *= opt['sf']
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
   node = newNode(opt, dict(op='slomo'), load, opt['sf'])
   return fs + [runSlomo.doSlomo], ns + [node], out
@@ -111,6 +112,7 @@ def procOutput(opt, out, *_):
   bitDepthOut = out['bitDepth']
   node1 = newNode(opt, dict(op='toOutput', bits=bitDepthOut), load)
   fOutput = node1.bindFunc(toOutput(bitDepthOut))
+  fTrace = lambda *_: context.root.trace(1 / out['sf'])
   fs = [NonNullWrap(node0.bindFunc(toFloat)), NonNullWrap(fOutput)]
   ns = [node0, node1]
   if out['source']:
@@ -123,7 +125,7 @@ def procOutput(opt, out, *_):
         return [res]
     else:
       o = lambda im: [reduce(applyNonNull, fs1, im)]
-    fs = [o]
+    fs = [o, fTrace]
     if out['channel']:
       fPreview[4] = BGR2RGB
     else:

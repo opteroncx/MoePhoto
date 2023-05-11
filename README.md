@@ -16,6 +16,8 @@ A deep learning based AI Image/Video quality enhancing software
 - 超分辨率 Super resolution
 - 去摩尔纹 Demoireing
 - 去雾 Dehaze
+- 去模糊 Deblur
+- 调色 Retouch
 - 涂抹及风格化 Force denoise
 - 高帧率和慢动作 High FPS and Slow motion
 
