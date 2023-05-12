@@ -52,29 +52,23 @@ class Config():
     if self.cuda:
       if emptyCache:
         torch.cuda.empty_cache()
-      free_ram = readgpu.getGPU()[self.deviceId]
+      free_ram = readgpu.getGPU()[self.deviceId] - 2**28
     else:
       mem = psutil.virtual_memory()
-      free_ram = mem.free
-    self.freeRam = free_ram
+      free_ram = mem.free - 2**28
     return free_ram
 
   def calcFreeMem(self):
+    freeRam = self.getFreeMem()
     if self.cuda:
-      torch.cuda.empty_cache()
-      memUsed = torch.cuda.memory_allocated(self.deviceId) + 2**29
+      freeRam = freeRam * .8 + torch.cuda.memory_reserved() * .4
       if self.maxGraphicMemoryUsage > 0:
-        free = min(self.freeRam, self.maxGraphicMemoryUsage * 2**20) - memUsed
-      else:
-        free = self.freeRam - memUsed
-    else:
+        memUsed = torch.cuda.memory_allocated()
+        freeRam = min(freeRam, self.maxGraphicMemoryUsage * 2**20 - memUsed)
+    elif self.maxMemoryUsage > 0:
       memUsed = process.memory_info()[0]
-      self.freeRam = psutil.virtual_memory().free
-      if self.maxMemoryUsage > 0:
-        free = min(self.freeRam - 2**28, self.maxMemoryUsage * 2**20 - memUsed)
-      else:
-        free = self.freeRam - 2**28
-    return free
+      freeRam = min(freeRam, self.maxMemoryUsage * 2**20 - memUsed)
+    return int(freeRam)
 
   def dtype(self):
     return torch.half if self.cuda and self.fp16 else torch.float
@@ -93,7 +87,6 @@ class Config():
       return []
     try:
       freeMems = readgpu.getGPU()
-      self.freeRam = freeMems[self.deviceId]
       gram = [freeMem // 2**20 for freeMem in freeMems]
     except Exception as e:
       print(e)

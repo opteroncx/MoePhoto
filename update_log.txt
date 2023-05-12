@@ -1,3 +1,7 @@
+==========ver5.13.0============
+集成[RealBasicVSR](https://github.com/ckkelvinchan/RealBasicVSR)的清理模块
+周期性根据空闲显存重设切块和分批大小
+修正imageProcess.StreamState的潜在问题
 ==========ver5.12.0============
 增加美化调色的[AiLUT模型](https://github.com/ImCharlesY/AdaInt)
 滤镜形式的模型现在可以设置作用强度，按比例混合输入输出

@@ -129,15 +129,16 @@ def blend(r, x, lt, pad, dim, blend):
 def prepareOpt(opt, shape):
   sc, pad = opt.scale, opt.padding
   padSc = pad * sc
-  if opt.iterClip is None:
+  if opt.iterClip is None or opt.count > 28:
     try:
-      freeRam = config.calcFreeMem()
+      freeMem = config.calcFreeMem()
     except Exception:
       raise MemoryError('Can not calculate free memory.')
+    opt.count = 0
     if opt.ensemble > 0:
       opt2 = copy(opt)
-      opt2.iterClip, opt2.padImage, opt2.unpad, *_ = prepare(transposeShape(shape), freeRam, opt, pad, sc, opt.align, opt.cropsize)
-    opt.iterClip, opt.padImage, opt.unpad, outShape, opt.blend = prepare(shape, freeRam, opt, pad, sc, opt.align, opt.cropsize)
+      opt2.iterClip, opt2.padImage, opt2.unpad, *_ = prepare(transposeShape(shape), freeMem, opt, pad, sc, opt.align, opt.cropsize)
+    opt.iterClip, opt.padImage, opt.unpad, outShape, opt.blend = prepare(shape, freeMem, opt, pad, sc, opt.align, opt.cropsize)
     if (not hasattr(opt, 'outShape')) or opt.outShape is None:
       opt.outShape = outShape
     opt.outShape = list(opt.outShape)
@@ -145,6 +146,8 @@ def prepareOpt(opt, shape):
       opt2.blend = opt.blend
       opt2.outShape = transposeShape(opt.outShape)
       opt.transposedOpt = opt2
+  else:
+    opt.count += 1
   return sc, padSc
 
 def doCrop(opt, x, *args, **_):
@@ -403,9 +406,9 @@ RGBFilter = lambda opt: lambda img: _RGBFilter(opt, img)
 
 class Option():
   def __init__(self, path=''):
-    self.ramCoef = 1e-3
-    self.padding, self.scale, self.cropsize, self.align, self.fixChannel = 1, 1, 0, 8, 1
-    self.ensemble, self.strength = 0, 1.0
+    self.ramCoef, self.count = 1e-3, 0
+    self.padding, self.cropsize, self.align, self.fixChannel = 1, 0, 8, 1
+    self.scale, self.ensemble, self.strength = 1, 0, 1.0
     self.model = path
     self.outShape = None
     self.iterClip = None
@@ -446,12 +449,7 @@ class StreamState():
     self.reserve = reserve # ensure enough items to pad
     self.stateR = []
 
-  def clear(self):
-    self.state.clear()
-
   def getSize(self, size=None):
-    if self.start:
-      self.start -= self.pad(self.start)
     ls = len(self.state)
     if ls < self.wm1 + (size or 1) or self.start:
       return 0
@@ -490,12 +488,14 @@ class StreamState():
     self.state = (self.state + batch) if padding < 0 else (batch + self.state)
     return padding
 
-  def push(self, batch: Union[torch.Tensor, List[torch.Tensor]], *_, **__):
+  def put(self, batch: Union[torch.Tensor, List[torch.Tensor]], *_, **__):
     if batch is None:
       return None
     if self.offload:
       batch = offload(batch)
     self.store and self.state.extend(t for t in batch)
+    if self.start:
+      self.start -= self.pad(self.start)
     return batch
 
   def bind(self, stateIter):
@@ -522,8 +522,8 @@ class StreamState():
         self.end -= self.pad(self.end)
     return flag
 
-  @classmethod
-  def run(_, f: Callable, states, size: int, args=[], last=None, pipe=False):
+  @staticmethod
+  def run(f: Callable, states, size: int, args=[], last=None, pipe=False):
     t = yield
     flag, trial = False, 2
     while True:
@@ -563,7 +563,7 @@ def pipeFunc(it, targets, size, last=False):
     try:
       out = it.send((last, size))
       for t in targets:
-        t.push(out)
+        t.put(out)
       t = yield out
     except StopIteration: break
 
@@ -574,6 +574,7 @@ previewPath = config.outDir + '/.preview.{}'.format(previewFormat if previewForm
 log = logging.getLogger('Moe')
 modelCache = {}
 weightCache = {}
+fCleanCache = lambda x: torch.cuda.empty_cache() or x
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
 padImageReflect = torch.nn.ReflectionPad2d
 identity = lambda x, *_, **__: x

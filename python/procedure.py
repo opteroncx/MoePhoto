@@ -112,7 +112,7 @@ def procOutput(opt, out, *_):
   bitDepthOut = out['bitDepth']
   node1 = newNode(opt, dict(op='toOutput', bits=bitDepthOut), load)
   fOutput = node1.bindFunc(toOutput(bitDepthOut))
-  fTrace = lambda *_: context.root.trace(1 / out['sf'])
+  fTrace = lambda x: context.root.trace(1 / out['sf']) or x
   fs = [NonNullWrap(node0.bindFunc(toFloat)), NonNullWrap(fOutput)]
   ns = [node0, node1]
   if out['source']:

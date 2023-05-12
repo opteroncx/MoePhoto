@@ -558,7 +558,7 @@ const panels = {
       strength: {
         type: 'number',
         text: '强度',
-        value: 1.0,
+        value: 0.75,
         classes: ['input-number'],
         attributes: ['step="0.05"']
       }

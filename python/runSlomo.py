@@ -17,7 +17,7 @@ ramCoef = [.95 / x for x in (8100., 2484., 8100., 2466., 4014., 1080.)]
 getFlowComp = lambda *_: UNet(6, 4)
 getFlowIntrp = lambda *_: UNet(20, 5)
 getFlowBack = lambda opt: backWarp(opt.width, opt.height, config.device(), config.dtype())
-getBatchSize = lambda load, ramCoef: max(1, int((config.calcFreeMem() / load) * ramCoef))
+getBatchSize = lambda load, ramCoef, freeMem: max(1, int((freeMem / load) * ramCoef))
 modules = dict(
   flowComp={'weight': 'state_dictFC', 'f': getFlowComp, 'outShape': (1, 4, 1, 1)},
   ArbTimeFlowIntrp={'weight': 'state_dictAT', 'f': getFlowIntrp, 'outShape': (1, 5, 1, 1)})
@@ -55,8 +55,9 @@ def getOptS(modelPath, modules, ramCoef):
 def setOutShape(opt, height, width):
   load = width * height
   od = opt.__dict__
+  freeMem = config.calcFreeMem()
   for key, o in opt.modules.items():
-    batchSize = opt.bf(load, od[key].ramCoef)
+    batchSize = opt.bf(load, od[key].ramCoef, freeMem)
     if 'outShape' in o:
       q = o['outShape']
       od[key].outShape = [batchSize, *q[1:-2], int(height * q[-2]), int(width * q[-1])]
@@ -75,14 +76,14 @@ def getOptP(opt, bf=getBatchSize):
   return opt
 
 extendRes = lambda res, item: res.extend(item) if type(item) == list else (None if item is None else res.append(item))
-def makeStreamFunc(func, node, opt, nodes, name, padStates, initFunc, pushFunc):
+def makeStreamFunc(func, node, opt, nodes, name, padStates, initFunc, putFunc):
   for n in nodes:
     node.append(n)
   def f(x):
     node.reset()
     node.trace(0, p='{} start'.format(name))
 
-    if not opt.i:
+    if opt.i % 31 == 0 and not x is None:
       setOutShape(opt, *initFunc(opt, x))
 
     if opt.end:
@@ -96,7 +97,7 @@ def makeStreamFunc(func, node, opt, nodes, name, padStates, initFunc, pushFunc):
       opt.start = 0
     last = True if x is None else None
     if not last:
-      pushFunc(opt.pad(x.unsqueeze(0)))
+      putFunc(opt.pad(x.unsqueeze(0)))
       opt.i += 1
     out = []
     extend(out, opt.out.send(last))

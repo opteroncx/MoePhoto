@@ -222,4 +222,4 @@ def doESTRNN(func, node, opt):
   opt.fusionStream = StreamState.pipe(nodes[2].bindFunc(opt.fusion), [hs, w], [fusion])
   recons = StreamState(store=False)
   opt.out = StreamState.pipe(nodes[3].bindFunc(doCrop), [fusion], [recons], args=[opt.recons])
-  return makeStreamFunc(func, node, opt, nodes, 'ESTRNN', [hs, w], initFunc, inp.push)
+  return makeStreamFunc(func, node, opt, nodes, 'ESTRNN', [hs, w], initFunc, inp.put)
