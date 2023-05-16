@@ -429,6 +429,14 @@ const panels = {
             text: 'NAFNet大',
             checked: 1,
             notes: [NAFNetNote, '比小个的慢一点，据说效果也好一点']
+          },
+          {
+            value: 'VSR_Cleaning',
+            text: '图像清理',
+            notes: [
+              '来自<a href="https://github.com/ckkelvinchan/RealBasicVSR">Kelvin C.K. Chan</a>',
+              '原作者是把它放在视频放大模型的前面，说不定也能用在别的地方呢'
+            ]
           }
         ]
       },

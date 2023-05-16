@@ -83,8 +83,8 @@ const setup = opt => {
     } else {
       messager.abort()
       running &&
-        (reconnect < 5
-          ? ++reconnect && setTimeout(_ => running && openMessager(), 200)
+        (reconnect < 10
+          ? ++reconnect && setTimeout(_ => running && openMessager(), 200 << reconnect)
           : endSession())
     }
   }

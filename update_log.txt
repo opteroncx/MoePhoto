@@ -1,6 +1,7 @@
 ==========ver5.13.0============
-集成[RealBasicVSR](https://github.com/ckkelvinchan/RealBasicVSR)的清理模块
-周期性根据空闲显存重设切块和分批大小
+增加[RealBasicVSR](https://github.com/ckkelvinchan/RealBasicVSR)的清理模块
+周期性根据空闲显存重设切块和分批大小，限制多模块模型的显存分配量
+修正前端等待大请求完成，避免处理开始前就停止接受进度
 修正imageProcess.StreamState的潜在问题
 ==========ver5.12.0============
 增加美化调色的[AiLUT模型](https://github.com/ImCharlesY/AdaInt)

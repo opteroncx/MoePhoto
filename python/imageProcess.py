@@ -590,7 +590,7 @@ BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
 BGR2RGBTorch = lambda im: torch.stack([im[2], im[1], im[0]])
 toOutput8 = toOutput(8)
 dedupeAlpha = lambda x: ('RGB', x[:, :, :3]) if (255 - x[:, :, 3]).astype(dtype=np.float32).sum() < 1 else ('RGBA', x)
-strengthOp = lambda x, inp, s=1: s * x + (1 - s) * inp
+strengthOp = lambda x, inp, s=1: x if s == 1 else inp + s * (x - inp)
 apply = lambda v, f: f(v)
 transpose = lambda x: x.transpose(-1, -2)
 flip = lambda x: x.flip(-1)

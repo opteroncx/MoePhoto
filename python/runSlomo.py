@@ -46,7 +46,7 @@ def getOptS(modelPath, modules, ramCoef):
     o = dict((k, m[k]) for k in ('align', 'padding', 'scale') if k in m)
     model = initModel(opt, weights[wKey], key, constructor)
     if 'outShape' in m:
-      opt.__dict__[key] = newOpt(model, rc, **o)
+      opt.__dict__[key] = newOpt(model, rc / len(modules), **o)
     else:
       model.ramCoef = rc
       opt.__dict__[key] = model
@@ -55,7 +55,7 @@ def getOptS(modelPath, modules, ramCoef):
 def setOutShape(opt, height, width):
   load = width * height
   od = opt.__dict__
-  freeMem = config.calcFreeMem()
+  freeMem = config.calcFreeMem(1 / len(opt.modules))
   for key, o in opt.modules.items():
     batchSize = opt.bf(load, od[key].ramCoef, freeMem)
     if 'outShape' in o:

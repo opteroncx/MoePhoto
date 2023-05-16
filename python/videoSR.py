@@ -409,8 +409,8 @@ def doUpsample(opt, inp, forward, **_):
   return out
 
 modelPath = './model/vsr/IconVSR_Vimeo90K_BDx4-cfcb7e00.pth'
-ramCoef = [.25 / x for x in (98610., 1535.625, 15616., 15616., 14528., 1., 1., 14048., 1504., 2144., 2400., 11072., 1., 1., 7936., 1376., 1472., 1600., 10072.)]
-fusionRamCoef = [.25 / x for x in (256., 1344., 1280.)]
+ramCoef = [1. / x for x in (98610., 1535.625, 15616., 15616., 14528., 1., 1., 14048., 1504., 2144., 2400., 11072., 1., 1., 7936., 1376., 1472., 1600., 10072.)]
+fusionRamCoef = [1. / x for x in (256., 1344., 1280.)]
 newFusion = lambda *_: conv2d311(2 * NumFeat, NumFeat)
 modules = dict(
   edvr=dict(weight='edvr', outShape=(1, NumFeat, 1, 1), staticDims=[0],

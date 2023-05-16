@@ -118,7 +118,10 @@ const setupProgress = opt => {
     data.preview && setPreview(data.preview)
     data.gone && opt.setInputImg(data.gone - 1)
     data.total && (total = data.total)
-    data.result && data.result !== 'Fail' && (opt.setInputImg(total - 1), setPreview(getLast(data.result[2])))
+    if (data.result && data.result !== 'Fail') {
+      typeof data.result === 'string' ? setPreview(data.result)
+      : (opt.setInputImg(total - 1), setPreview(getLast(data.result[2])))
+    }
     data.gone
       ? progress.setStatus(opt.onProgress(data.gone, total, data))
       : data.eta

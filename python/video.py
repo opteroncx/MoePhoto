@@ -205,6 +205,10 @@ def prepare(video, by, steps):
     '-c', 'copy',
     '-y',
     dataPath,
+    '-sws_flags', 'spline+accurate_rnd+full_chroma_int',
+    '-color_trc', '2',
+    '-colorspace', '2',
+    '-color_primaries', '2',
     '-map', '0:v',
     '-f', 'rawvideo',
     '-pix_fmt', pix_fmt]
@@ -323,8 +327,9 @@ def SR_vid(video, by, *steps):
   context.stopFlag.clear()
   outputPath, process, *args = prepare(video, by, steps)
   start, stop, refs, root = args[:4]
+  root.callback(root, dict(eta=100000))
   width, height, *more = getVideoInfo(video, by, *args[-3:])
-  root.callback(root, dict(shape=[height, width], fps=more[0]))
+  root.callback(root, dict(shape=[height, width], fps=more[0], eta=60000))
   commandIn, commandVideo, commandOut = setupInfo(by, outputPath, *args[3:9], start, width, height, *more)
   procIn = popen(commandIn)
   procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=0)

@@ -82,11 +82,14 @@ def pollNote():
 def acquireSession(request):
   if current.session:
     return busy()
+  current.session = -1
+  current.eta = 0.1
   while noter.poll():
     noter.recv()
   current.session = request.values['session']
   current.path = request.values['path'] if 'path' in request.values else request.path
   current.key = current.path + str(current.session)
+  cache.put(current.key, {'eta': 60})
   spawn(pollNote)
   current.eta = 1
   updateETA(request.values)
@@ -99,10 +102,11 @@ def controlPoint(path, fMatch, fUnmatch, fNoCurrent, check=lambda *_: True):
     session = request.values['session']
     if not session:
       return E403
+    key = getKey(session, request)
     if current.session:
-      return spawn(fMatch, getKey(session, request)).get() if current.session == session and check(request) else fUnmatch()
+      return spawn(fMatch, key).get() if current.session == session and check(request) else fUnmatch()
     else:
-      return fNoCurrent(session, request)
+      return spawn(fNoCurrent, key).get()
   app.route(path, methods=['GET', 'POST'], endpoint=path)(f)
 
 def stopCurrent(*_):
@@ -273,7 +277,7 @@ for item in routes:
 
 identity = lambda x, *_: x
 readOpt = lambda req: json.loads(req.values['steps'])
-onRequestCache = lambda session, request: cache.pop(getKey(session, request))
+onRequestCache = lambda key: idle() or cache.pop(key)
 controlPoint('/stop', stopCurrent, lambda: E403, lambda *_: E404)
 controlPoint('/msg', onConnect, busy, onRequestCache, checkMsgMatch)
 app.route('/log', endpoint='log')(lambda: send_file(logPath, etag=False))

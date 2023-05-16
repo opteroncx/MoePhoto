@@ -58,10 +58,10 @@ class Config():
       free_ram = mem.free - 2**28
     return free_ram
 
-  def calcFreeMem(self):
+  def calcFreeMem(self, ratio=.9):
     freeRam = self.getFreeMem()
     if self.cuda:
-      freeRam = freeRam * .8 + torch.cuda.memory_reserved() * .4
+      freeRam = (freeRam + torch.cuda.memory_reserved()) * ratio
       if self.maxGraphicMemoryUsage > 0:
         memUsed = torch.cuda.memory_allocated()
         freeRam = min(freeRam, self.maxGraphicMemoryUsage * 2**20 - memUsed)
