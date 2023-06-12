@@ -132,10 +132,10 @@ def postOut(warp, inp, inpN, mean_, embt, out, **_):
   outLens = [len(t[0]) for t in embt]
   ids = sum(([i] * k for i, k in enumerate(outLens)), [])
   inpR = inpN[ids]
-  e = torch.cat([t[0] for t in embt])
+  e = torch.cat([t[0] for t in embt]).view(-1, 1, 1, 1)
   mean_p = mean_[ids]
   mean_p = (1 - e) * mean_p[:, 0] + e * mean_p[:, 1]
-  assert inpR.shape[0] == out.shape[0]
+  assert inpR.shape[0] == out.shape[0] == mean_p.shape[0]
   up_flow0, up_flow1, up_mask, up_res_1 = out[:, :2], out[:, 2:4], out[:, 4:5], out[:, 5:]
   up_mask_1 = torch.sigmoid(up_mask)
 
@@ -201,9 +201,9 @@ decoderRamCoef = dict(
   L=1. / np.array([1822.63, 1600.88, 1131.67])
 )
 modelPaths = dict(
-  S='./model/IFRNet/IFRNet_S_Vimeo90K.pth',
-  M='./model/IFRNet/IFRNet_Vimeo90K.pth',
-  L='./model/IFRNet/IFRNet_L_Vimeo90K.pth',
+  S='./model/IFRNet/IFRNet_S_GoPro.pth',
+  M='./model/IFRNet/IFRNet_GoPro.pth',
+  L='./model/IFRNet/IFRNet_L_GoPro.pth',
 )
 modules = {
   'encoder': dict(weight='encoder', streams=['features'], f=IFRNetEncoder),

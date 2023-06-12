@@ -569,4 +569,4 @@ which = [getTransposedOpt, identity, identity, getTransposedOpt, getTransposedOp
 ensemble = lambda opt: lambda x: reduce((lambda v, t: (v + t[2](doCrop(t[3](opt), t[1](x)))).detach()), zip(range(opt.ensemble), trans, transInv, which), doCrop(opt, x))
 split = lambda *ps: lambda x: tuple(split(*ps[1:])(c) for c in x.split(ps[0], x.ndim - len(ps))) if len(ps) else x
 flat = lambda x: tuple(chain(*(flat(t) for t in x))) if len(x) and type(x[0]) is tuple else x
-extend = lambda out, res: None if res is None else out.extend(tuple(res))
+extend = lambda out, res, off=False: None if res is None else out.extend(tuple(offload(res) if off else res))
