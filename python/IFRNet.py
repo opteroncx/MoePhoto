@@ -134,7 +134,7 @@ def postOut(warp, inp, inpN, mean_, embt, out, **_):
   inpR = inpN[ids]
   e = torch.cat([t[0] for t in embt])
   mean_p = mean_[ids]
-  mean_p = mean_p[:, 0] + (mean_p[:, 1] - mean_p[:, 0]) * e
+  mean_p = (1 - e) * mean_p[:, 0] + e * mean_p[:, 1]
   assert inpR.shape[0] == out.shape[0]
   up_flow0, up_flow1, up_mask, up_res_1 = out[:, :2], out[:, 2:4], out[:, 4:5], out[:, 5:]
   up_mask_1 = torch.sigmoid(up_mask)
