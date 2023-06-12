@@ -239,7 +239,6 @@ def doSlomo(func, node, opt):
   StreamState.pipe(identity, [inp], inps)
   means = [StreamState(offload=False), StreamState(2, offload=False)]
   StreamState.pipe(calcMean, [inps[0]], means)
-  inpN = StreamState(offload=False)
   inpNs = [StreamState(offload=False), StreamState(2, offload=False)]
   StreamState.pipe(normializeInp, [inps[1], means[0]], inpNs)
   features = StreamState(2, tensor=False, offload=False, batchFunc=batchFeatures)
