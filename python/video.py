@@ -13,7 +13,7 @@ from imageProcess import clean
 from procedure import genProcess
 from progress import Node, initialETA
 from worker import context, begin
-from runSlomo import RefTime as SlomoRefs
+from IFRNet import RefTime as SlomoRefs
 from videoSR import RefTime as VSRRefs
 from ESTRNN import para as ESTRNNpara
 
@@ -163,6 +163,11 @@ def prepare(video, by, steps):
   refs, ahead = 0, 0
   if start < 0:
     start = 0
+  cumStart = start
+  for step in procSteps:
+    if step['op'] == 'slomo':
+      step['opt'].start = cumStart
+      cumStart *= step['sf']
   for i in range(len(procSteps) - 1, -1, -1): # gather some reference frames before start point for video models
     step = procSteps[i]
     if step['op'] == 'slomo':

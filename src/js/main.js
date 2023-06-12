@@ -733,6 +733,25 @@ const panels = {
     description: '以可设定的整倍数填充视频画面帧',
     draggable: 1,
     args: {
+      model: {
+        type: 'radio',
+        text: '模型',
+        values: [
+          {
+            value: 'IFRNet_L',
+            text: '大'
+          },
+          {
+            value: 'IFRNet_M',
+            text: '中',
+            checked: 1
+          },
+          {
+            value: 'IFRNet_S',
+            text: '小'
+          }
+        ]
+      },
       sf: {
         type: 'number',
         text: '倍数',
@@ -740,9 +759,9 @@ const panels = {
         classes: ['input-number'],
         attributes: ['min="1"'],
         notes: [
-          '输出帧数是输入的多少倍，必须是正整数',
+          '输出帧数是输入的多少倍，必须不小于1',
           '为了方便精确地拼接输出视频，若之前的视频处理开始于设定大于0且这里设置了大于1的倍数，那么开始帧之前的那一帧会被用作参考帧，输出的头几帧将会是它与开始帧之间的插入帧，但这一参考帧本身将不会被输出',
-          '来自于<a href="https://github.com/avinashpaliwal/Super-SloMo">avinashpaliwal的Super-SloMo</a>'
+          '来自于<a href="https://github.com/ltkong218/IFRNet">Lingtong Kong的IFRNet</a>'
         ],
         summary: '*'
       }

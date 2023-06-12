@@ -7,18 +7,18 @@ from imageProcess import (
   toFloat, toOutput, toOutput8, toTorch, toNumPy, toBuffer,
   readFile, writeFile,
   BGR2RGB, BGR2RGBTorch, RGBFilter,
-  resize, restrictSize, windowWrap,
+  resize, restrictSize,
   apply, identity, previewFormat, previewPath
 )
 import runSR
 import runDN
 import dehaze
-import runSlomo
 import videoSR
 import ESTRNN
+import IFRNet
 from worker import context
 
-videoOps = dict(slomo=runSlomo.WindowSize, VSR=videoSR.WindowSize, demob=ESTRNN.WindowSize)
+videoOps = {'slomo', 'VSR', 'demob'}
 applyNonNull = lambda v, f: NonNullWrap(f)(v)
 NonNullWrap = lambda f: lambda x: f(x) if not x is None else None
 newNode = lambda opt, op, load=1, total=1: Node(op, load, total, name=opt.get('name', None))
@@ -85,7 +85,7 @@ def procSlomo(opt, out, *_):
   out['sf'] *= opt['sf']
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
   node = newNode(opt, dict(op='slomo'), load, opt['sf'])
-  return fs + [runSlomo.doSlomo], ns + [node], out
+  return fs + [IFRNet.doSlomo], ns + [node], out
 
 def procDemob(opt, out, *_):
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
@@ -149,7 +149,7 @@ stepOpts = dict(
   resize={'toInt': ['width', 'height'], 'toFloat': ['scaleW', 'scaleH']},
   DN={'toFloat': ['strength'], 'getOpt': runDN},
   dehaze={'toFloat': ['strength'], 'getOpt': dehaze},
-  slomo={'toInt': ['sf'], 'getOpt': runSlomo},
+  slomo={'toFloat': ['sf'], 'getOpt': IFRNet},
   VSR={'getOpt': videoSR},
   demob={'getOpt': ESTRNN}
 )
@@ -186,8 +186,7 @@ def genProcess(steps, root=True, outType=None):
         f = identity
         nodesAfter = []
       videoOpt = opt['opt']
-      func = funcs[-1](f, nodes[-1], videoOpt)
-      funcs[-1] = windowWrap(func, videoOpt, videoOps[op]) if videoOps[op] > 1 else func
+      funcs[-1] = funcs[-1](f, nodes[-1], videoOpt)
       nodeAfter = Node({}, total=opt.get('sf', 1), learn=0)
       for node in nodesAfter:
         nodeAfter.append(node)

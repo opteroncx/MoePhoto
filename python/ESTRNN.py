@@ -25,7 +25,6 @@ para.n_blocks = 15
 DS_ratio = 2
 NumFeat = 16
 RefTime = para.future_frames + 1 + para.past_frames
-WindowSize = 1
 
 conv1x1 = lambda in_channels, out_channels, stride=1: nn.Conv2d(
   in_channels, out_channels, kernel_size=1, stride=stride, padding=0, bias=True)

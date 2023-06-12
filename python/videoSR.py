@@ -5,14 +5,71 @@ import torch.nn.functional as F
 
 from imageProcess import ceilBy, StreamState, identity, doCrop
 from models import ModulatedDeformConvPack, ResidualBlockNoBN, make_layer, conv2d311
-from slomo import backWarp
 from runSlomo import getOptS, getOptP, makeStreamFunc
 from progress import Node
 
 RefTime = 7
-WindowSize = 1
 NumFeat = 64
 log = logging.getLogger('Moe')
+
+class backWarp(nn.Module):
+  """
+  A class for creating a backwarping object.
+  This is used for backwarping to an image:
+  Given optical flow from frame I0 to I1 --> F_0_1 and frame I1,
+  it generates I0 <-- backwarp(F_0_1, I1).
+  """
+  def __init__(self, W, H, device, dtype=torch.float, padding_mode='zeros'):
+    """
+    Parameters
+    ----------
+      W : int
+        width of the image.
+      H : int
+        height of the image.
+      device : device
+        computation device (cpu/cuda).
+    """
+    super(backWarp, self).__init__()
+    # create a grid
+    kwarg = {'indexing': 'ij'} if torch.__version__ >= '1.10' else {}
+    gridY, gridX = torch.meshgrid(torch.arange(H), torch.arange(W), **kwarg)
+    self.W = W
+    self.H = H
+    self.gridX = gridX.to(dtype=dtype, device=device)
+    self.gridY = gridY.to(dtype=dtype, device=device)
+    self.padding_mode = padding_mode
+
+  def forward(self, img, flow):
+    """
+    Returns output tensor after passing input `img` and `flow` to the backwarping
+    block.
+    I0  = backwarp(I1, F_0_1)
+    Parameters
+    ----------
+      img : tensor(n, c, h, w)
+        frame I1.
+      flow : tensor(n, 2, h, w)
+        optical flow from I0 and I1: F_0_1.
+    Returns
+    -------
+      tensor
+        frame I0.
+    """
+    # Extract horizontal and vertical flows.
+    u = flow[:, 0, :, :]
+    v = flow[:, 1, :, :]
+    x = self.gridX.unsqueeze(0).expand_as(u) + u
+    y = self.gridY.unsqueeze(0).expand_as(v) + v
+    # range -1 to 1
+    x = 2*(x/self.W - 0.5)
+    y = 2*(y/self.H - 0.5)
+    # stacking X and Y
+    grid = torch.stack((x,y), dim=3)
+    # Sample pixels using bilinear interpolation.
+    # set both here and interpolate's align_corners to False will occur memory overflow
+    imgOut = torch.nn.functional.grid_sample(img, grid, align_corners=True, padding_mode=self.padding_mode, mode='bilinear')
+    return imgOut
 
 conv2d713 = lambda in_channels, out_channels:\
   nn.Conv2d(in_channels, out_channels, kernel_size=7, stride=1, padding=3)
@@ -325,18 +382,20 @@ class KeyFrameState():
   def __init__(self, window):
     self.window = window
     self.count = 0
+    self.last = 0
 
   def getSize(self, size=1 << 30):
     return size
 
   def pull(self, last=None, *_, **__):
-    return not last
+    self.last = not last
+    return self.last
 
-  def popBatch(self, size=1, last=None):
+  def popBatch(self, size=1):
     res = torch.zeros((size,), dtype=torch.bool)
     for i in range(-self.count % self.window, size, self.window):
       res[i] = True
-    if last:
+    if self.last:
       res[-1] = True
     self.count += size
     return res
