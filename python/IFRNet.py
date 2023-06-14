@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from progress import Node
-from imageProcess import ceilBy, StreamState, identity, doCrop
+from imageProcess import ceilBy, StreamState, identity, initModel, trans, transInv, doCrop, prepareOpt
 from runSlomo import newOpt, getOptS, getOptP, makeStreamFunc
 
 Channels = dict(
@@ -83,8 +83,15 @@ Decoder = lambda in_channels, out_channels, side_channels, add_channels=4: nn.Se
     nn.ConvTranspose2d(in_channels, 4 + out_channels, 4, 2, 1, bias=True)
   )
 
+FlowDecoder = lambda _, in_channels, side_channels, add_channels=4: nn.Sequential(
+    convrelu(in_channels + add_channels, in_channels),
+    ResBlock(in_channels, side_channels),
+    nn.ConvTranspose2d(in_channels, 4, 4, 2, 1, bias=True)
+  )
+
+ensembling = lambda opt, fs, x: sum(f[1](y) for f, y in zip(fs, doCrop(opt, torch.cat([f[0](x) for f in fs])).chunk(len(fs))))
 class IFRNetDecoder(nn.Module):
-  def __init__(self, _, chs, side_channels=24, ramCoef=None):
+  def __init__(self, _, chs, side_channels=24, ensemble=0, ramCoef=None):
     super(IFRNetDecoder, self).__init__()
     chsD = [k[0] if type(k) is tuple else k for k in reversed(chs)]
     chsOut = chsD[1:] + [4]
@@ -94,10 +101,30 @@ class IFRNetDecoder(nn.Module):
     self.decode = [newOpt(f, ramCoef, align=8, padding=7, scale=2, oShape=(1, 4 + cOut, 2, 2))
                    for f, cOut in zip(self.decoders, chsOut)]
     self.warps = [Warp('border') for _ in range(4)]
+    assert ensemble < 8
+    self.ensemble = ensemble
+    self.ramCoef = ramCoef
+    self.flows = []
+    self.chsIn = chsIn
+    self.chsAdd = chsAdd
+    self.chsSide = side_channels
+    if ensemble:
+      self.fs, self.fTs = [[(trans[i], transInv[i]) for i in t if i < ensemble] for t in ((1, 2, 5), (0, 3, 4, 6))]
 
   def setSize(self, h, w, x):
     for i in range(4):
       self.warps[i].setSize(h >> (3 - i), w >> (3 - i)).to(x)
+    if self.ensemble:
+      for i, d, cIn, cAdd in zip(range(4), self.decoders, self.chsIn, self.chsAdd):
+        sd = d.state_dict()
+        sd['2.weight'] = sd['2.weight'][:, :4]
+        sd['2.bias'] = sd['2.bias'][:4]
+        opt = newOpt(0, self.ramCoef, align=8, padding=7, scale=2, oShape=(1, 4, 2, 2))
+        flow = initModel(opt, sd, 0, FlowDecoder, [cIn, self.chsSide, cAdd])
+        opt.modelCached = flow
+        opt.ensemble = self.ensemble
+        prepareOpt(opt, [1, 4, h >> (4 - i), w >> (4 - i)])
+        self.flows.append(opt)
     return self
 
   def forward(self, x, embt, **_):
@@ -113,7 +140,12 @@ class IFRNetDecoder(nn.Module):
         f0_warp = warp(ft[:, 0], up_flow0)
         f1_warp = warp(ft[:, 1], up_flow1)
         args = (ft_, f0_warp, f1_warp, up_flow0, up_flow1)
-      out = doCrop(self.decode[i], torch.cat(args, 1))
+      xF = torch.cat(args, 1)
+      out = doCrop(self.decode[i], xF)
+      if self.ensemble:
+        opt0, opt1 = self.flows[i], self.flows[i].transposedOpt
+        out[:, :4] = (out[:, :4] + ensembling(opt1, self.fTs, xF) +
+        (ensembling(opt0, self.fs, xF) if len(self.fs) else 0)) / (self.ensemble + 1)
       up_flow0_ = out[:, :2]
       up_flow1_ = out[:, 2:4]
       ft_ = out[:, 4:]
@@ -212,9 +244,10 @@ modules = {
 def getOpt(option):
   model = option['model'][-1]
   chs = Channels[model]
+  ensemble = option.get('ensemble', 0)
   modules['encoder']['args'] = (chs, encoderRamCoef[model])
   modules['encoder']['ramCoef'] = encoderRamCoef[model]
-  modules['decoder']['args'] = (chs, SideChannels[model], decoderRamCoef[model])
+  modules['decoder']['args'] = (chs, SideChannels[model], ensemble, decoderRamCoef[model])
   modules['decoder']['ramCoef'] = decoderRamCoef[model]
   opt = getOptP(getOptS(modelPaths[model], modules, {}))
   opt.sf = option['sf']

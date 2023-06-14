@@ -149,7 +149,7 @@ stepOpts = dict(
   resize={'toInt': ['width', 'height'], 'toFloat': ['scaleW', 'scaleH']},
   DN={'toFloat': ['strength'], 'getOpt': runDN},
   dehaze={'toFloat': ['strength'], 'getOpt': dehaze},
-  slomo={'toFloat': ['sf'], 'getOpt': IFRNet},
+  slomo={'toInt': ['ensemble'], 'toFloat': ['sf'], 'getOpt': IFRNet},
   VSR={'getOpt': videoSR},
   demob={'getOpt': ESTRNN}
 )

@@ -764,6 +764,17 @@ const panels = {
           '来自于<a href="https://github.com/ltkong218/IFRNet">Lingtong Kong的IFRNet</a>'
         ],
         summary: '*'
+      },
+      ensemble: {
+        type: 'number',
+        text: '额外的处理次数',
+        value: 0,
+        classes: ['input-number'],
+        attributes: ['min="0"', 'max="7"', 'step="1"'],
+        notes: [
+          '让插帧模型额外处理变换的光流，之后混合多次处理的结果，轻微提高质量，要花费时间以此处设置增长',
+          '可填0-7倍'
+        ]
       }
     }
   }
