@@ -775,6 +775,32 @@ const panels = {
           '让插帧模型额外处理变换的光流，之后混合多次处理的结果，轻微提高质量，要花费时间以此处设置增长',
           '可填0-7倍'
         ]
+      },
+      dedupe: {
+        type: 'checkbox',
+        text: '去除重复的相邻帧',
+        values: [
+          {
+            value: 'enable',
+            binds: ['high', 'low']
+          }
+        ]
+      },
+      high: {
+        type: 'number',
+        text: '相似度大于',
+        view: appendText('duplicateFrame'),
+        value: 0.993,
+        classes: ['input-number'],
+        attributes: ['min="0.5"', 'max="1"', 'step="0.001"']
+      },
+      low: {
+        type: 'number',
+        text: '小于',
+        view: appendText('cameraCut'),
+        value: 0.6,
+        classes: ['input-number'],
+        attributes: ['min="0"', 'max="1"', 'step="0.05"']
       }
     }
   }

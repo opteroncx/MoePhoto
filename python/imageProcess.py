@@ -69,7 +69,7 @@ def solveRam(m, c, k):
 
 def prepare(shape, ram, opt, pad, sc, align=8, cropsize=0):
   *_, c, h, w = shape
-  n = solveRam(ram, opt.fixChannel or c, opt.ramCoef)
+  n = solveRam(ram, opt.fixChannel or c, opt.ramCoef / shape[0] if shape[0] else 1.)
   af = alignF[align]
   s = af(minSize + pad * 2)
   if n < s * s:
@@ -130,7 +130,7 @@ def blend(r, x, lt, pad, dim, blend):
 def prepareOpt(opt, shape):
   sc, pad = opt.scale, opt.padding
   padSc = int(pad * sc)
-  if opt.iterClip is None or opt.count > 28:
+  if opt.iterClip is None or opt.count > 28 or shape[0] != opt.outShape[0]:
     try:
       freeMem = config.calcFreeMem()
     except Exception:

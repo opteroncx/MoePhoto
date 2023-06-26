@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from progress import Node
 from imageProcess import ceilBy, StreamState, identity, initModel, trans, transInv, doCrop, prepareOpt
 from runSlomo import newOpt, getOptS, getOptP, makeStreamFunc
+from config import config
 
 Channels = dict(
   S=[24, 36, 54, 72],
@@ -177,11 +178,12 @@ def postOut(warp, inp, inpN, mean_, embt, out, **_):
   imgt_merge = up_mask_1 * (img0_warp - img1_warp) + img1_warp + mean_p
   imgt_pred = imgt_merge + up_res_1
   preds = imgt_pred.clamp(0, 1).split(outLens)
-  res = [inp[:1, 0]] if embt[0][1] else []
+  res = [inp[:1, 0]] * embt[0][1] if embt[0][1] else []
   for img, p, t in zip(inp, preds, embt):
     res.append(p)
-    if t[2]:
-      res.append(img[1:])
+    img1 = img[1:]
+    for _ in range(t[2]):
+      res.append(img1)
   return torch.cat(res)
 
 batchFeatures = lambda x: [torch.stack([s[i] for s in x]) for i in range(4)]
@@ -211,8 +213,8 @@ class EmbtState():
   """
   Returns List[Tuple[3]|None]: [(
     embbeding tensor of the 2 input frames,
-    whether to keep the first input frame,
-    whether to keep the last input frame
+    whether or how many to keep the first input frame,
+    whether or how many to keep the last input frame
   )]
   """
   def popBatch(self, size=1):
@@ -222,15 +224,58 @@ class EmbtState():
     self.count += size
     return res
 
+class Deduper(nn.Module):
+  NullOutput = [(None,) * 5]
+  def __init__(self, low, high):
+    super(Deduper, self).__init__()
+    self.feature = None
+    self.embt = None
+    self.state = [[None]]
+    self.high = high
+    self.low = low
+    self.skips = 0
+
+  def concat(self, embt):
+    self.skips += 1
+    s1 = self.state[1]
+    self.state[1] = (torch.concat((s1[0], torch.ones(s1[2]).to(s1[0]) * self.skips, embt[0] + self.skips)), s1[1] + embt[1], embt[2])
+
+  def forward(self, *args, last=None):
+    assert len(args[1]) == 1
+    newState = [a[0] for a in args]
+    x = newState[0]
+    embt = newState[1]
+    x1 = self.state[0][0]
+    if x1 is None:
+      self.state = newState
+      return self.NullOutput
+    sim = F.cosine_similarity(x1.view(-1), x[0].view(-1), dim=0)
+    if sim > self.high: # skip the last input frame
+      self.concat(embt)
+      if not last:
+        return self.NullOutput
+    s = self.state
+    if sim < self.low: # repeat the first input frame
+      e0 = s[1]
+      e1 = (torch.empty(0).to(e0[0]), e0[1] + len(e0[0]), e0[2])
+      s[1] = e1
+    if self.skips:
+      s[1] = (s[1][0] / (self.skips + 1), s[1][1], s[1][2])
+    self.state = newState
+    self.skips = 0
+    return [s, newState] if last else [s]
+
+extract = lambda n: lambda inp, **_: [item[n] for item in inp if item[n] is not None]
+
 encoderRamCoef = dict(
-  S=1. / np.array([297.5, 259.21, 147.57]),
-  M=1. / np.array([300., 321.31, 183.78]),
-  L=1. / np.array([600., 759.29, 505.91])
+  S=.4 / np.array([297.5, 259.21, 147.57]),
+  M=.4 / np.array([300., 321.31, 183.78]),
+  L=.4 / np.array([600., 759.29, 505.91])
 )
 decoderRamCoef = dict(
-  S=1. / np.array([730.1, 838.46, 432.02]),
-  M=1. / np.array([948.61, 826.99, 580.82]),
-  L=1. / np.array([1822.63, 1600.88, 1131.67])
+  S=.1 / np.array([730.1, 838.46, 432.02]),
+  M=.1 / np.array([948.61, 826.99, 580.82]),
+  L=.1 / np.array([1822.63, 1600.88, 1131.67])
 )
 modelPaths = dict(
   S='./model/IFRNet/IFRNet_S_GoPro.pth',
@@ -245,12 +290,16 @@ def getOpt(option):
   model = option['model'][-1]
   chs = Channels[model]
   ensemble = option.get('ensemble', 0)
-  modules['encoder']['args'] = (chs, encoderRamCoef[model])
+  modules['encoder']['args'] = (chs, encoderRamCoef[model][config.getRunType()])
   modules['encoder']['ramCoef'] = encoderRamCoef[model]
-  modules['decoder']['args'] = (chs, SideChannels[model], ensemble, decoderRamCoef[model])
+  modules['decoder']['args'] = (chs, SideChannels[model], ensemble, decoderRamCoef[model][config.getRunType()])
   modules['decoder']['ramCoef'] = decoderRamCoef[model]
   opt = getOptP(getOptS(modelPaths[model], modules, {}))
   opt.sf = option['sf']
+  opt.dedupe = option.get('dedupe', False)
+  opt.dedupeLow = option.get('low', .5)
+  opt.dedupeHigh = option.get('high', .993)
+  print(option)
   return opt
 
 def initFunc(opt, x):
@@ -268,19 +317,27 @@ def doSlomo(func, node, opt):
   load = opt.sf - 1
   nodes = [Node({'IFRNet': 'encode'}), Node({'IFRNet': 'decode'}, load=load), Node({'IFRNet': 'post'}, load=load)]
   inp = StreamState(offload=False)
-  inps = [StreamState(offload=False), StreamState(offload=False), StreamState(2, offload=False)]
-  StreamState.pipe(identity, [inp], inps)
-  means = [StreamState(offload=False), StreamState(2, offload=False)]
-  StreamState.pipe(calcMean, [inps[0]], means)
-  inpNs = [StreamState(offload=False), StreamState(2, offload=False)]
-  StreamState.pipe(normializeInp, [inps[1], means[0]], inpNs)
+  inps = [*(StreamState(offload=False) for _ in range(3 if opt.dedupe else 2)), StreamState(2, offload=False)]
+  StreamState.pipe(identity, [inp], inps[:3])
+  means = [*(StreamState(offload=False) for _ in range(2 if opt.dedupe else 1)), StreamState(2, offload=False)]
+  StreamState.pipe(calcMean, [inps[0]], means[:2])
+  inpNs = [*(StreamState(offload=False) for _ in range(2 if opt.dedupe else 1)), StreamState(2, offload=False)]
+  StreamState.pipe(normializeInp, [inps[1], means[0]], inpNs[:2])
   features = StreamState(2, tensor=False, offload=False, batchFunc=batchFeatures)
-  opt.features = StreamState.pipe(nodes[0].bindFunc(opt.encoder), [inpNs[0]], [features])
   opt.embt = EmbtState(opt.sf)
+  if opt.dedupe:
+    ft1 = StreamState(tensor=False, offload=False)
+    ims = [StreamState(tensor=False, offload=False) for _ in range(5)]
+    deduper = Deduper(opt.dedupeLow, opt.dedupeHigh)
+    StreamState.pipe(deduper, [ft1, opt.embt, inps[2], inpNs[1], means[1]], ims)
+    emb1 = StreamState(tensor=False, offload=False)
+    for i, state in enumerate((features, emb1, inps[-1], inpNs[-1], means[-1])):
+      StreamState.pipe(extract(i), ims[i:i + 1], [state])
+  opt.features = StreamState.pipe(nodes[0].bindFunc(opt.encoder), [inpNs[0]], [ft1 if opt.dedupe else features])
   embs = [StreamState(tensor=False, offload=False) for _ in range(2)]
-  StreamState.pipe(identity, [opt.embt], embs)
+  StreamState.pipe(identity, [emb1 if opt.dedupe else opt.embt], embs)
   decode = StreamState(tensor=False, offload=False, batchFunc=torch.cat)
   opt.decoded = StreamState.pipe(nodes[1].bindFunc(opt.decoder), [features, embs[0]], [decode])
   pred = StreamState(store=False)
-  opt.out = StreamState.pipe(nodes[2].bindFunc(postOut), [inps[2], inpNs[1], means[1], embs[1], decode], [pred], args=[opt.decoder.warps[-1]])
+  opt.out = StreamState.pipe(nodes[2].bindFunc(postOut), [inps[-1], inpNs[-1], means[-1], embs[1], decode], [pred], args=[opt.decoder.warps[-1]])
   return makeStreamFunc(func, node, opt, nodes, 'slomo', [], initFunc, inp.put)

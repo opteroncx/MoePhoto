@@ -149,7 +149,7 @@ stepOpts = dict(
   resize={'toInt': ['width', 'height'], 'toFloat': ['scaleW', 'scaleH']},
   DN={'toFloat': ['strength'], 'getOpt': runDN},
   dehaze={'toFloat': ['strength'], 'getOpt': dehaze},
-  slomo={'toInt': ['ensemble'], 'toFloat': ['sf'], 'getOpt': IFRNet},
+  slomo={'toInt': ['ensemble'], 'toFloat': ['sf', 'high', 'low'], 'isEnabled': ['dedupe'], 'getOpt': IFRNet},
   VSR={'getOpt': videoSR},
   demob={'getOpt': ESTRNN}
 )
@@ -166,6 +166,7 @@ def genProcess(steps, root=True, outType=None):
         stepOpt = stepOpts[opt['op']]
         convertValues(int, opt, stepOpt.get('toInt', []))
         convertValues(float, opt, stepOpt.get('toFloat', []))
+        convertValues(lambda obj: obj.get('enable', 0), opt, stepOpt.get('isEnabled', []))
         if 'getOpt' in stepOpt:
           opt['opt'] = stepOpt['getOpt'].getOpt(opt)
     if steps[-1]['op'] != 'output':

@@ -90,6 +90,8 @@ const texts = {
   minute: '分钟',
   second: '秒',
   scale: '倍',
+  duplicateFrame: '时认为是重复帧，',
+  cameraCut: '时认为是切镜头',
   noFile: '请选择',
   noFileMsg: '缺少输入文件',
   errorMsg: '出错啦',
