@@ -65,7 +65,10 @@ def solveRam(m, c, k):
     memoryError(m)
   else: # solve k_0+k_1*x+k_2*x^2=m, where k_2>0, k_1>=0
     v = m  / c - k[0]
-    return (np.sqrt(k[1] * k[1] + 4 * k[2] * v) - k[1]) / 2 / k[2]
+    if k[2] <= 0:
+      return v / k[1]
+    else:
+      return (np.sqrt(k[1] * k[1] + 4 * k[2] * v) - k[1]) / 2 / k[2]
 
 def prepare(shape, ram, opt, pad, sc, align=8, cropsize=0):
   *_, c, h, w = shape
