@@ -13,7 +13,7 @@ from imageProcess import clean
 from procedure import genProcess
 from progress import Node, initialETA
 from worker import context, begin
-from runSlomo import RefTime as SlomoRefs
+from IFRNet import RefTime as SlomoRefs
 from videoSR import RefTime as VSRRefs
 from ESTRNN import para as ESTRNNpara
 
@@ -123,10 +123,9 @@ def enqueueOutput(out, queue):
   try:
     for line in iter(out.readline, b''):
       queue.put(line)
+    out.flush()
   except Exception:
     queue.put('FFMpeg output pipe Exception')
-  finally:
-    out.flush()
 
 def createEnqueueThread(pipe, *args):
   t = threading.Thread(target=enqueueOutput, args=(pipe, qOut, *args))
@@ -164,6 +163,11 @@ def prepare(video, by, steps):
   refs, ahead = 0, 0
   if start < 0:
     start = 0
+  cumStart = start
+  for step in procSteps:
+    if step['op'] == 'slomo':
+      step['opt'].start = cumStart
+      cumStart *= step['sf']
   for i in range(len(procSteps) - 1, -1, -1): # gather some reference frames before start point for video models
     step = procSteps[i]
     if step['op'] == 'slomo':
@@ -206,6 +210,10 @@ def prepare(video, by, steps):
     '-c', 'copy',
     '-y',
     dataPath,
+    '-sws_flags', 'spline+accurate_rnd+full_chroma_int',
+    '-color_trc', '2',
+    '-colorspace', '2',
+    '-color_primaries', '2',
     '-map', '0:v',
     '-f', 'rawvideo',
     '-pix_fmt', pix_fmt]
@@ -319,15 +327,14 @@ def SR_vid(video, by, *steps):
       for buffer in bufs:
         if buffer:
           procOut.stdin.write(buffer)
-    if raw_image:
-      root.trace()
     return 0 if bufs is None else len(bufs)
 
   context.stopFlag.clear()
   outputPath, process, *args = prepare(video, by, steps)
   start, stop, refs, root = args[:4]
+  root.callback(root, dict(eta=100000))
   width, height, *more = getVideoInfo(video, by, *args[-3:])
-  root.callback(root, dict(shape=[height, width], fps=more[0]))
+  root.callback(root, dict(shape=[height, width], fps=more[0], eta=60000))
   commandIn, commandVideo, commandOut = setupInfo(by, outputPath, *args[3:9], start, width, height, *more)
   procIn = popen(commandIn)
   procOut = sp.Popen(commandVideo, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=0)

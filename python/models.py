@@ -614,3 +614,17 @@ class ModulatedDeformConvPack(nn.Module):
     mask = torch.sigmoid(mask)
     return deform_conv2d(x, offset, self.weight, self.bias, self.stride, self.padding,
                         self.dilation, mask)
+
+ResidualBlocksWithInputConv = lambda in_channels, out_channels=64, num_blocks=30: nn.Sequential(
+  conv2d311(in_channels, out_channels),
+  nn.LeakyReLU(negative_slope=0.1, inplace=True),
+  make_layer(ResidualBlockNoBN, num_blocks, num_feat=out_channels)
+)
+class ImageCleaning(nn.Sequential):
+  def __init__(self, num_feat=64, num_cleaning_blocks=20):
+    super(ImageCleaning, self).__init__(
+      ResidualBlocksWithInputConv(3, num_feat, num_cleaning_blocks),
+      conv2d311(num_feat, 3)
+    )
+  def forward(self, inp):
+    return super(ImageCleaning, self).forward(inp) + inp

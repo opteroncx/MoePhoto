@@ -3,19 +3,30 @@ from functools import reduce
 import numpy as np
 from config import config
 from progress import Node
-from imageProcess import toFloat, toOutput, toOutput8, toTorch, toNumPy, toBuffer, toInt, readFile, writeFile, BGR2RGB, BGR2RGBTorch, resize, restrictSize, windowWrap, apply, identity, previewFormat, previewPath
-import runDN
+from imageProcess import (
+  toFloat, toOutput, toOutput8, toTorch, toNumPy, toBuffer,
+  readFile, writeFile,
+  BGR2RGB, BGR2RGBTorch, RGBFilter,
+  resize, restrictSize,
+  apply, identity, previewFormat, previewPath
+)
 import runSR
-import runSlomo
+import runDN
 import dehaze
 import videoSR
 import ESTRNN
+import IFRNet
 from worker import context
 
-videoOps = dict(slomo=runSlomo.WindowSize, VSR=videoSR.WindowSize, demob=ESTRNN.WindowSize)
+videoOps = {'slomo', 'VSR', 'demob'}
 applyNonNull = lambda v, f: NonNullWrap(f)(v)
 NonNullWrap = lambda f: lambda x: f(x) if not x is None else None
 newNode = lambda opt, op, load=1, total=1: Node(op, load, total, name=opt.get('name', None))
+
+def convertValues(T, o, keys):
+  for key in keys:
+    if key in o:
+      o[key] = T(o[key])
 
 def appendFuncs(f, node, funcs, wrap=True):
   g = node.bindFunc(f)
@@ -33,7 +44,7 @@ fPreview = [
 funcPreview = lambda im: reduce(applyNonNull, fPreview, im)
 
 def procInput(source, bitDepth, fs, out):
-  out['load'] = 1
+  out['load'], out['sf']  = 1, 1
   node = Node({'op': 'toTorch', 'bits': bitDepth})
   fs.append(NonNullWrap(node.bindFunc(toTorch(bitDepth, config.dtype(), config.device()))))
   return fs, [node], out
@@ -41,7 +52,7 @@ def procInput(source, bitDepth, fs, out):
 def procDN(opt, out, *_):
   DNopt = opt['opt']
   node = newNode(opt, dict(op='DN', model=opt['model']), out['load'])
-  return [NonNullWrap(node.bindFunc(lambda im: runDN.denoise(DNopt, im)))], [node], out
+  return [NonNullWrap(node.bindFunc(RGBFilter(DNopt)))], [node], out
 
 def convertChannel(out):
   out['channel'] = 0
@@ -71,9 +82,10 @@ def procVSR(opt, out, *_):
 
 def procSlomo(opt, out, *_):
   load = out['load']
+  out['sf'] *= opt['sf']
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
   node = newNode(opt, dict(op='slomo'), load, opt['sf'])
-  return fs + [runSlomo.doSlomo], ns + [node], out
+  return fs + [IFRNet.doSlomo], ns + [node], out
 
 def procDemob(opt, out, *_):
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
@@ -86,7 +98,7 @@ def procDehaze(opt, out, *_):
   model = opt.get('model', 'dehaze')
   fs, ns = convertChannel(out) if out['channel'] else ([], [])
   node = newNode(opt, dict(op=model), load)
-  ns.append(appendFuncs(lambda im: dehaze.Dehaze(dehazeOpt, im), node, fs))
+  ns.append(appendFuncs(RGBFilter(dehazeOpt), node, fs))
   return fs, ns, out
 
 def procResize(opt, out, nodes):
@@ -100,6 +112,7 @@ def procOutput(opt, out, *_):
   bitDepthOut = out['bitDepth']
   node1 = newNode(opt, dict(op='toOutput', bits=bitDepthOut), load)
   fOutput = node1.bindFunc(toOutput(bitDepthOut))
+  fTrace = lambda x: context.root.trace(1 / out['sf']) or x
   fs = [NonNullWrap(node0.bindFunc(toFloat)), NonNullWrap(fOutput)]
   ns = [node0, node1]
   if out['source']:
@@ -112,7 +125,7 @@ def procOutput(opt, out, *_):
         return [res]
     else:
       o = lambda im: [reduce(applyNonNull, fs1, im)]
-    fs = [o]
+    fs = [o, fTrace]
     if out['channel']:
       fPreview[4] = BGR2RGB
     else:
@@ -133,10 +146,10 @@ procs = dict(
 
 stepOpts = dict(
   SR={'toInt': ['scale', 'ensemble'], 'getOpt': runSR},
-  resize={'toInt': ['width', 'height']},
-  DN={'getOpt': runDN},
-  dehaze={'getOpt': dehaze},
-  slomo={'toInt': ['sf'], 'getOpt': runSlomo},
+  resize={'toInt': ['width', 'height'], 'toFloat': ['scaleW', 'scaleH']},
+  DN={'toFloat': ['strength'], 'getOpt': runDN},
+  dehaze={'toFloat': ['strength'], 'getOpt': dehaze},
+  slomo={'toInt': ['ensemble'], 'toFloat': ['sf', 'high', 'low'], 'isEnabled': ['dedupe'], 'getOpt': IFRNet},
   VSR={'getOpt': videoSR},
   demob={'getOpt': ESTRNN}
 )
@@ -149,14 +162,11 @@ def genProcess(steps, root=True, outType=None):
     stepOffset = 0 if steps[0]['op'] == 'file' else 2
     for i, opt in enumerate(steps):
       opt['name'] = i + stepOffset
-      if opt['op'] == 'resize':
-        if 'scaleW' in opt:
-          opt['scaleW'] = float(opt['scaleW'])
-        if 'scaleH' in opt:
-          opt['scaleH'] = float(opt['scaleH'])
       if opt['op'] in stepOpts:
         stepOpt = stepOpts[opt['op']]
-        toInt(opt, stepOpt.get('toInt', []))
+        convertValues(int, opt, stepOpt.get('toInt', []))
+        convertValues(float, opt, stepOpt.get('toFloat', []))
+        convertValues(lambda obj: obj.get('enable', 0), opt, stepOpt.get('isEnabled', []))
         if 'getOpt' in stepOpt:
           opt['opt'] = stepOpt['getOpt'].getOpt(opt)
     if steps[-1]['op'] != 'output':
@@ -177,8 +187,7 @@ def genProcess(steps, root=True, outType=None):
         f = identity
         nodesAfter = []
       videoOpt = opt['opt']
-      func = funcs[-1](f, nodes[-1], videoOpt)
-      funcs[-1] = windowWrap(func, videoOpt, videoOps[op]) if videoOps[op] > 1 else func
+      funcs[-1] = funcs[-1](f, nodes[-1], videoOpt)
       nodeAfter = Node({}, total=opt.get('sf', 1), learn=0)
       for node in nodesAfter:
         nodeAfter.append(node)

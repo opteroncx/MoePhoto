@@ -6,6 +6,7 @@ from itertools import chain
 from typing import Callable, List, Union
 import torch
 import torch.nn.functional as F
+from torch.cuda.amp import autocast
 import PIL
 PIL.PILLOW_VERSION = PIL.__version__
 from torchvision.transforms.functional import to_tensor
@@ -25,13 +26,13 @@ def getAnchors(s, ns, l, pad, af, sc):
   if step > 1:
     start[-1] = s - af(s - end[-2] + pad)
     end[-1] = s
-    clip = (int(end[-2]) - s) * sc
+    clip = int((int(end[-2]) - s) * sc)
   else:
     end[-1] = af(s)
     clip = 0
   endSc[-1] = s * sc
   # clip = [0:l, pad:l - pad, ..., end[-2] - s:l]
-  return start.tolist(), end.tolist(), clip, step, endSc.tolist()
+  return start.tolist(), end.tolist(), clip, step, endSc.astype(int).tolist()
 
 def wrapPad2D(p):
   def f(x):
@@ -64,14 +65,18 @@ def solveRam(m, c, k):
     memoryError(m)
   else: # solve k_0+k_1*x+k_2*x^2=m, where k_2>0, k_1>=0
     v = m  / c - k[0]
-    return (np.sqrt(k[1] * k[1] + 4 * k[2] * v) - k[1]) / 2 / k[2]
+    if k[2] <= 0:
+      return v / k[1]
+    else:
+      return (np.sqrt(k[1] * k[1] + 4 * k[2] * v) - k[1]) / 2 / k[2]
 
 def prepare(shape, ram, opt, pad, sc, align=8, cropsize=0):
   *_, c, h, w = shape
-  n = solveRam(ram, opt.fixChannel or c, opt.ramCoef)
+  n = solveRam(ram, opt.fixChannel or c, opt.ramCoef / shape[0] if shape[0] else 1.)
   af = alignF[align]
   s = af(minSize + pad * 2)
   if n < s * s:
+    log.error('{} pixels can be allocated, {} required. Shape: {}, RamCoef: {}'.format(n, s * s, shape, opt.ramCoef))
     memoryError(ram)
   ph, pw = max(1, h - pad * 3), max(1, w - pad * 3)
   ns = np.arange(s / align, int(n / (align * s)) + 1, dtype=int)
@@ -88,7 +93,7 @@ def prepare(shape, ram, opt, pad, sc, align=8, cropsize=0):
   ih, iw = min(ah, ih), min(aw, iw)
   startH, endH, clipH, stepH, bH = getAnchors(h, ph, ih, pad, af, sc)
   startW, endW, clipW, stepW, wH = getAnchors(w, pw, iw, pad, af, sc)
-  padSc, outh, outw = pad * sc, h * sc, w * sc
+  padSc, outh, outw = int(pad * sc), int(h * sc), int(w * sc)
   if (stepH > 1) and (stepW > 1):
     padImage = identity
     unpad = identity
@@ -122,28 +127,31 @@ def blend(r, x, lt, pad, dim, blend):
   ls, ll = l - start, l - lt
   _, b, c = r.split([start, pad, ll], dim) # share storage
   _, bx, _ = x.split([start, pad, ll], dim)
-  b = b * blend + bx * (1 - blend)
+  b = bx + blend * (b - bx)
   return torch.cat([b, c], dim), x.narrow(dim, start, ls)
 
 def prepareOpt(opt, shape):
   sc, pad = opt.scale, opt.padding
-  padSc = pad * sc
-  if opt.iterClip is None:
+  padSc = int(pad * sc)
+  if opt.iterClip is None or opt.count > 28 or shape[0] != opt.outShape[0]:
     try:
-      freeRam = config.calcFreeMem()
+      freeMem = config.calcFreeMem()
     except Exception:
       raise MemoryError('Can not calculate free memory.')
+    opt.count = 0
     if opt.ensemble > 0:
       opt2 = copy(opt)
-      opt2.iterClip, opt2.padImage, opt2.unpad, *_ = prepare(transposeShape(shape), freeRam, opt, pad, sc, opt.align, opt.cropsize)
-    opt.iterClip, opt.padImage, opt.unpad, outShape, opt.blend = prepare(shape, freeRam, opt, pad, sc, opt.align, opt.cropsize)
-    if (not hasattr(opt, 'outShape')) or opt.outShape is None:
-      opt.outShape = outShape
+      opt2.iterClip, opt2.padImage, opt2.unpad, *_ = prepare(transposeShape(shape), freeMem, opt, pad, sc, opt.align, opt.cropsize)
+    opt.iterClip, opt.padImage, opt.unpad, outShape, opt.blend = prepare(shape, freeMem, opt, pad, sc, opt.align, opt.cropsize)
+    if opt.outShape is None:
+      opt.outShape = [1, *opt.oShape[1:-2], int(sc * shape[-2]), int(sc * shape[-1])] if opt.oShape else outShape
     opt.outShape = list(opt.outShape)
     if opt.ensemble > 0:
       opt2.blend = opt.blend
       opt2.outShape = transposeShape(opt.outShape)
       opt.transposedOpt = opt2
+  else:
+    opt.count += 1
   return sc, padSc
 
 def doCrop(opt, x, *args, **_):
@@ -151,12 +159,12 @@ def doCrop(opt, x, *args, **_):
   bl = opt.blend
   opt.outShape[0] = x.size(0)
   x = opt.padImage(opt.unsqueeze(x))
-  tmp_image = x.new_zeros(opt.outShape)
+  tmp_image = x.new_empty(opt.outShape)
 
   for top, bottom, left, right, topT, leftT, bsc, rsc in opt.iterClip():
     s = x[..., top:bottom, left:right]
     r = opt.squeeze(opt(s, *args))
-    t = tmp_image[..., top * sc:bsc, left * sc:rsc]
+    t = tmp_image[..., int(top * sc):bsc, int(left * sc):rsc]
     q, _ = blend(*blend(opt.unpad(r), t, topT, padSc, -2, bl.t()), leftT, padSc, -1, bl)
     *_, h, w = q.shape
     tmp_image[..., bsc - h:bsc, rsc - w:rsc] = q
@@ -204,38 +212,6 @@ def restrictSize(width, height=0, method='bilinear', h=0, w=0, flag=0):
         w = width
     return im if flag else resizeByTorch(im, w, h, method)
   return f
-
-def windowWrap(f, opt, window=2):
-  cache = []
-  wm1 = window - 1
-  maxBatch = 1 << 7
-  h = 0
-  getData = lambda: [cache[i:i + window] for i in range(h - wm1)]
-  def reset(r=False):
-    nonlocal h, cache
-    if r and wm1:
-      cache = cache[h - wm1:h] + [0 for _ in range(maxBatch)]
-      h = wm1
-    else:
-      cache = [0 for _ in range(wm1 + maxBatch)]
-      h = 0
-  reset()
-  def g(inp=None):
-    nonlocal h
-    b = min(max(1, opt.batchSize), maxBatch)
-    if inp is not None:
-      cache[h] = inp
-      h += 1
-      if h >= wm1 + b:
-        data = getData()
-        reset(True)
-        return f(data)
-      return None
-    elif h:
-      data = getData() if h > wm1 else [cache[:h]]
-      reset()
-      return f(data)
-  return g
 
 def toNumPy(bitDepth):
   if bitDepth <= 8:
@@ -330,11 +306,21 @@ def getStateDict(path):
     weightCache[path] = torch.load(path, map_location='cpu')
   return weightCache[path]
 
-def initModel(opt, weights=None, key=None, f=lambda opt: opt.modelDef()):
+def castModel(model):
+  dtype = type(model).__dict__.get('castDtype', 'float16')
+  if dtype == 'float32':
+    _m = model.to(config.device())
+  elif dtype == 'autocast':
+    _m = autocast()(model.to(config.device()))
+  else:
+    return model.to(dtype=config.dtype(), device=config.device())
+  return lambda *args, **kwargs: _m(*args, **kwargs).to(config.dtype())
+
+def initModel(opt, weights=None, key=None, f=lambda opt: opt.modelDef(), args=[]):
   if key and key in modelCache:
-    return modelCache[key].to(dtype=config.dtype(), device=config.device())
+    return castModel(modelCache[key])
   log.info('loading model {}'.format(opt.model))
-  model = f(opt)
+  model = f(opt, *args)
   if weights:
     log.info('reloading weights')
     if type(weights) == str:
@@ -345,12 +331,7 @@ def initModel(opt, weights=None, key=None, f=lambda opt: opt.modelDef()):
   model.eval()
   if key:
     modelCache[key] = model
-  return model.to(dtype=config.dtype(), device=config.device())
-
-def toInt(o, keys):
-  for key in keys:
-    if key in o:
-      o[key] = int(o[key])
+  return castModel(model)
 
 def getPadBy32(img, _):
   *_, oriHeight, oriWidth = img.shape
@@ -386,14 +367,24 @@ def mergeAlpha(t):
       return im
   return f
 
+def _RGBFilter(opt, img):
+  t = {}
+  imgIn = opt.prepare(extractAlpha(t)(img))
+
+  prediction = doCrop(opt, imgIn)
+  out = strengthOp(prediction, imgIn, opt.strength)
+  return mergeAlpha(t)(out)
+RGBFilter = lambda opt: lambda img: _RGBFilter(opt, img)
+
 class Option():
   def __init__(self, path=''):
-    self.ramCoef = 1e-3
-    self.padding, self.scale, self.cropsize, self.align, self.fixChannel = 1, 1, 0, 8, 1
-    self.ensemble = 0
+    self.ramCoef, self.count = 1e-3, 0
+    self.padding, self.cropsize, self.align, self.fixChannel = 1, 0, 8, 1
+    self.scale, self.ensemble, self.strength = 1, 0, 1.0
     self.model = path
-    self.outShape = None
+    self.outShape, self.oShape = None, None
     self.iterClip = None
+    self.prepare = identity
     self.squeeze = lambda x: x.squeeze(0)
     self.unsqueeze = lambda x: x.unsqueeze(0)
 
@@ -414,7 +405,7 @@ def DefaultStreamSource(last=None):
     flag &= not last
 
 class StreamState():
-  def __init__(self, window=None, device=config.device(), offload=True, store=True, tensor=True, name=None, reserve=0, **_):
+  def __init__(self, window=None, device=config.device(), offload=True, store=True, tensor=True, name=None, batchFunc=None, reserve=0, **_):
     self.source = DefaultStreamSource()
     next(self.source)
     self.wm1 = window - 1 if window else 0
@@ -422,7 +413,7 @@ class StreamState():
     self.tensor = tensor
     self.offload = offload and store
     self.store = store
-    self.batchFunc = torch.stack if tensor else identity
+    self.batchFunc = batchFunc if batchFunc else torch.stack if tensor else identity
     self.name = name
     self.start = 0
     self.end = 0
@@ -430,21 +421,14 @@ class StreamState():
     self.reserve = reserve # ensure enough items to pad
     self.stateR = []
 
-  def clear(self):
-    self.state.clear()
-
   def getSize(self, size=None):
-    if self.start:
-      self.start -= self.pad(self.start)
     ls = len(self.state)
     if ls < self.wm1 + (size or 1) or self.start:
       return 0
     lb = ls - self.wm1
     return min(size, lb) if size else lb
 
-  def popBatch(self, size=1, last=None, *_, **__):
-    if last and self.end:
-      self.end -= self.pad(self.end)
+  def popBatch(self, size=1):
     r = self.getSize(size)
     if not r:
       return None
@@ -460,7 +444,7 @@ class StreamState():
     elif padding < 0: self.end = padding
     return self
 
-  def pad(self, padding: int, *_, **__):
+  def pad(self, padding: int):
     if padding == 0:
       return 0
     absPad = abs(padding)
@@ -474,12 +458,14 @@ class StreamState():
     self.state = (self.state + batch) if padding < 0 else (batch + self.state)
     return padding
 
-  def push(self, batch: Union[torch.Tensor, List[torch.Tensor]], *_, **__):
+  def put(self, batch: Union[torch.Tensor, List[torch.Tensor]]):
     if batch is None:
       return None
     if self.offload:
       batch = offload(batch)
     self.store and self.state.extend(t for t in batch)
+    if self.start:
+      self.start -= self.pad(self.start)
     return batch
 
   def bind(self, stateIter):
@@ -493,36 +479,35 @@ class StreamState():
     return 'StreamState {}'.format(self.name) if self.name else 'anonymous StreamState'
 
   def pull(self, last=None, size=None):
+    if size and self.getSize() >= size:
+      return 1
     t = (last, size) if size else last
-    flag = None
+    flag = not last
     try:
       self.source.send(t)
       flag = 1
     except StopIteration: pass
-    if last:
-      tuple(self.source) # drain source
-      flag = None
-      if self.end:
-        self.end -= self.pad(self.end)
-    return flag
+    if not flag and self.end:
+      self.end -= self.pad(self.end)
+    return flag or self.getSize() >= size
 
-  @classmethod
-  def run(_, f: Callable, states, size: int, args=[], last=None, pipe=False):
+  @staticmethod
+  def run(f: Callable, states, size: int, args=[], last=None, pipe=False):
     t = yield
     flag, trial = False, 2
     while True:
       last, size = t if type(t) == tuple else (t, size)
       r = min(s.getSize() for s in states)
-      flag &= r <= size
-      if r > size or (r and flag):
+      if r >= size or (r and flag):
         trial = 2
-        nargs = list(args) + [s.popBatch(min(r, size), last=flag) for s in states]
+        r = min(r, size)
+        nargs = list(args) + [s.popBatch(r) for s in states]
         out = f(*nargs, last=flag)
         t = yield out
       else:
         if flag or not pipe:
           break
-        pr = [s.getSize() > size or s.pull(last) for s in states]
+        pr = [s.pull(last, size) for s in states]
         flag = not all(pr) # some source will not append
         if trial == 0:
           t = yield # don't wait if we can advance
@@ -547,7 +532,7 @@ def pipeFunc(it, targets, size, last=False):
     try:
       out = it.send((last, size))
       for t in targets:
-        t.push(out)
+        t.put(out)
       t = yield out
     except StopIteration: break
 
@@ -558,6 +543,7 @@ previewPath = config.outDir + '/.preview.{}'.format(previewFormat if previewForm
 log = logging.getLogger('Moe')
 modelCache = {}
 weightCache = {}
+fCleanCache = lambda x: torch.cuda.empty_cache() or x
 genNameByTime = lambda: '{}/output_{}.png'.format(outDir, int(time.time()))
 padImageReflect = torch.nn.ReflectionPad2d
 identity = lambda x, *_, **__: x
@@ -573,6 +559,7 @@ BGR2RGB = lambda im: np.stack([im[:, :, 2], im[:, :, 1], im[:, :, 0]], axis=2)
 BGR2RGBTorch = lambda im: torch.stack([im[2], im[1], im[0]])
 toOutput8 = toOutput(8)
 dedupeAlpha = lambda x: ('RGB', x[:, :, :3]) if (255 - x[:, :, 3]).astype(dtype=np.float32).sum() < 1 else ('RGBA', x)
+strengthOp = lambda x, inp, s=1: x if s == 1 else s * x + (1 - s) * inp
 apply = lambda v, f: f(v)
 transpose = lambda x: x.transpose(-1, -2)
 flip = lambda x: x.flip(-1)
@@ -585,4 +572,4 @@ which = [getTransposedOpt, identity, identity, getTransposedOpt, getTransposedOp
 ensemble = lambda opt: lambda x: reduce((lambda v, t: (v + t[2](doCrop(t[3](opt), t[1](x)))).detach()), zip(range(opt.ensemble), trans, transInv, which), doCrop(opt, x))
 split = lambda *ps: lambda x: tuple(split(*ps[1:])(c) for c in x.split(ps[0], x.ndim - len(ps))) if len(ps) else x
 flat = lambda x: tuple(chain(*(flat(t) for t in x))) if len(x) and type(x[0]) is tuple else x
-extend = lambda out, res: None if res is None else out.extend(tuple(res))
+extend = lambda out, res, off=False: None if res is None else out.extend(tuple(offload(res) if off else res))

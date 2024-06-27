@@ -25,7 +25,6 @@ para.n_blocks = 15
 DS_ratio = 2
 NumFeat = 16
 RefTime = para.future_frames + 1 + para.past_frames
-WindowSize = 1
 
 conv1x1 = lambda in_channels, out_channels, stride=1: nn.Conv2d(
   in_channels, out_channels, kernel_size=1, stride=stride, padding=0, bias=True)
@@ -222,4 +221,4 @@ def doESTRNN(func, node, opt):
   opt.fusionStream = StreamState.pipe(nodes[2].bindFunc(opt.fusion), [hs, w], [fusion])
   recons = StreamState(store=False)
   opt.out = StreamState.pipe(nodes[3].bindFunc(doCrop), [fusion], [recons], args=[opt.recons])
-  return makeStreamFunc(func, node, opt, nodes, 'ESTRNN', [hs, w], initFunc, inp.push)
+  return makeStreamFunc(func, node, opt, nodes, 'ESTRNN', [hs, w], initFunc, inp.put)

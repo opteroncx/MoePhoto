@@ -151,7 +151,8 @@ class Node():
       mark = time.perf_counter()
       if progress > 0:
         delta = mark - self.mark
-        op.update(delta / self.load / progress)
+        if self.load > 0:
+          op.update(delta / self.load / progress)
         if op.samples >= self.learn:
           self.learn = False
           needSave = True

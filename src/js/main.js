@@ -33,6 +33,8 @@ const scaleModelMapping = {
 }
 const MPRNetNote = '来自<a href="https://github.com/swz30/MPRNet">Syed Waqas Zamir</a>'
 const NAFNetNote = '来自<a href="https://github.com/megvii-research/NAFNet">旷视研究院</a>'
+const AiLUTNote = '来自<a href="https://github.com/ImCharlesY/AdaInt">Yang Canqian</a>'
+const ESRGANNote = '来自<a href="https://github.com/xinntao/Real-ESRGAN">Xintao Wang的Real-ESRGAN</a>'
 const DehazeModelValues = [
   {
     value: 'dehaze',
@@ -68,6 +70,43 @@ const DehazeModelValues = [
     func: 'derain'
   }
 ]
+const RetouchModelValues = [
+  {
+    value: 'AiLUT_sRGB_3', text: 'AiLUT小',
+    notes: [AiLUTNote],
+    func: 'retouch'
+  },
+  {
+    value: 'AiLUT_sRGB_5', text: 'AiLUT大',
+    checked: 1,
+    notes: [AiLUTNote, '和小个的相比都挺快的，效果也看不出差别来'],
+    func: 'retouch'
+  },
+  {
+    value: 'AiLUT_XYZ_3', text: 'AiLUT小',
+    notes: [AiLUTNote, '相当不一样的色彩'],
+    hidden: true,
+    func: 'tone-remapping'
+  }
+]
+const changeFuncs = Values => (_, opt) => {
+  let models = []
+  for (let item of Values)
+    if (item.func === opt.func) {
+      item.hidden = false
+      models.push(item)
+    } else {
+      item.hidden = true
+      item.checked = false
+    }
+  let i = models.findIndex(item => !!item.checked)
+  if (i < 0) {
+    i = models.length - 1
+    models[i].checked = 1
+  }
+  opt.model = models[i].value
+  return 1
+}
 var getResizeView = (by, scale, size) =>
   by === 'scale' ? scale + '倍' : appendText('pixel')(size)
 const getFileName = opt => ({
@@ -245,7 +284,7 @@ const panels = {
             notes: [
               'GAN模型仅适用于RGB图像，遇到带alpha通道的图像会出错错，反正我遇到的alpha通道都是多余的，用随便什么图片编辑去掉吧',
               'GAN模型能放大2或4倍，可以在后面添加“缩放”步骤配合使用',
-              '来自于<a href="https://github.com/xinntao/Real-ESRGAN">Xintao Wang的Real-ESRGAN</a>'
+              ESRGANNote
             ]
           },
           {
@@ -254,7 +293,7 @@ const panels = {
             notes: [
               '仅适用于RGB动漫图像，遇到带alpha通道的图像会出错错',
               '仅能放大4倍，但是比较快，可以在后面添加“缩放”步骤配合使用',
-              '来自于<a href="https://github.com/xinntao/Real-ESRGAN">Real-ESRGAN</a>'
+              ESRGANNote
             ]
           }
         ]
@@ -390,8 +429,23 @@ const panels = {
             text: 'NAFNet大',
             checked: 1,
             notes: [NAFNetNote, '比小个的慢一点，据说效果也好一点']
+          },
+          {
+            value: 'VSR_Cleaning',
+            text: '图像清理',
+            notes: [
+              '来自<a href="https://github.com/ckkelvinchan/RealBasicVSR">Kelvin C.K. Chan</a>',
+              '原作者是把它放在视频放大模型的前面，说不定也能用在别的地方呢'
+            ]
           }
         ]
+      },
+      strength: {
+        type: 'number',
+        text: '强度',
+        value: 1.0,
+        classes: ['input-number'],
+        attributes: ['step="0.05"']
       }
     }
   },
@@ -410,6 +464,13 @@ const panels = {
           { value: 'lite10', text: '中' },
           { value: 'lite15', text: '强' }
         ]
+      },
+      strength: {
+        type: 'number',
+        text: '强度',
+        value: 1.0,
+        classes: ['input-number'],
+        attributes: ['step="0.05"']
       }
     }
   },
@@ -421,24 +482,7 @@ const panels = {
       func: {
         type: 'radio',
         text: '功能',
-        change: (_, opt) => {
-          let models = []
-          for (let item of DehazeModelValues)
-            if (item.func === opt.func) {
-              item.hidden = false
-              models.push(item)
-            } else {
-              item.hidden = true
-              item.checked = false
-            }
-          let i = models.findIndex(item => !!item.checked)
-          if (i < 0) {
-            i = models.length - 1
-            models[i].checked = 1
-          }
-          opt.model = models[i].value
-          return 1
-        },
+        change: changeFuncs(DehazeModelValues),
         values: [
           { value: 'dehaze', text: '去雾' },
           { value: 'deblur', text: '去模糊', checked: 1 },
@@ -450,6 +494,13 @@ const panels = {
         text: '模型',
         change: _ => 1,
         values: DehazeModelValues
+      },
+      strength: {
+        type: 'number',
+        text: '强度',
+        value: 1.0,
+        classes: ['input-number'],
+        attributes: ['step="0.05"']
       }
     }
   },
@@ -481,6 +532,43 @@ const panels = {
             notes: ['屏幕模型比较强力地抹掉摩尔纹']
           }
         ]
+      },
+      strength: {
+        type: 'number',
+        text: '强度',
+        value: 1.0,
+        classes: ['input-number'],
+        attributes: ['step="0.05"']
+      }
+    }
+  },
+  retouch: {
+    op: 'dehaze',
+    text: '美化调色',
+    description: '让贫乏的图像变得更多彩一点点',
+    draggable: 1,
+    args: {
+      func: {
+        type: 'radio',
+        text: '功能',
+        change: changeFuncs(RetouchModelValues),
+        values: [
+          { value: 'retouch', text: '色彩美化', checked: 1 },
+          { value: 'tone-remapping', text: '重排色调' }
+        ]
+      },
+      model: {
+        type: 'radio',
+        text: '模型',
+        change: _ => 1,
+        values: RetouchModelValues
+      },
+      strength: {
+        type: 'number',
+        text: '强度',
+        value: 0.75,
+        classes: ['input-number'],
+        attributes: ['step="0.05"']
       }
     }
   },
@@ -513,7 +601,8 @@ const panels = {
           },
           {
             value: '2ms16ms',
-            text: '2到16毫秒'
+            text: '2到16毫秒',
+            checked: 1
           },
           {
             value: '3ms24ms',
@@ -644,6 +733,25 @@ const panels = {
     description: '以可设定的整倍数填充视频画面帧',
     draggable: 1,
     args: {
+      model: {
+        type: 'radio',
+        text: '模型',
+        values: [
+          {
+            value: 'IFRNet_L',
+            text: '大'
+          },
+          {
+            value: 'IFRNet_M',
+            text: '中',
+            checked: 1
+          },
+          {
+            value: 'IFRNet_S',
+            text: '小'
+          }
+        ]
+      },
       sf: {
         type: 'number',
         text: '倍数',
@@ -651,11 +759,48 @@ const panels = {
         classes: ['input-number'],
         attributes: ['min="1"'],
         notes: [
-          '输出帧数是输入的多少倍，必须是正整数',
+          '输出帧数是输入的多少倍，必须不小于1',
           '为了方便精确地拼接输出视频，若之前的视频处理开始于设定大于0且这里设置了大于1的倍数，那么开始帧之前的那一帧会被用作参考帧，输出的头几帧将会是它与开始帧之间的插入帧，但这一参考帧本身将不会被输出',
-          '来自于<a href="https://github.com/avinashpaliwal/Super-SloMo">avinashpaliwal的Super-SloMo</a>'
+          '来自于<a href="https://github.com/ltkong218/IFRNet">Lingtong Kong的IFRNet</a>'
         ],
         summary: '*'
+      },
+      ensemble: {
+        type: 'number',
+        text: '额外的处理次数',
+        value: 0,
+        classes: ['input-number'],
+        attributes: ['min="0"', 'max="7"', 'step="1"'],
+        notes: [
+          '让插帧模型额外处理变换的光流，之后混合多次处理的结果，轻微提高质量，要花费时间以此处设置增长',
+          '可填0-7倍'
+        ]
+      },
+      dedupe: {
+        type: 'checkbox',
+        text: '去除重复的相邻帧',
+        values: [
+          {
+            value: 'enable',
+            binds: ['high', 'low']
+          }
+        ]
+      },
+      high: {
+        type: 'number',
+        text: '相似度大于',
+        view: appendText('duplicateFrame'),
+        value: 0.993,
+        classes: ['input-number'],
+        attributes: ['min="0.5"', 'max="1"', 'step="0.001"']
+      },
+      low: {
+        type: 'number',
+        text: '小于',
+        view: appendText('cameraCut'),
+        value: 0.6,
+        classes: ['input-number'],
+        attributes: ['min="0"', 'max="1"', 'step="0.05"']
       }
     }
   }

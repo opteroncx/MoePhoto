@@ -9,7 +9,7 @@ import numpy as np
 from config import config
 config.dir = '..'
 config.initialize()
-from imageProcess import readFile, initModel, toFloat, toOutput, ensemble, writeFile, Option
+from imageProcess import readFile, toOutput, ensemble, Option, castModel
 show = lambda im: Image.fromarray(toOutput(8)(im).transpose(1, 2, 0))
 toTorch = lambda x: torch.from_numpy(np.array(x)).permute(2, 0, 1).to(dtype=config.dtype(), device=config.device()) / 256
 def context():pass
